@@ -151,7 +151,7 @@ Ties are *not* a hack. Under 3/1/0 a tie against a stronger team is real value. 
 
 | File | What |
 |---|---|
-| `evaluate.py` | runs colour-swapped game pairs in parallel through `capture.py -q -c` on seed lists; writes `eval/results/<run>.jsonl`; prints the summary: PPG + CI, W-T-L, crashes, time warnings, move-time stats, violations, head-to-head matrix, approximate Nash averaging, paired comparison (`--compare A B`) |
+| `evaluate.py` | runs colour-swapped game pairs in parallel through `capture.py -q -c` on seed lists; writes `eval/results/<run>.jsonl`; prints the summary: PPG + bootstrap CI, win % + exact Clopper–Pearson CI, W-T-L, crashes, time warnings, move-time stats, violations, head-to-head matrix, approximate Nash averaging, and with `--compare A B` a paired comparison overall **and per opponent** (needed for accept rule 3); `--resume` / `--dry-run` |
 | `sentinel_team.py` | wraps a team during evaluation only. It records move times and runtime violations: walls mutated, shared `Configuration` mutated, global RNG seeded or read, thread / subprocess / `os.system`, file writes, `observation_function` overridden, illegal action |
 | `check_rules.py` | AST lint for our team files: forbidden modules, private fields, global-RNG calls, shared-object writes, broad `except`, Python ≥ 3.9 syntax, prints and file I/O |
 | `league.json` | the opponent pool (path + `create_team` options) |
@@ -172,9 +172,40 @@ venv\Scripts\python.exe eval\evaluate.py play --agents baseline greedy turtle --
 **Known limitations**:
 - There is no SPRT yet.
 - There are no behavioural diagnostics yet (food eaten vs returned, deaths).
-- `--compare` currently pools the opponents uniformly.
 - The sentinel and the linter are tripwires, not proofs of compliance.
 - Timing is measured on Windows under parallel load. That is pessimistic about load but optimistic about the hard 3 s kill (T-11).
+
+## 9. How reliable is this? (assessment, E-004)
+
+**Backed by established practice** (each element has a published source; see the references):
+- Colour-swapped game pairs and common random numbers (chess-engine testing, poker duplicate matches).
+- Clustered resampling (Agarwal et al. 2021; Van den Bergh on game pairs).
+- Separate seed sets for tuning, selection and final testing (Cobbe et al. 2019; Cawley & Talbot 2010).
+- A held-out opponent set (Leibo et al. 2021; Lanctot et al. 2017).
+- Pool, matrix and Nash views (Balduzzi et al. 2018; Czarnecki et al. 2020).
+- Potential-based shaping (Ng et al. 1999).
+- Sequential tests (Wald 1945; Fishtest).
+
+**Not backed by any paper (our choices)**:
+- The thresholds: δ = 0.5, ≥ 40 seed-pairs, the 0.5 s budget, at most 3 test-seed uses.
+- Uniform pool weights.
+- Using multiplicative weights to approximate the Nash. It finds *a* Nash, not necessarily the max-entropy one that Balduzzi's invariance argument needs.
+- The research found **no published evaluation methodology for Pacman CTF specifically**, so this exact protocol has not been validated by anyone else.
+
+**Checked empirically by us**:
+
+| Check | Result | Meaning |
+|---|---|---|
+| Determinism: the same seed played twice (greedy vs baseline, 400 moves) | identical move sequence [verified] | paired comparisons use exactly common random numbers. Repeating a seed adds **no** information, so the sample size is (seeds × colours) |
+| Split-half: PPG on validation seeds 1–10 vs 11–20 | greedy–baseline 3.00/3.00; turtle–baseline 0.95/0.95; double_attack–baseline 0.60/0.35; greedy–double_attack 2.05/2.14 | the halves agree within the expected noise |
+| Coverage of our seed-bootstrap 95% CI (simulated, 20 seeds × 2 games) | 93.5% at a 50% win rate; 92.8% at 85%; **73.2% at 97%** | slightly too narrow at 20 seeds, and **unreliable near PPG 0 or 3** (a 40/40 record prints [3.00, 3.00]). The summary now also prints an exact Clopper–Pearson win-rate CI. For 40/40 that is a win rate ≥ 91.2% |
+
+**Remaining weaknesses, by importance**:
+1. **External validity is the biggest unknown.** Every number measures performance *against our own pool*. The real field is unknown until the test run on 2026-11-23. A pool of our own variants shares our blind spots; the planned held-out opponents and exploiters only partly fix this.
+2. **Small samples.** 20–40 seeds resolve only large differences (about ±0.3–0.4 PPG). Small improvements are invisible without hundreds of games.
+3. **Independence assumptions.** The exact CI treats games as independent, while the two games on one map are correlated, so it is slightly optimistic.
+4. **Multiple comparisons.** Scanning many pairings will produce some "significant" differences by chance. Hence the confirmation step.
+5. **Timing.** Timing is measured on Windows under parallel load, not on the cluster.
 
 ## References (verified 2026-10-16 by the research agent unless marked)
 

@@ -31,7 +31,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | M-10 | Pursuit–evasion "race" analysis | adversarial shortcut | low | low | [untested] formally | **recommended** (= H-S03) |
 | M-11 | Evolutionary search (GA / NEAT) over parameters or tree structure | offline tuner | medium | medium | [untested] | optional tuner |
 | M-12 | Imitation learning | — | — | — | no strong demonstrator available | not feasible now |
-| M-13 | "JEV" | ? | ? | ? | ? | **unclear, see below** |
+| M-13 | Expert iteration / distilling search into a fast policy | fast policy layer | high | medium | [untested] here | stretch, after M-05/M-06 exist |
 
 ---
 
@@ -152,15 +152,19 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 - **Revisit**: maybe later, to distil our own slow search (M-05/M-06) into a fast policy.
 - **Status**: idea, low priority.
 
-### M-13: "JEV": unclear, awaiting clarification
-- I don't recognise "JEV" as the name of an established decision-making model, so I won't guess what it means. Two possibilities:
-  - **JEPA** (Joint-Embedding Predictive Architecture; LeCun / Meta). A self-supervised representation / world-model approach.
-    - Fit: poor. Our rules and map are fully known and can be simulated exactly, so a learned latent world model adds little.
-    - It needs a deep-learning stack at runtime (Q2).
-    - No use in this contest found.
-  - **Joint expected value** of the two agents' *joint* actions: evaluate the up to 5 × 5 action pairs by expected value under the belief, then pick the best pair.
-    - Fit: plausible and cheap. A coordination layer on top of M-01/M-05.
-- **Status**: unclear. Replace this entry once the intended meaning is known.
+### M-13: Expert iteration / distillation (fast policy learned from slow search)
+- **What**:
+  - Anthony, Tian & Barber, "Thinking Fast and Slow with Deep Learning and Tree Search", NeurIPS 2017 [source: <https://arxiv.org/abs/1705.08439>].
+  - A slow "expert" (tree search) produces strong decisions, and a fast "apprentice" learns to imitate them. The apprentice then guides the search, which improves the expert.
+- **For us**:
+  - Run a slow offline expert: deep M-05/M-06 search with a large time budget.
+  - Distil its choices into a model that runs in pure Python within the move budget: a decision tree, linear weights, or a tiny MLP exported as plain lists.
+  - The distillation could also tune the M-02 feature weights.
+- **Prerequisites**:
+  - A strong slow expert, which we don't have yet.
+  - A fast forward model.
+  - Q2 (libraries) for anything bigger than a few thousand parameters.
+- **Status**: idea, stretch goal.
 
 ---
 

@@ -13,6 +13,7 @@ Examples (from the repo root, with the venv python):
 import argparse
 import itertools
 import json
+import math
 import os
 import random
 import re
@@ -217,6 +218,33 @@ def bootstrap_ci(values_by_seed, stat=lambda xs: sum(xs) / len(xs), reps=2000, r
     return point, stats[int(0.025 * reps)], stats[int(0.975 * reps) - 1]
 
 
+def clopper_pearson(k, n, alpha=0.05):
+    """Exact binomial CI for k wins in n games. Unlike the bootstrap it stays honest at 0/n and n/n
+    (E-004: bootstrap coverage fell to ~73% at a 97% win rate). Treats games as independent."""
+    if n == 0:
+        return None, None
+
+    def tail_ge(p):  # P(X >= k | p)
+        return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(k, n + 1))
+
+    def tail_le(p):  # P(X <= k | p)
+        return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(0, k + 1))
+
+    def bisect(f, target, increasing):
+        lo, hi = 0.0, 1.0
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if (f(mid) < target) == increasing:
+                lo = mid
+            else:
+                hi = mid
+        return (lo + hi) / 2
+
+    lower = 0.0 if k == 0 else bisect(tail_ge, alpha / 2, increasing=True)
+    upper = 1.0 if k == n else bisect(tail_le, alpha / 2, increasing=False)
+    return lower, upper
+
+
 def nash_average(names, matrix, iters=20000):
     """Approximate Nash of the symmetric zero-sum meta-game A[i][j] = PPG(i vs j) - PPG(j vs i)
     via multiplicative weights (average strategy). Returns (mixture, payoff vs mixture)."""
@@ -247,8 +275,8 @@ def summarize(records, compare=None):
                  % (len(records), len(names), len({r['seed'] for r in records}),
                     ', %d unscored (harness errors)' % len(broken) if broken else ''))
     lines.append('')
-    lines.append('| agent | games | W-T-L | PPG [95% CI] | avg margin | crash/forfeit | time warnings | max move s | p95 move s | over budget | violations |')
-    lines.append('|---|---|---|---|---|---|---|---|---|---|---|')
+    lines.append('| agent | games | W-T-L | PPG [95% CI] | win % [exact 95% CI] | avg margin | crash/forfeit | time warnings | max move s | p95 move s | over budget | violations |')
+    lines.append('|---|---|---|---|---|---|---|---|---|---|---|---|')
     for name in names:
         mine = [g for g in games if g[0] == name]
         by_seed = {}
@@ -276,9 +304,13 @@ def summarize(records, compare=None):
                 p95_s = max(p95_s, agent['p95_s'] or 0)
                 over += agent['over_budget']
                 violations.update(agent['violations'])
-        lines.append('| %s | %d | %d-%d-%d | %.2f [%.2f, %.2f] | %+.1f | %d | %d | %.3f | %.3f | %d | %s |'
-                     % (name, len(mine), w, t, l, ppg, lo, hi, margin, crash, warn, max_s, p95_s, over,
-                        '; '.join(sorted(violations)) or '-'))
+        wlo, whi = clopper_pearson(w, len(mine))
+        lines.append('| %s | %d | %d-%d-%d | %.2f [%.2f, %.2f] | %.0f [%.0f, %.0f] | %+.1f | %d | %d | %.3f | %.3f | %d | %s |'
+                     % (name, len(mine), w, t, l, ppg, lo, hi, 100.0 * w / len(mine), 100 * wlo, 100 * whi,
+                        margin, crash, warn, max_s, p95_s, over, '; '.join(sorted(violations)) or '-'))
+    lines.append('')
+    lines.append('PPG CIs: seed-clustered percentile bootstrap. They are too narrow near PPG 0 or 3 '
+                 '(E-004: ~73% coverage at a 97% win rate), so trust the exact win-rate CI there.')
 
     index = {n: i for i, n in enumerate(names)}
     sums = [[0.0] * len(names) for _ in names]
@@ -329,8 +361,21 @@ def paired_comparison(games, a, b):
         return 'Paired comparison %s vs %s: no shared (opponent, seed, colour) games.' % (a, b)
     mean, lo, hi = bootstrap_ci(diffs_by_seed)
     n = sum(len(v) for v in diffs_by_seed.values())
-    return ('Paired comparison over %d shared games: PPG(%s) - PPG(%s) = %+.2f [95%% CI %+.2f, %+.2f]'
-            % (n, a, b, mean, lo, hi))
+    lines = ['Paired comparison over %d shared games: PPG(%s) - PPG(%s) = %+.2f [95%% CI %+.2f, %+.2f]'
+             % (n, a, b, mean, lo, hi),
+             '', '| opponent | games | PPG(%s) | PPG(%s) | paired diff [95%% CI] |' % (a, b), '|---|---|---|---|---|']
+    for opp in sorted({key[0] for key in table}):  # per-opponent rows: accept rule 3 (no regression > delta)
+        by_seed, pa, pb = {}, [], []
+        for (o, seed, colour), entry in table.items():
+            if o == opp and a in entry and b in entry:
+                by_seed.setdefault(seed, []).append(entry[a] - entry[b])
+                pa.append(entry[a])
+                pb.append(entry[b])
+        if by_seed:
+            m, l, h = bootstrap_ci(by_seed)
+            lines.append('| %s | %d | %.2f | %.2f | %+.2f [%+.2f, %+.2f] |'
+                         % (opp, len(pa), sum(pa) / len(pa), sum(pb) / len(pb), m, l, h))
+    return '\n'.join(lines)
 
 
 def cmd_summary(args):

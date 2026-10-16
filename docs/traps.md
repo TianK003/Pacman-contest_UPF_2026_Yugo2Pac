@@ -184,6 +184,13 @@ Section A matters most: those traps can make us **cheat by accident**.
   - In Git Bash, `/c/Users/...` paths given to the Windows Python become wrong paths. Use Windows paths (`C:\...`) or relative paths.
 - **Prevention**: `eval/evaluate.py` builds the options and refuses bad values.
 
+**T-49: Machine load causes move-time spikes** [observed E-002]
+- **What we saw**: moves that normally take ~2 ms took up to 0.95 s while the PC was low on memory (paging), for every team. In the tournament, "many processes" share SNOW nodes, and 3 moves over 1 s forfeit the game.
+- **Prevention**:
+  - Keep the per-move compute tiny, with an internal budget far below 1 s.
+  - Never run heavy work in rare branches.
+  - Read timing results together with how loaded the machine was. Re-run on an idle machine before concluding that the code is slow.
+
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
 - **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.

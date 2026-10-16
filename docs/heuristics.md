@@ -47,7 +47,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - The most consistently reported map heuristic [reported: AlanChaw, LuChenyang3842, infinityglow, DXJ3X1, abhinavcreed13].
   - Its absence is blamed for deaths [reported: Pac-Champs, MDB22, KTH report, hima950].
   - Extra relevant here because of A0.
-- **Status**: implemented, leaf-pruning version only (no articulation-point pockets), as `DeadEndAttacker` in `teams/greedy_v1.py`. Tested in E-002 with no measurable effect yet: both variants beat the baseline 40/40, and the paired margin diagnostic was +0.53 [−0.38, +1.43]. The baseline does not discriminate; needs a test against stronger opponents.
+- **Status**: implemented, leaf-pruning version only (no articulation-point pockets), as `DeadEndAttacker` in `teams/greedy_v1.py`. Tested in E-002 with no measurable effect. Both variants beat the baseline 40/40. Over the shared opponents the paired PPG difference (greedy − deadend) was −0.01 [−0.10, +0.07], within δ, and greedy edges it head-to-head (1.43 vs 1.27). It is **not adopted**. The pocket/articulation version and a test against a defender that really guards (P-02) are still open.
 
 ### H-M03: Chokepoints for defence
 - **Idea**: one defender standing on the right cell can protect a whole region.

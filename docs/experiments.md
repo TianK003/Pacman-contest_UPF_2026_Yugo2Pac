@@ -19,9 +19,18 @@ Reference heuristics, methods and traps by ID (`H-M02`, `M-03`, `T-11`). When an
 
 ## Planned queue
 
-| ID | Question | Depends on |
-|---|---|---|
-| — | (empty) | |
+Proposed 2026-10-16 from the E-002 findings. Each candidate changes **one** thing compared with `teams/greedy_v1.py`, so its effect can be attributed.
+
+| ID | Agent / experiment | Question | Heuristics | Depends on |
+|---|---|---|---|---|
+| P-01 | `baseline_plus` (league opponent) | the baseline attacker plus a return threshold: a stronger simple opponent, since the baseline is saturated | — | — |
+| P-02 | `border_camper` (league opponent) | a defender that mirrors our attacker along the border. Can our attacker get past a shadowing ghost? | H-S07 | — |
+| P-03 | `capsule_rusher` (league opponent) | an attacker that eats the capsule first and then harvests. Does our defender cope with a scared window? | H-S06 | — |
+| P-04 | `greedy_v2`: adaptive return | carry more (e.g. return at 10, or when ≤ 2 food are left) when no enemy ghost has been seen on their side for N turns. Does it fix the double_attack weakness without losing elsewhere? | H-S04, H-S11 | P-01..P-03 for a fair pool |
+| P-05 | `greedy_v2`: call back the attacker on 2 invaders | if 2 invaders are detected on our side, the attacker turns back to defend | H-S08 (basic) | P-04 |
+| P-06 | `greedy_v2`: endgame / score control | leading late → both defend; behind late → both attack | H-S05 | — |
+| P-07 | `RETURN_AT` sweep {3, 5, 8, 12} on **tuning** seeds, then confirm the best on validation | first use of the tuning/validation split | H-S04, M-02 | P-01..P-03 |
+| P-08 | Defender interception | go to the cell on the invader's way home that we reach first, instead of chasing it directly | H-S07, H-S03 | — |
 
 ---
 
@@ -65,11 +74,10 @@ Reference heuristics, methods and traps by ID (`H-M02`, `M-03`, `T-11`). When an
 - **Conclusion**: the tooling works for the planted cases. It is a tripwire, not a proof: the lint can't see every aliasing path, and the sentinel only checks walls, visible `Configuration` objects, the global RNG, threads, subprocesses and file writes.
 - **Follow-ups**: E-002 (full round robin). Later: SPRT, behavioural diagnostics.
 
-## E-002 — Round robin of the v1 league (2026-10-16) — PARTIAL
-- **Status**: aborted at 160/400 games. Claude Code stopped the background run because the *system* was low on memory; about 3.5 GB of 15.3 GB was free, with other projects running. It was not an agent failure.
-  - The 10 orphaned game processes were stopped.
-  - 10 turtle-vs-baseline games were cut off mid-game, after 5–20 s, with no score file. They contain no traceback, crash or warning, and are excluded from the stats.
-  - Resume with `--resume` (250 games missing).
+## E-002 — Round robin of the v1 league (2026-10-16)
+- **Status**: done, in two parts.
+  - **Part 1**: 160/400 games with 10 workers. It was stopped when Claude Code reaped the background shell because the *system* was low on memory, not because of an agent failure. The 10 orphaned game processes were stopped. 10 turtle-vs-baseline games were cut off after 5–20 s, with no score file and no traceback, crash or warning; they are excluded from the stats.
+  - **Part 2**: the 250 missing games were resumed with `--resume --jobs 6`, while the user was freeing memory.
 - **Question**: how do the first non-trivial agents compare with the baseline and with each other?
 - **Variants** (all from `teams/greedy_v1.py`, via `eval/league.json`):
   - `greedy`: `GreedyAttacker` + `PatrolDefender`. These are the defaults.
@@ -78,35 +86,81 @@ Reference heuristics, methods and traps by ID (`H-M02`, `M-03`, `T-11`). When an
   - `turtle`: 2× `PatrolDefender`.
   - `baseline`: the framework's `baseline_team`.
 - **Setup**: validation seeds 1–20, both colours, `-q -c`, sentinel on every team, 10 workers, Windows 11, Python 3.8.10, framework `54cd83c`. Run `rr_v1` (`eval/results/rr_v1.jsonl`).
-- **Results**: only the 4 pairings *against the baseline* finished (40 games each; 30 scored for turtle).
+- **Results**: 400 scored games (10 pairings × 20 seeds × 2 colours). Summary in `eval/results/rr_v1_summary.md`.
 
-  | agent vs baseline | games | W-T-L | PPG [95% CI] | margin min/median/max |
+  | agent | games | W-T-L | PPG [95% CI] | win % [exact CI] |
   |---|---|---|---|---|
-  | greedy | 40 | 40-0-0 | 3.00 [3.00, 3.00] | 6 / 20 / 28 |
-  | greedy_deadend | 40 | 40-0-0 | 3.00 [3.00, 3.00] | 11 / 20 / 28 |
-  | double_attack | 40 | 6-1-33 | 0.47 [0.15, 0.88] | −16 / −7 / 28 |
-  | turtle | 30 | 0-28-2 | 0.93 [0.83, 1.00] | −5 / 0 / 0 |
+  | greedy | 160 | 110-26-24 | 2.23 [2.08, 2.38] | 69 [61, 76] |
+  | greedy_deadend | 160 | 109-24-27 | 2.19 [2.06, 2.33] | 68 [60, 75] |
+  | double_attack | 160 | 63-17-80 | 1.29 [1.03, 1.56] | 39 [32, 47] |
+  | baseline | 160 | 35-39-86 | 0.90 [0.79, 1.00] | 22 [16, 29] |
+  | turtle | 160 | 0-60-100 | 0.38 [0.26, 0.50] | 0 [0, 2] |
 
-  - **Gates**: 0 crashes/forfeits, 0 engine time warnings, 0 sentinel violations across all 150 scored games. Max move time 0.154 s (the baseline's) and 0.073 s for ours. Max startup 1.59 s.
-  - **Paired diagnostic** (margin, not a decision metric): `greedy_deadend − greedy` = +0.53 [−0.38, +1.43] over 40 games. Deadend was better in 14 games, equal in 18 and worse in 8.
-  - Mean game wall time was 40 s under 10-way parallelism.
+  **Head-to-head PPG** (row vs column):
+
+  | | baseline | double_attack | greedy | greedy_deadend | turtle |
+  |---|---|---|---|---|---|
+  | baseline | – | 2.50 | 0.00 | 0.00 | 1.10 |
+  | double_attack | 0.47 | – | 0.95 | 1.02 | 2.70 |
+  | greedy | 3.00 | 1.93 | – | 1.43 | 2.55 |
+  | greedy_deadend | 3.00 | 1.85 | 1.27 | – | 2.65 |
+  | turtle | 0.95 | 0.15 | 0.23 | 0.17 | – |
+
+  - **Approximate Nash averaging**: greedy carries weight 0.99. Payoffs: greedy_deadend −0.15, double_attack −0.97, turtle −2.33, baseline −3.00.
+  - **Paired `greedy − greedy_deadend`** (over shared opponents): −0.01 [−0.10, +0.07]. Per opponent:
+    - baseline +0.00
+    - double_attack +0.07 [0.00, +0.23]
+    - turtle −0.10 [−0.30, 0.00]
+  - **Gates**: 0 crashes/forfeits, 0 engine time warnings and 0 sentinel violations in all 400 games. Max startup 1.59 s.
+  - **Timing anomaly**:
+    - Part 1 had no move > 0.2 s (max 0.154 s).
+    - Part 2 had 31 agent-games with a move > 0.2 s. The worst was 0.951 s (turtle), and greedy reached 0.448 s. p95 stayed ≤ 0.035 s.
+    - Part 2 wall time per game also rose from 40 s to 52 s on average, with some games taking 80–108 s.
+    - The spikes hit every team, including the trivial `PatrolDefender`, and only during the period of memory pressure. So they are most likely caused by the environment (paging or CPU contention), not by our code. This is not proven. See T-49.
 - **Conclusions**:
-  - **v1 beats the baseline in every game, as both colours.** The baseline is now **saturated**: it can no longer separate our variants (as the literature warns, evaluation.md section 3). From now on it serves only as a regression gate.
-  - **No evidence yet that dead-end awareness (H-M02) helps.** It only matters against ghosts that guard their side, and the baseline defender is weak.
-  - **Defence matters.** Two attackers with no defender lose 33/40 to the baseline. The baseline's attacker, uncontested, returns nearly all of our food.
-  - **A double defence (turtle) ties the baseline** (28 ties of 30), but still lost 2 games. The single pilot seed (E-001) showed turtle also *tying our greedy agent*. If that holds, our attacker cannot break a two-ghost defence, a likely weakness against defensive teams. This rests on 1 seed only and needs the remaining pairs.
-- **Follow-ups**:
-  - Resume E-002 with fewer workers (e.g. `--jobs 6`) to get the head-to-head pairs between our variants.
-  - Build harder opponents (exploiters / specialists).
+  - **greedy is the best of this pool** and beats every other member head-to-head.
+  - **The baseline is saturated**: 40/40 for both greedy variants. It is now only a regression gate.
+  - **Dead-end awareness (H-M02, leaf-pruning version) makes no measurable difference** (paired −0.01 [−0.10, +0.07], within δ), and greedy edges it head-to-head (1.43 vs 1.27). Keep the simpler greedy.
+  - **Correction of an earlier claim**: the single pilot seed suggested that turtle ties greedy. With 20 seeds, greedy beats turtle at 2.55 PPG. Lesson: one seed proves nothing.
+  - **Measured weakness**: **against an opponent with no defence (double_attack), greedy scores *worse* than the baseline** (paired −0.57 [−1.12, −0.07]). The probable cause, a hypothesis not yet tested:
+    - Our single defender can't stop two attackers.
+    - Our attacker returns every 5 food, while the baseline's attacker carries everything in one uncontested trip.
+- **Follow-ups**: see the planned queue (P-01 … P-08).
 
 ## E-003 — Promote `greedy` (teams/greedy_v1.py defaults) to my_team.py (2026-10-16)
 - **Status**: done. This is a **provisional** promotion by the user's decision ("for now make it the top team"), not a full pass of the accept rule.
 - **Basis (the parts of the rule that hold, evaluation.md section 2)**:
   - Gates: lint OK; 0 crashes, warnings and violations in E-002.
   - Head-to-head against the previous incumbent (`my_team.py` was the baseline): 40-0-0, PPG 3.00 ≥ 1.5.
-- **Not yet shown**:
-  - A pool improvement with CI > 0, because the E-002 pairings against the other variants are missing.
-  - Confirmation on unused validation seeds.
-  - Linux timing.
 - **Change**: `my_team.py` is now `teams/greedy_v1.py` with a different header comment only (the body was checked with `diff`). Smoke test: it loads from the repo root and beat the baseline in a 120-move game. League entry `submission` added.
-- **Follow-up**: re-check against the accept rule once E-002 is complete.
+- **Accept-rule re-check after E-002 completed** (greedy vs the previous incumbent, the baseline):
+
+  | Rule | Result |
+  |---|---|
+  | 1. Gates | ✓ 0 crashes, warnings and violations. Max move time 0.448 s ≤ 0.5 s budget, but see the E-002 timing anomaly |
+  | 2. Pool improvement | ✓ paired +0.77 [+0.57, +0.95]. **However**, this is 20 seed-pairs per opponent, not the required 40 |
+  | 3. No regression > δ = 0.5 | ✓ by the letter: vs double_attack −0.57 [−1.12, −0.07], and the upper bound −0.07 > −0.5. It is still a significant regression against that opponent (CI entirely below 0) |
+  | 4. Head-to-head ≥ 1.5 | ✓ 3.00 |
+  | 5. Confirmation on unused seeds | ✗ not done |
+
+- **Verdict**: the promotion is justified on the evidence so far, but **not yet confirmed**. Open items: 40 seed-pairs, confirmation seeds, Linux timing, and the double_attack weakness.
+
+## E-004 — How reliable is the evaluation? (2026-10-16)
+- **Status**: done
+- **Question**: are the paired design and the CIs in `eval/evaluate.py` trustworthy at our sample sizes?
+- **Setup**: E-002 data at 229 scored games, plus two extra runs of greedy vs baseline on `RANDOM97464282` (400 moves each, `--record`). A simulation of the seed-bootstrap CI: 400 synthetic runs of 20 seeds × 2 games, with map-level correlation and 1000 bootstrap resamples each.
+- **Results**:
+  - **Determinism**: the two runs had identical 400-move sequences.
+  - **Split-half** (seeds 1–10 vs 11–20):
+    - greedy–baseline 3.00 / 3.00
+    - turtle–baseline 0.95 / 0.95
+    - double_attack–baseline 0.60 / 0.35
+    - greedy–double_attack 2.05 / 2.14
+    - greedy–greedy_deadend 1.35 / 1.50
+  - **Bootstrap 95% CI coverage**: 93.5% (true PPG 1.60), 92.8% (2.60), **73.2% (2.93)**.
+- **Conclusions**:
+  - Common random numbers hold exactly, so repeats are worthless and seeds are the unit.
+  - CIs are roughly right in the middle of the range but too narrow at 20 seeds, and badly overconfident near the ceiling or floor.
+  - Added an exact Clopper–Pearson win-rate CI to the summary (40/40 → win rate ≥ 91.2%).
+  - Assessment written up in evaluation.md section 9.
+- **Follow-ups**: use ≥ 40 seeds for decisions; implement SPRT; behavioural diagnostics.

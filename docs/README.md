@@ -10,6 +10,7 @@ Read the relevant files before working on the agent, and update them when you fi
 | [heuristics.md](heuristics.md) | Heuristic proposals, split into **map** heuristics (static, from the layout) and **sensory** heuristics (dynamic, from observations) | a heuristic is proposed, implemented, tested, adopted or rejected |
 | [methods.md](methods.md) | Ways to build the agent (rules, search, MCTS, RL, ...) and how well each fits this contest | a method is evaluated or chosen |
 | [traps.md](traps.md) | Pitfalls, including ways to break the rules by accident | you hit or discover a pitfall |
+| [evaluation.md](evaluation.md) | How agents are compared: the objective, the accept rule, statistics, seed and opponent splits, the league, reward-hacking guards, tooling | the protocol or the tooling changes |
 | [experiments.md](experiments.md) | Log book of every experiment, including failures | every run that informs a decision |
 
 ## Conventions

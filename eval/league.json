@@ -1,0 +1,15 @@
+{
+  "_doc": "Opponent pool / league (docs/evaluation.md). 'ours': rules-checked by eval/check_rules.py. Entries whose file is marked frozen must never change; new versions get new files.",
+  "submission":     {"path": "my_team.py", "ours": true, "frozen": false,
+                     "notes": "whatever is currently in my_team.py (the tournament entry); use for release gates, not as a frozen league member"},
+  "baseline":       {"path": "pacman-contest/src/contest/baseline_team.py", "ours": false, "frozen": true,
+                     "notes": "framework baseline: reflex attacker that only returns at <=2 food, reflex defender"},
+  "greedy":         {"path": "teams/greedy_v1.py", "ours": true, "frozen": true,
+                     "notes": "v1 defaults: GreedyAttacker + PatrolDefender"},
+  "greedy_deadend": {"path": "teams/greedy_v1.py", "ours": true, "frozen": true, "opts": {"first": "DeadEndAttacker"},
+                     "notes": "v1 with dead-end-aware attacker (H-M02)"},
+  "double_attack":  {"path": "teams/greedy_v1.py", "ours": true, "frozen": true, "opts": {"second": "GreedyAttacker"},
+                     "notes": "specialist: two GreedyAttackers, no defence"},
+  "turtle":         {"path": "teams/greedy_v1.py", "ours": true, "frozen": true, "opts": {"first": "PatrolDefender"},
+                     "notes": "specialist: two PatrolDefenders, never attacks"}
+}

@@ -148,4 +148,4 @@ On Linux / WSL: `source venv/bin/activate && cd pacman-contest/src/contest && py
 5. **Before tagging a submission**: run the benchmark on Linux with Python 3.8 and `-c`.
 6. **Log**: put every run that informs a decision in [experiments.md](experiments.md), including the `my_team.py` git commit and the framework commit.
 
-There is no batch-benchmark script yet. Building one is the proposed next step.
+The batch harness `eval/evaluate.py` implements steps 2–4. See [evaluation.md](evaluation.md) for the full protocol and the accept rule.

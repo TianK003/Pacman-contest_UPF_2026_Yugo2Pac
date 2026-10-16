@@ -8,7 +8,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 - **What gets submitted**: `my_team.py` in the repo root, plus any helper modules next to it.
 - **Where it plays**: UPF's tournament on its SNOW cluster against teams from other universities, on random maps.
 - **Dates**: test run 2026-11-23, deadline 2026-12-03 23:59, final run 2026-12-04.
-- **Current state**: `my_team.py` is still a copy of `baseline_team.py`.
+- **Current state**: `my_team.py` = `teams/greedy_v1.py` (greedy attacker with ghost evasion + patrolling defender), promoted on 2026-10-16 by the user's decision (`docs/experiments.md` E-003). Never edit `my_team.py` directly: build `teams/<name>_vN.py`, pass the accept rule in `docs/evaluation.md`, then copy it over.
 
 ## Knowledge base: read before working, update after
 
@@ -23,6 +23,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 | `docs/methods.md` | agent-building methods (`M-`), their fit, the proposed architecture and timeline |
 | `docs/traps.md` | pitfalls, including ways to cheat by accident (section A) |
 | `docs/experiments.md` | log book: every run that informs a decision, with a template |
+| `docs/evaluation.md` | how agents are compared: objective (3/1/0 points), accept rule, seed and opponent splits, league, reward-hacking guards |
 
 When you finish:
 - Log every experiment in `docs/experiments.md`, including failures.
@@ -79,6 +80,21 @@ Run games from `pacman-contest/src/contest`. On Windows the default paths only r
 - **Linux / WSL**: `source venv/bin/activate && cd pacman-contest/src/contest && python capture.py ...`, with the same flags.
 - **Other tools**: there is no lint config and no unit-test suite. `runner.py` and `scripts/play.sh` are stale; use `capture.py`. All flags are in `docs/framework.md`.
 
+## Evaluation (decisions between agents): see docs/evaluation.md
+
+```powershell
+# from the repo root
+venv\Scripts\python.exe eval\check_rules.py my_team.py teams\*.py          # static rules check (must pass)
+venv\Scripts\python.exe eval\evaluate.py play --agents baseline greedy turtle --seeds validation --n-seeds 20 --run <name>
+venv\Scripts\python.exe eval\evaluate.py play --candidate <new> --vs <incumbent> baseline turtle --seeds validation --n-seeds 40 --run <name> --compare <new> <incumbent>
+venv\Scripts\python.exe eval\evaluate.py summary --run <name>
+```
+
+- **How a run works**: `evaluate.py` plays colour-swapped game pairs on fixed `RANDOM<seed>` maps through `capture.py -q -c`. Every team is wrapped in `eval/sentinel_team.py`, which records move times and runtime rule violations (local only, never submitted). Each run writes `eval/results/<run>.jsonl` and prints a markdown summary.
+- **Seeds**: `eval/seeds/tuning.txt` is free to use; `validation.txt` is for accept/reject decisions; `test.txt` is **locked**, only for confirming a frozen release candidate, and each use is logged.
+- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v2.py`).
+- **Accepting an agent**: a new agent replaces the incumbent only under the accept rule in `docs/evaluation.md` section 2. That rule needs zero crashes, warnings and violations, a paired points-per-game gain with a CI above 0 on validation seeds, no per-opponent regression beyond 0.5, and confirmation on unused seeds for releases. Any sentinel or lint violation is an automatic reject, whatever the score.
+
 ## Testing protocol
 
 1. **Smoke test**: one game vs `baseline_team` with no exceptions and no time warnings.
@@ -93,7 +109,7 @@ Run games from `pacman-contest/src/contest`. On Windows the default paths only r
 5. **Parallel runs**: they overwrite `www/contest_default/...`, so give each one a distinct `-u <name>` / `-m <id>`.
 6. **Log the run** in `docs/experiments.md`, with the `my_team.py` commit and the framework commit.
 
-There is no batch-benchmark script yet. When one is added, document it here.
+Steps 2–5 are automated by `eval/evaluate.py` (see "Evaluation" above).
 
 ## Architecture (engine, big picture)
 
@@ -111,7 +127,9 @@ There is no batch-benchmark script yet. When one is added, document it here.
   - The tournament passes no extra `create_team` arguments, so the defaults are the tournament configuration.
 - **Maps**: `maze_generator.py` builds the `RANDOM<seed>` maps; `layouts/*.lay` are the fixed maps.
 - **Repo layout**:
-  - `my_team.py`: ours.
+  - `my_team.py`: ours; the submission.
+  - `teams/`: our team versions, one self-contained file each. They are frozen once benchmarked and are also league opponents.
+  - `eval/`: evaluation tooling: harness, sentinel, rules lint, league, seed splits, results.
   - `pacman-contest/`: the submodule `aig-upf/pacman-contest` at commit `54cd83c`. Read-only for us.
   - `docs/`: the knowledge base.
   - `scripts/`: stale.

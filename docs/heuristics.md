@@ -31,7 +31,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Use**: return decisions (H-S04), escape checks (H-S03), endgame timing (H-S05).
 - **Cost**: trivial with the precomputed distancer.
 - **Evidence**: used by essentially every write-up [reported: many].
-- **Status**: idea.
+- **Status**: implemented in `teams/greedy_v1.py` (`MapInfo.home_border`, `dist_home`). Tested only as part of the team (E-002).
 
 ### H-M02: Dead ends, pockets and trap depth
 - **Idea**: label every cell by how trapped you are in it.
@@ -47,7 +47,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - The most consistently reported map heuristic [reported: AlanChaw, LuChenyang3842, infinityglow, DXJ3X1, abhinavcreed13].
   - Its absence is blamed for deaths [reported: Pac-Champs, MDB22, KTH report, hima950].
   - Extra relevant here because of A0.
-- **Status**: idea.
+- **Status**: implemented, leaf-pruning version only (no articulation-point pockets), as `DeadEndAttacker` in `teams/greedy_v1.py`. Tested in E-002 with no measurable effect yet: both variants beat the baseline 40/40, and the paired margin diagnostic was +0.53 [−0.38, +1.43]. The baseline does not discriminate; needs a test against stronger opponents.
 
 ### H-M03: Chokepoints for defence
 - **Idea**: one defender standing on the right cell can protect a whole region.
@@ -121,7 +121,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Compute**: cells that minimise the weighted maximum (or mean) distance to border crossings, weighted by how much food each crossing leads to.
 - **Use**: idle defender position. Combine with chokepoints (H-M03).
 - **Evidence**: [reported: infinityglow's defender targets dense-food cells].
-- **Status**: idea.
+- **Status**: implemented in a simple form in `PatrolDefender` (`teams/greedy_v1.py`): it cycles through the 3 border cells nearest the border cell with the minimum total distance to our food. Tested only as part of the team (E-002).
 
 ### H-M11: Precomputed tables (engineering)
 - **Idea**: make the 1 s move budget go further.
@@ -158,7 +158,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Use**: defender target, and hard evidence for H-S01.
 - **Cost**: trivial.
 - **Evidence**: the most widely used trick, with about nine write-ups [reported: infinityglow, LuChenyang3842, jhammarstedt, hima950, pcgotan, DXJ3X1, iknow1988, the KTH winner, TacModd]. Several well-placed teams used *only* this.
-- **Status**: idea.
+- **Status**: implemented in `PatrolDefender`, which heads for the nearest just-eaten cell. Tested only as part of the team (E-002).
 
 ### H-S03: Race and threat analysis
 - **Idea**: cheap adversarial reasoning. A cell is safe if I get there strictly before any dangerous opponent.
@@ -171,7 +171,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Decide when to escape and where (home vs capsule).
   - Choose the defender's intercept cell (H-S07).
 - **Evidence**: [untested] as a formal rule. The "ghost distance" features used by most teams are a weaker version of it.
-- **Status**: idea.
+- **Status**: implemented as a "race-safe BFS" in `GreedyAttacker`. It only expands cells that we reach in strictly fewer steps than every visible dangerous ghost, and cells on our side are always safe. It ignores turn order and hidden ghosts. Tested only as part of the team (E-002).
 
 ### H-S04: Adaptive return trigger
 - **Idea**: decide when to bank the food.
@@ -183,7 +183,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 
   Always return when the food carried plus our returned food would reach 28 (that wins the game).
 - **Evidence**: [reported: jhammarstedt eats about 5 then returns]. Thresholds flapping back and forth is a known failure [reported: LuChenyang3842], so add hysteresis.
-- **Status**: idea.
+- **Status**: implemented with **fixed** triggers in `GreedyAttacker`: carrying ≥ 5, ≤ 2 food left, a return that would win, out of time, or a ghost within maze distance 4. Not adaptive yet. Tested only as part of the team (E-002).
 
 ### H-S05: Time and score control (endgame)
 - **Idea**: the score and the time left are visible, so use them.
@@ -192,7 +192,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Ahead late in the game: switch both agents to defence.
   - Behind: both attack, with higher risk tolerance.
 - **Evidence**: the facts are [verified] (score and `timeleft` are visible); the strategy is [untested].
-- **Status**: idea.
+- **Status**: partly implemented: the time-based forced return (`TIME_MARGIN = 3`) in `GreedyAttacker`. No score-aware role switching yet.
 
 ### H-S06: Capsule timing and the scared window
 - **Idea**:
@@ -202,7 +202,11 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - When **we** are scared, keep a safe distance from invaders but shadow them, ready to re-engage.
 - **Compute**: track the opponents' scared window ourselves (we know when we ate the capsule, and it lasts 40 of *their* moves). Do not read their hidden `scared_timer` while Q3 is open.
 - **Evidence**: [reported: capsule rushing helped some teams; capsules broke a chokepoint defence (jaredj.xyz)].
-- **Status**: idea.
+- **Status**: partly implemented in `V1Agent`:
+  - The scared window is derived from enemy capsules disappearing, conservatively: counted from our previous observation, with a 3-move margin.
+  - Respawn detection: a ghost that "teleports", or vanishes from Manhattan ≤ 2 of one of us, is marked unscared.
+  - Capsules are escape targets when threatened.
+  - No deliberate capsule timing yet.
 
 ### H-S07: Defender interception and shadowing
 - **Idea**:
@@ -211,7 +215,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Never cross into enemy territory as a defender.
   - Use pocket entrances to trap invaders (H-M02/H-M03).
 - **Evidence**: [reported: KTH predicts the invader's border entry point from the path between the enemy base and the nearest food; the defender goes to the last eaten food (LuChenyang3842)].
-- **Status**: idea.
+- **Status**: partly implemented in `PatrolDefender`: it chases visible invaders on our side, keeps a distance of about 3 when we are scared, and goes to the last known position. There is no path prediction yet.
 
 ### H-S08: Dynamic role assignment
 - **Idea**: decide attacker and defender every turn, not once.

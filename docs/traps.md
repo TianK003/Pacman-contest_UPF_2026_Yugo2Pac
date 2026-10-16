@@ -174,6 +174,20 @@ Section A matters most: those traps can make us **cheat by accident**.
 **T-41: Local timing ≠ cluster timing**
 - **Prevention**: record timing margins (max move time), not just pass/fail.
 
+**T-46: `-Q` hides the engine's time warnings and crash messages** [verified in `game.py`]
+- **Why**: with `-Q` (mute agents), `stdout` / `stderr` are redirected into a per-agent buffer while that agent's turn is processed. The engine prints "took too long", "timed out" and "Red agent crashed" during that window, so they vanish.
+- **Prevention**: use `-q` for evaluation, never `-Q`. `eval/evaluate.py` uses `-q`.
+
+**T-47: Passing options through `--redOpts` / `--blueOpts`**
+- **Why**:
+  - `parse_agent_args` splits on `,` and `=`, so option values must not contain either.
+  - In Git Bash, `/c/Users/...` paths given to the Windows Python become wrong paths. Use Windows paths (`C:\...`) or relative paths.
+- **Prevention**: `eval/evaluate.py` builds the options and refuses bad values.
+
+**T-48: Changing a frozen league file**
+- **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
+- **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.
+
 ## E. Submission and repo
 
 **T-42: The tournament runs `my_team.py` from the repo root**

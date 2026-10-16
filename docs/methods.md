@@ -43,7 +43,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 - **Why it fits**: cheap at runtime, transparent when debugging from replays, and it degrades gracefully.
 - **Evidence**: most well-placed teams in the write-ups use a rule or decision layer plus search [reported: LuChenyang3842 3rd/152, infinityglow, AlanChaw 2nd, jhammarstedt winner (heuristic A*)].
 - **Risks**: rule conflicts and oscillation (H-S10), and hand-tuned thresholds. Fix the thresholds with M-02.
-- **Status**: idea.
+- **Status**: implemented (v1, prioritised rules) in `teams/greedy_v1.py` and tested in E-002: 40-0-0 vs the baseline.
 
 ### M-02: Feature-weighted evaluation + offline tuning
 - **What**:
@@ -63,7 +63,9 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - Edge cost = 1 + penalties near ghost beliefs and inside pockets (H-M02/H-M04).
   - Optional hard constraint "never enter a cell the ghost reaches first" (H-S03).
 - **Why it fits**: microseconds-to-milliseconds per query on 34×18 maps, and it is exact.
-- **Status**: idea.
+- **Status**: implemented (unweighted BFS with a race-safety constraint, own all-pairs BFS table) in `teams/greedy_v1.py`.
+  - E-002 timing: max move 0.073 s, p95 0.002 s, startup ≤ 1.6 s, all under 10-way parallel load.
+  - The risk-weighted cost version is not built yet.
 
 ### M-04: Belief-state estimation (HMM exact filtering / particle filter)
 - **What**: implements H-S01, i.e. the forward algorithm over cells with the motion model, sonar likelihood, negative sight and food events. Exact filtering is cheap at this map size; particles are optional.

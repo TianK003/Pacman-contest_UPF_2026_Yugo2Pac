@@ -191,6 +191,19 @@ Section A matters most: those traps can make us **cheat by accident**.
   - Never run heavy work in rare branches.
   - Read timing results together with how loaded the machine was. Re-run on an idle machine before concluding that the code is slow.
 
+**T-50: Designing on validation seeds by accident** [hit E-005/E-007]
+- **What happened**: E-002 ran on validation seeds 1–20. Its tie games were then replayed to diagnose greedy (E-005) and to debug the standoff breaker (E-007), so those maps shaped the candidates.
+- **Why it matters**: a decision on the same seeds is then optimistically biased (G2/G3 in evaluation.md).
+- **Prevention**:
+  - Diagnose and debug on tuning seeds where possible.
+  - When a validation map was used anyway, skip it for the decision: `evaluate.py play --seed-offset N` starts after the first N seeds of the list.
+  - Log which validation seeds were used for design.
+
+**T-51: The engine sleeps before every move, even in quiet mode** [verified E-009]
+- **Why**: `capture.py --delay-step` defaults to 0.03 s, and `game.py` sleeps that long before every move whatever the display. That is 36 s of every ~40 s game.
+- **Consequence**: batch runs are ~35× slower than necessary and look CPU-light (10–13% CPU), which can lead to wrong conclusions about hardware or agent speed.
+- **Prevention**: pass `--delay-step 0` for every batch run (`eval/evaluate.py` does). It does not change results: the sleep is outside the agents' timed moves (12/12 identical games, E-009).
+
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
 - **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.

@@ -121,14 +121,14 @@ On Linux / WSL: `source venv/bin/activate && cd pacman-contest/src/contest && py
 | `--record`, `--record-log` | save the replay / log under `www/contest_<name>/` |
 | `--replay FILE`, `--replayq FILE` | replay a recorded game (with / without display) |
 | `-f`, `--setRandomSeed S` | fix the RNG. Note: `RANDOM<seed>` layout generation reseeds the RNG anyway |
-| `--delay-step S` | slow motion |
+| `--delay-step S` | sleep S seconds before every move, **also with `-q`** (default 0.03 = 36 s per game). Use `--delay-step 0` for batch runs (E-009); `eval/evaluate.py` does |
 | `--keys0` … `--keys3` | keyboard control of that agent index |
 | `--redOpts` / `--blueOpts` | kwargs for `create_team`. Development only, **not passed in the tournament** |
 | `-x N` | first N games are quiet training games |
 | `-u NAME`, `-m ID` | contest name and match id. They decide the output path `www/contest_NAME/.../match_ID.*` |
 
 - **Outputs**: every run writes `www/contest_<name>/scores/match_<id>.json` relative to the working directory, by default `www/contest_default/scores/match_0.json`. It is overwritten each run, so give parallel runs distinct `-u` / `-m` values.
-- **Speed**: ~40 s per quiet game for baseline-level agents on this Windows laptop [verified E-000]. Heavier agents will be slower.
+- **Speed**: ~40 s per quiet game with the default `--delay-step 0.03`, almost all of it sleep: `game.py` sleeps `delay_step` before every move even with `-q`, i.e. 36 s per game. With `--delay-step 0` a game of our current agents takes ~1.3 s [verified E-009]. The sleep is outside the agents' timed moves, so results are identical (12/12 games checked).
 - **Timing realism**:
   - Windows has no `SIGALRM`, so moves over 3 s are flagged only after they return; they are never killed.
   - WSL `Ubuntu-24.04` is installed on this machine [verified]. Its default Python is 3.12 [not checked here], so Python 3.8 must be installed there separately.

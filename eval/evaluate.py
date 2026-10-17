@@ -47,10 +47,12 @@ def load_league():
     return {k: v for k, v in league.items() if not k.startswith('_')}
 
 
-def load_seeds(name, n):
+def load_seeds(name, n, offset=0):
+    """Seeds offset+1 .. offset+n of a list (all from offset+1 when n is 0)."""
     path = name if os.path.isfile(name) else os.path.join(EVAL, 'seeds', name + '.txt')
     with open(path) as f:
         seeds = [int(line) for line in f if line.strip() and not line.startswith('#')]
+    seeds = seeds[offset:]
     return seeds[:n] if n else seeds
 
 
@@ -85,7 +87,9 @@ def play_game(job):
     tmp = os.path.join(RESULTS, run + '_tmp', str(game_id))
     os.makedirs(tmp, exist_ok=True)
     contest_name = 'eval_%s_%d' % (run, game_id)
-    cmd = [sys.executable, 'capture.py', '-q', '-c', '-l', 'RANDOM%d' % seed,
+    # --delay-step 0: the engine otherwise sleeps 0.03 s before every move even with -q (game.py),
+    # i.e. 36 of the ~40 s of a game. The sleep is outside the agents' timed moves (E-009).
+    cmd = [sys.executable, 'capture.py', '-q', '-c', '-l', 'RANDOM%d' % seed, '--delay-step', '0',
            '--red-name', red, '--blue-name', blue, '-u', contest_name, '-m', '0']
     cmd += team_args('red', league[red], os.path.join(tmp, 'red.json'), budget)
     cmd += team_args('blue', league[blue], os.path.join(tmp, 'blue.json'), budget)
@@ -130,8 +134,13 @@ def play_game(job):
 def cmd_play(args):
     league = load_league()
     if args.candidate:
-        names = [args.candidate] + args.vs
-        pairs = [(args.candidate, other) for other in args.vs]
+        names = list(dict.fromkeys(args.candidate + args.vs))
+        pairs, seen = [], set()
+        for cand in args.candidate:
+            for other in args.vs:
+                if other != cand and frozenset((cand, other)) not in seen:
+                    seen.add(frozenset((cand, other)))
+                    pairs.append((cand, other))
     else:
         names = args.agents
         pairs = list(itertools.combinations(args.agents, 2))
@@ -146,7 +155,7 @@ def cmd_play(args):
                 print('  line %d: %s' % (line, message), file=sys.stderr)
         sys.exit('refusing to evaluate agents that fail eval/check_rules.py')
 
-    seeds = load_seeds(args.seeds, args.n_seeds)
+    seeds = load_seeds(args.seeds, args.n_seeds, args.seed_offset)
     os.makedirs(RESULTS, exist_ok=True)
     out_path = os.path.join(RESULTS, args.run + '.jsonl')
     if os.path.exists(out_path) and not args.resume:
@@ -186,6 +195,9 @@ def cmd_play(args):
 # --------------------------------------------------------------------------- analysis
 
 def read_records(run):
+    """Records of one run, or of several runs (a list of names) concatenated."""
+    if isinstance(run, (list, tuple)):
+        return [r for name in run for r in read_records(name)]
     with open(os.path.join(RESULTS, run + '.jsonl')) as f:
         return [json.loads(line) for line in f if line.strip()]
 
@@ -224,11 +236,15 @@ def clopper_pearson(k, n, alpha=0.05):
     if n == 0:
         return None, None
 
+    def pmf(i, p):  # binomial term in log space: math.comb(n, i) overflows a float beyond n ~ 1000
+        log_c = math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
+        return math.exp(log_c + i * math.log(p) + (n - i) * math.log(1 - p))
+
     def tail_ge(p):  # P(X >= k | p)
-        return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(k, n + 1))
+        return sum(pmf(i, p) for i in range(k, n + 1))
 
     def tail_le(p):  # P(X <= k | p)
-        return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(0, k + 1))
+        return sum(pmf(i, p) for i in range(0, k + 1))
 
     def bisect(f, target, increasing):
         lo, hi = 0.0, 1.0
@@ -340,10 +356,83 @@ def summarize(records, compare=None):
         for i in sorted(range(len(names)), key=lambda k: -scores[k]):
             lines.append('| %s | %.2f | %+.2f |' % (names[i], mix[i], scores[i]))
 
+    diag = diagnostics_table(games, names)
+    if diag:
+        lines.append('')
+        lines.append(diag)
+
     if compare:
         a, b = compare
         lines.append('')
         lines.append(paired_comparison(games, a, b))
+    return '\n'.join(lines)
+
+
+DIAG_KEYS = ('returned', 'deaths', 'food_lost', 'pacman_moves', 'standoff_moves', 'max_carry')
+
+
+def team_diag(sentinel):
+    """Sum the per-agent sentinel diagnostics of one team (max for max_carry); None if missing."""
+    if not sentinel or any(a.get('diag') is None for a in sentinel.values()):
+        return None
+    out = {}
+    for key in DIAG_KEYS:
+        values = [a['diag'][key] for a in sentinel.values()]
+        out[key] = max(values) if key == 'max_carry' else sum(values)
+    out['moves'] = max(a['moves'] for a in sentinel.values())
+    return out
+
+
+def diag_rows(games):
+    """Per-game diagnostics means for a list of per_agent_games tuples (agent's view)."""
+    acc, n, early_ours, early_theirs = {}, 0, 0, 0
+    for _, _, _, colour, _, margin, rec in games:
+        other = 'blue' if colour == 'red' else 'red'
+        mine, theirs = team_diag(rec.get(colour + '_sentinel')), team_diag(rec.get(other + '_sentinel'))
+        if mine is None or theirs is None:
+            continue
+        n += 1
+        for key in DIAG_KEYS:
+            acc[key] = acc.get(key, 0) + mine[key]
+        acc['conceded'] = acc.get('conceded', 0) + theirs['returned']
+        acc['kills'] = acc.get('kills', 0) + theirs['deaths']
+        if max(mine['moves'], theirs['moves']) < 300:  # ended by the food rule: the leader reached it
+            early_ours += margin > 0
+            early_theirs += margin < 0
+    if not n:
+        return None
+    means = {k: v / n for k, v in acc.items()}
+    means['n'], means['early_ours'], means['early_theirs'] = n, early_ours, early_theirs
+    return means
+
+
+def format_diag(label, m):
+    return ('| %s | %d | %.1f | %.1f | %.2f | %.2f | %.1f | %.0f | %.0f | %.1f | %d / %d |'
+            % (label, m['n'], m['returned'], m['conceded'], m['deaths'], m['kills'], m['food_lost'],
+               m['pacman_moves'], m['standoff_moves'], m['max_carry'], m['early_ours'], m['early_theirs']))
+
+
+DIAG_HEADER = ['| %s | games | returned | conceded | deaths | kills | food lost | Pacman moves | standoff moves '
+               '| max carried | 28-finish us / them |',
+               '|---|---|---|---|---|---|---|---|---|---|---|']
+
+
+def diagnostics_table(games, names, by_opponent=None):
+    """Behavioural diagnostics (docs/evaluation.md: for understanding only, never optimised)."""
+    if by_opponent:
+        mine = [g for g in games if g[0] == by_opponent]
+        rows = [(opp, diag_rows([g for g in mine if g[1] == opp])) for opp in sorted({g[1] for g in mine})]
+        title = 'Diagnostics for %s per opponent (team totals per game):' % by_opponent
+        first = 'opponent'
+    else:
+        rows = [(name, diag_rows([g for g in games if g[0] == name])) for name in names]
+        title = 'Diagnostics (team totals per game; kills = opponent deaths):'
+        first = 'agent'
+    rows = [(label, m) for label, m in rows if m]
+    if not rows:
+        return ''
+    lines = [title, '', DIAG_HEADER[0] % first, DIAG_HEADER[1]]
+    lines += [format_diag(label, m) for label, m in rows]
     return '\n'.join(lines)
 
 
@@ -379,7 +468,13 @@ def paired_comparison(games, a, b):
 
 
 def cmd_summary(args):
-    print(summarize(read_records(args.run), args.compare))
+    records = read_records(args.run)
+    if args.agents:
+        records = [r for r in records if r['red'] in args.agents and r['blue'] in args.agents]
+    print(summarize(records, args.compare))
+    for name in args.diag or []:
+        print()
+        print(diagnostics_table(list(per_agent_games(records)), None, by_opponent=name))
 
 
 def main():
@@ -388,10 +483,12 @@ def main():
     play = sub.add_parser('play')
     group = play.add_mutually_exclusive_group(required=True)
     group.add_argument('--agents', nargs='+', help='round robin between these league entries')
-    group.add_argument('--candidate', help='play this entry against every entry in --vs')
+    group.add_argument('--candidate', nargs='+', help='play each of these entries against every entry in --vs')
     play.add_argument('--vs', nargs='+', default=[])
     play.add_argument('--seeds', default='validation', help='seed list name in eval/seeds/ or a file path')
     play.add_argument('--n-seeds', type=int, default=20)
+    play.add_argument('--seed-offset', type=int, default=0,
+                      help='skip the first N seeds of the list (e.g. seeds already used to design a candidate)')
     play.add_argument('--run', required=True, help='run name; results go to eval/results/<run>.jsonl')
     play.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) - 2))
     play.add_argument('--budget', type=float, default=0.5, help='internal per-move budget (s) to count overruns')
@@ -400,8 +497,10 @@ def main():
                       help='append to an existing run, playing only games without a scored record')
     play.add_argument('--dry-run', action='store_true', help='only print how many games would be played')
     summary = sub.add_parser('summary')
-    summary.add_argument('--run', required=True)
+    summary.add_argument('--run', required=True, nargs='+', help='one or more runs, analysed together')
     summary.add_argument('--compare', nargs=2, metavar=('A', 'B'))
+    summary.add_argument('--agents', nargs='+', help='only games where both teams are in this list')
+    summary.add_argument('--diag', nargs='+', metavar='AGENT', help='per-opponent diagnostics for these agents')
     args = parser.parse_args()
     if args.command == 'play':
         if args.candidate and not args.vs:

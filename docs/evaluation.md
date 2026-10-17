@@ -77,7 +77,7 @@ Here F is the unknown field of entrants.
   - Wald's SPRT, as in Fishtest: pre-registered bounds (e.g. H0: Δ ≤ 0, H1: Δ ≥ 0.3 PPG), α = β = 0.05, a normal approximation on pair-level point differences.
   - Stop only by the rule, never by peeking.
   - Fishtest's worst-case expected length is about 1,046,535 / (nElo₁ − nElo₀)² games. By that estimate, small effects need many hundreds of games, so we can only resolve large effects. That is fine early on, when changes are big.
-- **Budget** [verified pilot]: about 5 s per game of wall time with 10 parallel workers on this laptop, i.e. 400 games ≈ 30–35 min.
+- **Budget** [verified E-009]: with `--delay-step 0` a game takes ~1.3 s on one core of this laptop (Ryzen 5 5500U); 6 workers play ~1,700 games in 8 minutes. (Before E-009 the engine's per-move sleep made it ~40 s per game.)
 - **Saturation**: an opponent that every candidate beats 100% of the time no longer discriminates (research: one UoM team found the baseline at 10/10 for several variants). Keep it in the gates, but don't let it dominate `PPG_P`.
 
 ## 4. Data splits (anti-overfitting)
@@ -86,7 +86,7 @@ Here F is the unknown field of entrants.
 
 | Split | Size | Use |
 |---|---|---|
-| `tuning.txt` | 600 | anything: parameter search, RL training, debugging |
+| `tuning.txt` | 600 | anything: parameter search, RL training, debugging, and **screening** candidates (decision 2026-10-17, see section 7) |
 | `validation.txt` | 300 | accept/reject decisions (section 2) |
 | `test.txt` | 100 | **locked**. Only for confirming a frozen release candidate, each use logged in experiments.md, at most 3 uses before new test seeds are drawn |
 
@@ -100,11 +100,29 @@ Here F is the unknown field of entrants.
 
 ## 5. The league (opponent pool, `eval/league.json`)
 
+**Reference pool (user decision 2026-10-18, E-013)**: we no longer play every league member against every other.
+- New candidates play **only the 5 best currently performing agents**: `greedy_v2` (the incumbent, = `my_team.py`), `greedy` (v1), `feature` (F1), `camper` and `rusher`.
+- They are listed in `eval/league.json` under `_reference_pool`.
+- They were chosen by mean points per game on validation seeds 21–60 (E-011): greedy_v2's lab twin 2.26, greedy 1.89, feature 1.48, camper 1.36, rusher 1.24.
+  - The next ones were field 0.95 and double_attack 0.94.
+  - The `lab_breaker*` variants scored higher but were left out as near-duplicates of greedy_v2 (redundancy, below).
+- The incumbent plays the same 4 other members on the same seeds, so every candidate gets a paired comparison against it, plus its head-to-head game against it.
+- The baseline is saturated (3.00 for every recent agent) and is kept only for smoke tests.
+- Revise the pool when a candidate is accepted, or when another agent clearly outperforms a member. Log every change in experiments.md.
+
+```powershell
+# evaluate a new candidate against the reference pool (incumbent greedy_v2 paired on the same seeds)
+venv\Scripts\python.exe eval\evaluate.py play --candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher --seeds tuning --n-seeds 40 --run <name> --compare <new> greedy_v2
+```
+
+The full league below remains available for occasional broader checks.
+
+
 | Group | Members | Purpose |
 |---|---|---|
 | Reference | `baseline` | floor, saturation check |
 | Our past versions | every accepted incumbent, frozen (`greedy`, ...) | forgetting check, non-transitivity |
-| Specialists | `double_attack`, `turtle`, later: capsule rusher, border camper, kamikaze | style coverage |
+| Specialists | `double_attack`, `turtle`; since 2026-10-17 (`teams/sparring_v1.py`): `camper` (greedy attacker + border camper), `camper2` (two border campers), `rusher` (capsule-first attacker), `baseline_plus` (baseline-style reflex team with return-at-5 and ghost avoidance); later: kamikaze | style coverage |
 | Exploiters (planned) | agents written specifically to beat the current incumbent | find weaknesses before the tournament does [source: AlphaStar "main exploiters"; Timbers et al. 2022: head-to-head strength and exploitability are complementary] |
 | Held-out (planned) | e.g. opponents a teammate writes without seeing our code; after 2026-11-23, proxies of real opponents' styles from the test-run replays | generalisation |
 
@@ -142,7 +160,8 @@ Ties are *not* a hack. Under 3/1/0 a tie against a stronger team is real value. 
 1. A new idea becomes a new team file or version, never an edit to a frozen file.
 2. `python eval/check_rules.py <file>` passes.
 3. Smoke test: one game per colour vs the baseline.
-4. **Screen**: about 10 seed-pairs against the incumbent and 2–3 pool members, on validation seeds. Drop clear failures.
+4. **Screen**: about 10 seed-pairs against the incumbent and the pool, on **tuning** seeds. Drop clear failures.
+   - Decision 2026-10-17 (user): screening moved from validation to tuning seeds. With about 10 candidates per round, screening on validation seeds would exceed the "> 10 decisions" limit of section 4 within a week. Validation seeds are now used only for accept/reject decisions (step 5).
 5. **Full validation**: ≥ 40 seed-pairs against the whole pool, paired with the incumbent → apply the accept rule (section 2).
 6. If accepted: freeze it, add it to `league.json` as a past version, and log it in experiments.md.
 7. **Release**: release gate (section 2) → copy the frozen file to `my_team.py`.
@@ -151,8 +170,8 @@ Ties are *not* a hack. Under 3/1/0 a tie against a stronger team is real value. 
 
 | File | What |
 |---|---|
-| `evaluate.py` | runs colour-swapped game pairs in parallel through `capture.py -q -c` on seed lists; writes `eval/results/<run>.jsonl`; prints the summary: PPG + bootstrap CI, win % + exact Clopper–Pearson CI, W-T-L, crashes, time warnings, move-time stats, violations, head-to-head matrix, approximate Nash averaging, and with `--compare A B` a paired comparison overall **and per opponent** (needed for accept rule 3); `--resume` / `--dry-run` |
-| `sentinel_team.py` | wraps a team during evaluation only. It records move times and runtime violations: walls mutated, shared `Configuration` mutated, global RNG seeded or read, thread / subprocess / `os.system`, file writes, `observation_function` overridden, illegal action |
+| `evaluate.py` | runs colour-swapped game pairs in parallel through `capture.py -q -c` on seed lists; writes `eval/results/<run>.jsonl`; prints the summary: PPG + bootstrap CI, win % + exact Clopper–Pearson CI, W-T-L, crashes, time warnings, move-time stats, violations, head-to-head matrix, approximate Nash averaging, the behaviour diagnostics table, and with `--compare A B` a paired comparison overall **and per opponent** (needed for accept rule 3); `--resume` / `--dry-run`. `--candidate` takes several entries (each plays every `--vs` entry), so candidates added later with `--resume` pair with the games already in the run. `summary` takes several runs (`--run r1 r2`), an `--agents` filter, and `--diag AGENT` for per-opponent diagnostics |
+| `sentinel_team.py` | wraps a team during evaluation only. It records move times and runtime violations: walls mutated, shared `Configuration` mutated, global RNG seeded or read, thread / subprocess / `os.system`, file writes, `observation_function` overridden, illegal action. Since 2026-10-17 it also records **behaviour diagnostics** per agent from that agent's own observation: moves as Pacman, deaths (respawn at the start cell when the move led elsewhere), food carried at death, max carried, food returned (`num_returned` at the end), and standoff moves (a ghost within 2 columns of the border while an enemy ghost is in view; this counts defenders too) |
 | `check_rules.py` | AST lint for our team files: forbidden modules, private fields, global-RNG calls, shared-object writes, broad `except`, Python ≥ 3.9 syntax, prints and file I/O |
 | `league.json` | the opponent pool (path + `create_team` options) |
 | `seeds/*.txt` | tuning / validation / test seed lists |
@@ -167,11 +186,12 @@ venv\Scripts\python.exe eval\evaluate.py summary --run my_run --compare greedy g
 venv\Scripts\python.exe eval\evaluate.py play --agents baseline greedy turtle --seeds validation --n-seeds 20 --run my_run --resume --jobs 6
 ```
 
-- **Memory**: each game uses about 50 MB (launcher + engine). On 2026-10-16 the system ran low on memory with other projects open, and the run was stopped (E-002). Use `--jobs 6` or fewer when other heavy programs are running.
+- **Memory**: each game uses about 50 MB (launcher + engine). On 2026-10-16 the system ran low on memory with other projects open, and the run was stopped (E-002). Use `--jobs 6` or fewer when other heavy programs are running. It happened again on 2026-10-17 with `--jobs 10` (E-007 screen stopped at 194/1,920 games; 4.4–4.8 GB of 15.3 GB were free before and after). Default to `--jobs 6` for long runs.
 
 **Known limitations**:
 - There is no SPRT yet.
-- There are no behavioural diagnostics yet (food eaten vs returned, deaths).
+- Behaviour diagnostics exist since 2026-10-17 (see the sentinel row). They are for understanding only and are **never optimised** (section 2). The summary shows team totals per game; "kills" are the opponent's deaths and "28-finish us / them" counts games that ended by the food rule, attributed to the team that was ahead. Not measured yet: food eaten (as opposed to returned), time spent per role.
+- Progress lines of a background run appear only at the end on Python 3.8 (stderr is block-buffered when redirected to a file). Count the lines of `eval/results/<run>.jsonl` instead.
 - The sentinel and the linter are tripwires, not proofs of compliance.
 - Timing is measured on Windows under parallel load. That is pessimistic about load but optimistic about the hard 3 s kill (T-11).
 

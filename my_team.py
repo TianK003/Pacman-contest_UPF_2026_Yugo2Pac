@@ -1,20 +1,26 @@
 # my_team.py
 # ----------
-# SUBMISSION FILE (the tournament loads this). Promoted 2026-10-16 from teams/greedy_v1.py
-# (behaviour identical; only this header differs) - see docs/experiments.md E-002/E-003.
+# SUBMISSION FILE (the tournament loads this). Promoted 2026-10-18 from teams/greedy_v2.py
+# (behaviour identical; only this header differs) - see docs/experiments.md E-011..E-013.
 # Never edit this file directly: improve a new teams/<name>_vN.py, evaluate it, then copy it here.
 #
-# First non-trivial team (v1): greedy food collection with ghost evasion, plus a patrolling
-# defender. Self-contained (stdlib + contest framework only) so it can be frozen as a league
-# opponent. Do not edit after it has been benchmarked; copy to greedy_v2.py instead.
+# Candidate successor of greedy_v1 (docs/experiments.md E-011/E-012): greedy_lab_v1 with the
+# standoff breaker (C2), the intercepting defender (C4) and a return threshold of 8 switched ON
+# by default, because the tournament calls create_team without options. Every other switch stays
+# off. Self-contained (stdlib + contest framework only). Do not edit after it has been
+# benchmarked; copy to greedy_v3.py instead.
+#
+# Switches (create_team kwargs, kept for experiments; defaults = tournament configuration):
+#   breaker='1'    C2 standoff breaker (H-S12, H-M06): when a ghost blocks the border, take a
+#                     capsule we reach first, or walk (on our side) to the entry farthest from it
+#   intercept='1'  C4 the defender heads for the invader's way home / the exit of its dead end
+#                     instead of chasing it (H-S07)
+#   return_at='8'  C5 carried food that triggers a return home (greedy_v1: 5)
+#   roles='0', tracker='0', adaptive='0'   screened in E-007/E-010, not adopted
 #
 # Rules this file follows (docs/rules.md): public API only, no mutation of observation objects,
 # own RNG instance, no reading of hidden opponents' AgentState fields (opponent ghost/pacman
 # status is derived from its visible position; scared state is derived from capsule events).
-#
-# Variants (select via create_team kwargs; tournament uses the defaults):
-#   first='GreedyAttacker'  | 'DeadEndAttacker' | 'PatrolDefender'
-#   second='PatrolDefender' | 'GreedyAttacker'  | 'DeadEndAttacker'
 
 import random
 from collections import deque
@@ -23,21 +29,56 @@ from contest.capture_agents import CaptureAgent
 from contest.game import Actions, Directions
 
 INF = 10 ** 6
-RETURN_AT = 5          # carried food that triggers a return home
+RETURN_AT = 5          # greedy_v1's return threshold (Config default); greedy_v2 plays with 8
 THREAT_DIST = 4        # maze distance at which a visible ghost makes a carrier go home
 SCARED_TIME = 40       # framework constant (capture.py); enemy moves a capsule lasts
 SCARED_MARGIN = 3      # treat enemies as dangerous this many of their moves before the timer ends
 TIME_MARGIN = 3        # extra own moves kept in reserve when racing the clock home
 
+EVIDENCE_PLIES = 40    # C1: an invader counts as present this long after its last evidence
+QUIET_MOVES = 25       # C1: own moves without invader evidence before the defender attacks too
+ENDGAME_MOVES = 40     # C1: in the last own moves, ahead -> both defend, behind -> both attack
+STANDOFF_MOVES = 3     # C2: blocked moves (within the last STANDOFF_WINDOW) before changing plan
+STANDOFF_WINDOW = 12   # C2: own moves remembered for counting blocked moves
+SIGHT = 5              # C3: framework sight range (capture.py SIGHT_RANGE, Manhattan)
+SONAR_NOISE = 6        # C3: framework sonar = Manhattan + uniform integer noise in [-6, 6]
+TRACK_MAX_CELLS = 20   # C3: a hidden ghost is a threat while its possible set is at most this big
+ADAPT_LOW = 3          # C5: threshold while a defender was seen in the last ADAPT_RECENT moves
+ADAPT_HIGH = 10        # C5: threshold after ADAPT_QUIET own moves without seeing a defender
+ADAPT_RECENT = 5
+ADAPT_QUIET = 15
+ADAPT_BANK_DIST = 2    # C5: bank >= 2 carried food when home is this close
+
+
+def _flag(value):
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+class Config:
+    """Experiment switches; one read-only object per team."""
+
+    def __init__(self, roles='0', breaker='0', tracker='0', intercept='0', return_at=RETURN_AT,
+                 adaptive='0'):
+        self.roles = _flag(roles)
+        self.breaker = _flag(breaker)
+        self.tracker = _flag(tracker)
+        self.intercept = _flag(intercept)
+        self.return_at = int(return_at)
+        self.adaptive = _flag(adaptive)
+
 
 def create_team(first_index, second_index, is_red,
-                first='GreedyAttacker', second='PatrolDefender', num_training=0):
-    roles = {
+                first='GreedyAttacker', second='PatrolDefender', roles='0', breaker='1',
+                tracker='0', intercept='1', return_at='8', adaptive='0', num_training=0):
+    cfg = Config(roles, breaker, tracker, intercept, return_at, adaptive)
+    if cfg.roles:
+        return [FlexAgent(first_index, cfg, 'attack'), FlexAgent(second_index, cfg, 'defend')]
+    classes = {
         'GreedyAttacker': GreedyAttacker,
         'DeadEndAttacker': DeadEndAttacker,
         'PatrolDefender': PatrolDefender,
     }
-    return [roles[first](first_index), roles[second](second_index)]
+    return [classes[first](first_index, cfg), classes[second](second_index, cfg)]
 
 
 ##############
@@ -62,6 +103,7 @@ class MapInfo:
         enemy_x = self.mid if is_red else self.mid - 1
         self.home_border = [(home_x, y) for y in range(self.height)
                             if (home_x, y) in cell_set and (enemy_x, y) in cell_set]
+        self.cross = {b: (enemy_x, b[1]) for b in self.home_border}  # enemy cell across each entry
         self.dist_home = {c: min((self.dist[c].get(b, INF) for b in self.home_border), default=INF)
                           for c in self.cells}
         self.depth, self.entrance = self._dead_ends()
@@ -128,8 +170,9 @@ class MapInfo:
 
 class V1Agent(CaptureAgent):
 
-    def __init__(self, index, time_for_computing=.1):
+    def __init__(self, index, cfg=None, time_for_computing=.1):
         super().__init__(index, time_for_computing)
+        self.cfg = cfg if cfg is not None else Config()
         self.rng = random.Random(7919 + index)  # own RNG; never seed the global one (T-02)
         self.map = None
         self.food_to_win = None
@@ -137,6 +180,8 @@ class V1Agent(CaptureAgent):
         self.scared_since = None       # timeleft value at which we last saw an enemy capsule vanish
         self.unscared = set()          # enemies seen respawning since that capsule
         self.last_seen = {}            # enemy index -> (pos, timeleft)
+        self.just_respawned = set()    # enemies detected as eaten during the current update
+        self.possible = {}             # C3: enemy index -> set of cells it may occupy
 
     def register_initial_state(self, game_state):
         CaptureAgent.register_initial_state(self, game_state)
@@ -146,11 +191,15 @@ class V1Agent(CaptureAgent):
         self.scared_since = None
         self.unscared = set()
         self.last_seen = {}
+        self.just_respawned = set()
+        self.possible = {i: {game_state.get_initial_agent_position(i)}
+                         for i in self.get_opponents(game_state)}
 
     # --- perception (derived only from public observation data) ---
 
     def update_enemy_tracking(self, game_state):
         now = game_state.data.timeleft
+        self.just_respawned = set()
         capsules = set(self.get_capsules(game_state))
         if self.enemy_capsules - capsules:  # only our pacmen can eat the capsules on the enemy side
             prev = self.get_previous_observation()
@@ -169,6 +218,7 @@ class V1Agent(CaptureAgent):
                     last_pos = self.last_seen[i][0]
                     if any(abs(last_pos[0] - t[0]) + abs(last_pos[1] - t[1]) <= 2 for t in team_prev if t):
                         self.unscared.add(i)
+                        self.just_respawned.add(i)
                         del self.last_seen[i]
                 continue
             if i in self.last_seen:
@@ -176,7 +226,67 @@ class V1Agent(CaptureAgent):
                 max_moves = (last_time - now) // 4 + 1
                 if self.map.d(last_pos, pos) > max_moves + 1:  # teleported => respawned => not scared
                     self.unscared.add(i)
+                    self.just_respawned.add(i)
             self.last_seen[i] = (pos, now)
+        if self.cfg.tracker:
+            self.update_possible(game_state)
+
+    def update_possible(self, game_state):
+        """C3: for each enemy, the set of cells it can be in (the support of the H-S01 belief).
+        Each enemy moves exactly once between two of our turns; the set grows by one step, then
+        loses the cells we can see and the cells the sonar rules out (|Manhattan - reading| <= 6
+        holds exactly). Food or a capsule of ours vanishing pins the one enemy that can be there."""
+        team = [game_state.get_agent_position(t) for t in self.get_team(game_state)]
+        me = game_state.get_agent_position(self.index)
+        readings = game_state.get_agent_distances()
+        eaten = set()
+        prev = self.get_previous_observation()
+        if prev is not None:
+            eaten = (set(self.get_food_you_are_defending(prev).as_list())
+                     - set(self.get_food_you_are_defending(game_state).as_list()))
+            eaten |= (set(self.get_capsules_you_are_defending(prev))
+                      - set(self.get_capsules_you_are_defending(game_state)))
+        seen = [game_state.get_agent_position(i) for i in self.get_opponents(game_state)]
+        unexplained = [f for f in eaten if all(p is None or self.map.d(p, f) > 1 for p in seen)]
+
+        def consistent(cell, reading):
+            if any(abs(cell[0] - t[0]) + abs(cell[1] - t[1]) <= SIGHT for t in team if t):
+                return False
+            return abs(abs(cell[0] - me[0]) + abs(cell[1] - me[1]) - reading) <= SONAR_NOISE
+
+        hidden = {}
+        for i in self.get_opponents(game_state):
+            pos = game_state.get_agent_position(i)
+            if pos is not None:
+                self.possible[i] = {pos}
+                continue
+            if i in self.just_respawned:
+                grown = {game_state.get_initial_agent_position(i)}
+            else:
+                grown = set()
+                for c in self.possible.get(i, ()):
+                    grown.add(c)
+                    grown.update(self.map.nbrs[c])
+            hidden[i] = {c for c in grown if consistent(c, readings[i])}
+        for f in unexplained:
+            owners = [i for i, cells in hidden.items() if f in cells]
+            if len(owners) == 1:
+                hidden[owners[0]] = {f}
+        for i, cells in hidden.items():
+            if not cells:  # contradiction (e.g. a respawn we missed): restart from the sonar alone
+                cells = {c for c in self.map.cells if consistent(c, readings[i])}
+            self.possible[i] = cells
+
+    def remembered_ghosts(self, game_state):
+        """C3: cells where a hidden, non-scared enemy ghost may be, while its possible set is small."""
+        cells = []
+        for i in self.get_opponents(game_state):
+            if game_state.get_agent_position(i) is not None or self.enemy_scared(i, game_state):
+                continue
+            possible = self.possible.get(i, ())
+            if len(possible) <= TRACK_MAX_CELLS:
+                cells.extend(c for c in possible if not self.map.is_ours(c))
+        return cells
 
     def enemy_scared(self, i, game_state):
         if self.scared_since is None or i in self.unscared:
@@ -232,6 +342,15 @@ class V1Agent(CaptureAgent):
             out.append((action, (int(pos[0] + dx), int(pos[1] + dy))))
         return out
 
+    def safe_fn(self, ghosts):
+        """Race-safety (H-S03): our side is safe; an enemy cell is safe if we get there strictly
+        before every ghost in `ghosts`."""
+        def safe(cell, steps):
+            if self.map.is_ours(cell):
+                return True
+            return all(self.map.d(g, cell) > steps for g in ghosts)
+        return safe
+
 
 #############
 # Attackers #
@@ -241,35 +360,56 @@ class GreedyAttacker(V1Agent):
     """Eats the nearest food it can reach before any visible ghost (race-safe BFS, H-S03),
     goes home when carrying enough / threatened / out of time (H-S04, H-S05)."""
 
+    def register_initial_state(self, game_state):
+        super().register_initial_state(game_state)
+        self.blocked = deque(maxlen=STANDOFF_WINDOW)  # C2: recent moves, True = blocked at the border
+        self.entry = None        # C2: border entry we are walking to
+        self.ghost_seen = None   # C5: timeleft when we last saw a dangerous ghost
+
     def choose_action(self, game_state):
         self.update_enemy_tracking(game_state)
+        return self.attack(game_state)
+
+    def attack(self, game_state):
         pos = game_state.get_agent_position(self.index)
         me = game_state.get_agent_state(self.index)
         carrying = me.num_carrying
         food = self.get_food(game_state).as_list()
-        ghosts = self.dangerous_ghosts(game_state)
+        visible_ghosts = self.dangerous_ghosts(game_state)
+        if visible_ghosts:
+            self.ghost_seen = game_state.data.timeleft
+        ghosts = visible_ghosts + self.remembered_ghosts(game_state) if self.cfg.tracker else visible_ghosts
         returned = sum(game_state.get_agent_state(i).num_returned for i in self.get_team(game_state))
         my_moves_left = game_state.data.timeleft // 4
         threatened = any(self.map.d(g, pos) <= THREAT_DIST for g in ghosts)
 
         go_home = carrying > 0 and (
-            carrying >= RETURN_AT
+            carrying >= self.return_threshold(game_state, pos)
             or len(food) <= 2
             or returned + carrying >= self.food_to_win
             or my_moves_left <= self.map.dist_home[pos] + TIME_MARGIN
             or threatened)
 
-        def safe(cell, steps):
-            if self.map.is_ours(cell):
-                return True
-            return all(self.map.d(g, cell) > steps for g in ghosts)
-
+        safe = self.safe_fn(ghosts)
         if not go_home:
+            if self.cfg.breaker and self.entry is not None:
+                action = self.follow_entry(game_state, pos, me)
+                if action is not None:
+                    return action
             targets = [f for f in food if self.food_is_safe(f, pos, ghosts)]
             if targets:
                 action, _ = self.bfs_action(game_state, targets, safe)
                 if action is not None:
+                    if self.cfg.breaker:
+                        self.blocked.append(False)
                     return action
+            if self.cfg.breaker:
+                action = self.break_standoff(game_state, pos, me, ghosts, safe)
+                if action is not None:
+                    return action
+        return self.retreat(game_state, ghosts, threatened, safe)
+
+    def retreat(self, game_state, ghosts, threatened, safe):
         home_targets = list(self.map.home_border)
         if threatened:
             home_targets += self.get_capsules(game_state)  # a capsule is also an escape
@@ -277,6 +417,61 @@ class GreedyAttacker(V1Agent):
         if action is not None:
             return action
         return self.evade(game_state, ghosts)
+
+    def return_threshold(self, game_state, pos):
+        if not self.cfg.adaptive:
+            return self.cfg.return_at
+        carrying = game_state.get_agent_state(self.index).num_carrying
+        if carrying >= 2 and self.map.dist_home[pos] <= ADAPT_BANK_DIST:
+            return carrying  # home is right here: bank it
+        since = INF if self.ghost_seen is None else (self.ghost_seen - game_state.data.timeleft) // 4
+        if since <= ADAPT_RECENT:
+            return min(self.cfg.return_at, ADAPT_LOW)
+        if since >= ADAPT_QUIET:
+            return max(self.cfg.return_at, ADAPT_HIGH)
+        return self.cfg.return_at
+
+    def break_standoff(self, game_state, pos, me, ghosts, safe):
+        """C2: on our side with no safe food because a ghost blocks us. After STANDOFF_MOVES such
+        moves within the last STANDOFF_WINDOW (a back-and-forth loop is blocked only every other
+        move), take a capsule we reach first; otherwise walk (on our side) to the border entry
+        farthest from the ghosts, and wait there again. (A race-lead criterion picked the entries
+        next to the ghosts: every lead is <= 0 against a guard standing opposite us, and the
+        nearest entry won the tie.)"""
+        if me.is_pacman or not ghosts:
+            self.blocked.clear()
+            self.entry = None
+            return None
+        self.blocked.append(True)
+        if sum(self.blocked) < STANDOFF_MOVES:
+            return None
+        capsules = self.get_capsules(game_state)
+        if capsules:
+            action, _ = self.bfs_action(game_state, capsules, safe)
+            if action is not None:
+                return action
+        candidates = [b for b in self.map.home_border if b != pos]
+        if not candidates:
+            return None
+
+        def away(b):
+            ghost_d = min(self.map.d(g, self.map.cross[b]) for g in ghosts)
+            return ghost_d, -self.map.d(pos, b), b
+
+        self.entry = max(candidates, key=away)
+        self.blocked.clear()
+        return self.follow_entry(game_state, pos, me)
+
+    def follow_entry(self, game_state, pos, me):
+        """C2: keep walking (on our side) to the chosen entry, even when the ghosts drop out of
+        sight (forgetting them caused a back-and-forth loop, E-007); drop it on arrival."""
+        if me.is_pacman or pos == self.entry:
+            self.entry = None
+            return None
+        action, _ = self.bfs_action(game_state, [self.entry], lambda c, s: self.map.is_ours(c))
+        if action is None:
+            self.entry = None
+        return action
 
     def food_is_safe(self, food, pos, ghosts):
         my_d = self.map.d(pos, food)
@@ -323,6 +518,9 @@ class PatrolDefender(V1Agent):
 
     def choose_action(self, game_state):
         self.update_enemy_tracking(game_state)
+        return self.defend(game_state)
+
+    def defend(self, game_state):
         pos = game_state.get_agent_position(self.index)
         scared = game_state.get_agent_state(self.index).scared_timer > 0  # our own state
         invaders = [p for _, p, invader in self.visible_enemies(game_state) if invader]
@@ -342,7 +540,18 @@ class PatrolDefender(V1Agent):
             nearest = min(invaders, key=lambda p: self.map.d(pos, p))
             return self.keep_distance(game_state, nearest)
 
-        target = self.target if self.target is not None else self.next_patrol_point(game_state, pos)
+        if invaders and self.cfg.intercept:
+            nearest = min(invaders, key=lambda p: self.map.d(pos, p))
+            target = self.intercept_cell(pos, nearest)
+            if target != nearest:
+                action, _ = self.bfs_action(game_state, [target], lambda cell, steps: self.map.is_ours(cell))
+                if action is not None:
+                    return action
+                if target == pos:
+                    return Directions.STOP
+            target = nearest
+        else:
+            target = self.target if self.target is not None else self.next_patrol_point(game_state, pos)
         if target == pos:
             return Directions.STOP
         action, _ = self.bfs_action(game_state, [target], lambda cell, steps: self.map.is_ours(cell))
@@ -350,6 +559,31 @@ class PatrolDefender(V1Agent):
             return action
         self.target = None
         return Directions.STOP
+
+    def intercept_cell(self, pos, invader):
+        """C4: where to meet a visible invader. Close by: go for it. In a dead end: hold its exit if
+        we get there first (and walk in once we stand between it and the exit). Otherwise: the
+        first cell on its shortest way home that we reach no later than it does."""
+        if self.map.d(pos, invader) <= 2:
+            return invader
+        exit_cell = self.map.entrance[invader]
+        if self.map.depth[invader] > 0 and self.map.is_ours(exit_cell):
+            between = self.map.d(invader, exit_cell) == self.map.d(invader, pos) + self.map.d(pos, exit_cell)
+            if between:
+                return invader
+            if self.map.d(pos, exit_cell) <= self.map.d(invader, exit_cell):
+                return exit_cell
+        if not self.map.home_border:
+            return invader
+        goal = min(self.map.home_border, key=lambda b: (self.map.d(invader, b), b))
+        cell = invader
+        while cell != goal:
+            step = self.map.d(cell, goal) - 1
+            cell = min((n for n in self.map.nbrs[cell] if self.map.d(n, goal) == step),
+                       key=lambda n: (self.map.d(pos, n), n))
+            if self.map.d(pos, cell) <= self.map.d(invader, cell):
+                return cell
+        return invader
 
     def keep_distance(self, game_state, invader, wanted=3):
         def key(item):
@@ -372,3 +606,98 @@ class PatrolDefender(V1Agent):
         if pos == self.patrol[self.patrol_i % len(self.patrol)]:
             self.patrol_i += 1
         return self.patrol[self.patrol_i % len(self.patrol)]
+
+
+#####################
+# C1: flexible role #
+#####################
+
+class FlexAgent(GreedyAttacker, PatrolDefender):
+    """C1 (H-S08, H-S05): attacks or defends each turn. The home attacker defends while two
+    invaders are evident; the home defender attacks after QUIET_MOVES own moves without any
+    invader evidence and comes back on the first evidence; in the last ENDGAME_MOVES own moves
+    both defend when we lead and both attack when we trail. Each agent decides from its own
+    observation (no shared memory, rules.md Q4)."""
+
+    def __init__(self, index, cfg, home_role):
+        super().__init__(index, cfg)
+        self.home_role = home_role
+        self.role = home_role
+
+    def register_initial_state(self, game_state):
+        super().register_initial_state(game_state)
+        self.role = self.home_role
+        self.invader_time = {}     # enemy index -> timeleft of its last evidence on our side
+        self.unknown_time = None   # timeleft of the last food event we could not attribute
+        self.quiet_since = game_state.data.timeleft
+
+    def choose_action(self, game_state):
+        self.update_enemy_tracking(game_state)
+        role = self.decide_role(game_state)
+        if role != self.role:
+            self.role = role
+            self.target, self.entry = None, None
+            self.blocked.clear()
+        if role == 'attack':
+            return self.attack(game_state)
+        if game_state.get_agent_state(self.index).is_pacman:  # called back: get home first
+            pos = game_state.get_agent_position(self.index)
+            ghosts = self.dangerous_ghosts(game_state)
+            threatened = any(self.map.d(g, pos) <= THREAT_DIST for g in ghosts)
+            return self.retreat(game_state, ghosts, threatened, self.safe_fn(ghosts))
+        return self.defend(game_state)
+
+    def decide_role(self, game_state):
+        now = game_state.data.timeleft
+        invaders = self.count_invaders(game_state)
+        if invaders:
+            self.quiet_since = now
+        if now // 4 <= ENDGAME_MOVES:
+            score = self.get_score(game_state)
+            if score > 0:
+                return 'defend'
+            if score < 0:
+                return 'attack'
+        if self.home_role == 'attack':
+            return 'defend' if invaders >= 2 else 'attack'
+        if invaders == 0 and (self.quiet_since - now) // 4 >= QUIET_MOVES:
+            return 'attack'
+        return 'defend'
+
+    def count_invaders(self, game_state):
+        """Number of distinct enemies with evidence of being on our side in the last
+        EVIDENCE_PLIES: seen there, or the only hidden enemy when our food vanished out of reach
+        of every visible invader. An unattributable event counts as one invader at most."""
+        now = game_state.data.timeleft
+        visible = self.visible_enemies(game_state)
+        for i, _, invader in visible:
+            if invader:
+                self.invader_time[i] = now
+            else:
+                self.invader_time.pop(i, None)  # back on its own side
+        for i in self.just_respawned:
+            self.invader_time.pop(i, None)
+        prev = self.get_previous_observation()
+        if prev is not None:
+            eaten = (set(self.get_food_you_are_defending(prev).as_list())
+                     - set(self.get_food_you_are_defending(game_state).as_list()))
+            eaten |= (set(self.get_capsules_you_are_defending(prev))
+                      - set(self.get_capsules_you_are_defending(game_state)))
+            seen_invaders = [p for _, p, invader in visible if invader]
+            hidden = [i for i in self.get_opponents(game_state) if game_state.get_agent_position(i) is None]
+            for f in eaten:
+                if any(self.map.d(p, f) <= 1 for p in seen_invaders) or not hidden:
+                    continue
+                if len(hidden) == 1:
+                    self.invader_time[hidden[0]] = now
+                    continue
+                known = [i for i in hidden
+                         if i in self.invader_time and self.invader_time[i] - now <= EVIDENCE_PLIES]
+                if known:
+                    self.invader_time[known[0]] = now
+                else:
+                    self.unknown_time = now
+        recent = [i for i, t in self.invader_time.items() if t - now <= EVIDENCE_PLIES]
+        if not recent and self.unknown_time is not None and self.unknown_time - now <= EVIDENCE_PLIES:
+            return 1
+        return len(recent)

@@ -8,7 +8,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 - **What gets submitted**: `my_team.py` in the repo root, plus any helper modules next to it.
 - **Where it plays**: UPF's tournament on its SNOW cluster against teams from other universities, on random maps.
 - **Dates**: test run 2026-11-23, deadline 2026-12-03 23:59, final run 2026-12-04.
-- **Current state**: `my_team.py` = `teams/greedy_v1.py` (greedy attacker with ghost evasion + patrolling defender), promoted on 2026-10-16 by the user's decision (`docs/experiments.md` E-003). Never edit `my_team.py` directly: build `teams/<name>_vN.py`, pass the accept rule in `docs/evaluation.md`, then copy it over.
+- **Current state**: `my_team.py` = `teams/greedy_v2.py` (greedy_v1 + standoff breaker + intercepting defender + return at 8), promoted on 2026-10-18 by the user's decision (`docs/experiments.md` E-011..E-013). Never edit `my_team.py` directly: build `teams/<name>_vN.py`, pass the accept rule in `docs/evaluation.md`, then copy it over.
 
 ## Knowledge base: read before working, update after
 
@@ -77,6 +77,7 @@ Run games from `pacman-contest/src/contest`. On Windows the default paths only r
 ..\..\..\venv\Scripts\python.exe capture.py -r ..\..\..\my_team.py -b baseline_team --keys1
 ```
 
+- **Speed**: add `--delay-step 0` to batch runs. Otherwise the engine sleeps 0.03 s before every move even with `-q`: ~40 s instead of ~1.3 s per game, with identical results (E-009, T-51). `eval/evaluate.py` already does this.
 - **Linux / WSL**: `source venv/bin/activate && cd pacman-contest/src/contest && python capture.py ...`, with the same flags.
 - **Other tools**: there is no lint config and no unit-test suite. `runner.py` and `scripts/play.sh` are stale; use `capture.py`. All flags are in `docs/framework.md`.
 
@@ -92,7 +93,7 @@ venv\Scripts\python.exe eval\evaluate.py summary --run <name>
 
 - **How a run works**: `evaluate.py` plays colour-swapped game pairs on fixed `RANDOM<seed>` maps through `capture.py -q -c`. Every team is wrapped in `eval/sentinel_team.py`, which records move times and runtime rule violations (local only, never submitted). Each run writes `eval/results/<run>.jsonl` and prints a markdown summary.
 - **Seeds**: `eval/seeds/tuning.txt` is free to use; `validation.txt` is for accept/reject decisions; `test.txt` is **locked**, only for confirming a frozen release candidate, and each use is logged.
-- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v2.py`).
+- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v3.py`). Since 2026-10-18 new candidates play only the **reference pool** of 5 (`greedy_v2` = incumbent, `greedy`, `feature`, `camper`, `rusher`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher --compare <new> greedy_v2`.
 - **Accepting an agent**: a new agent replaces the incumbent only under the accept rule in `docs/evaluation.md` section 2. That rule needs zero crashes, warnings and violations, a paired points-per-game gain with a CI above 0 on validation seeds, no per-opponent regression beyond 0.5, and confirmation on unused seeds for releases. Any sentinel or lint violation is an automatic reject, whatever the score.
 
 ## Testing protocol

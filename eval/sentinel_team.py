@@ -8,6 +8,9 @@
 #   * integrity violations: walls mutated, shared Configuration objects mutated, global RNG
 #     seeded/read, threads started, subprocesses spawned, files opened for writing,
 #     observation_function overridden, illegal action returned.
+#   * behavioural diagnostics from the agent's own observation (never fed back to the agent):
+#     moves as Pacman, deaths, food carried when dying, max carried, food returned, and
+#     "standoff" moves (a ghost within 2 columns of the border while an enemy ghost is in view).
 # At the end of the game it writes one JSON file (path given by the `log` option).
 #
 # Usage (normally via eval/evaluate.py):
@@ -27,6 +30,7 @@ import threading
 import time
 
 from contest.capture_agents import CaptureAgent
+from contest.game import Actions
 
 _SENTINEL_OPTS = ('team', 'log', 'budget')
 
@@ -122,6 +126,7 @@ def _wrap(agent, recorder):
         recorder.startup(index, time.perf_counter() - start)
         if game_state.get_walls().data != walls_before:
             recorder.violation(index, 'walls mutated')
+        recorder.diag_start(index, game_state)
 
     def choose_action(game_state):
         # Snapshots are taken per call, so a violation is attributed to the agent that caused it.
@@ -129,10 +134,12 @@ def _wrap(agent, recorder):
         configs = _config_snapshot(game_state)
         threads = threading.active_count()
         legal = game_state.get_legal_actions(index)
+        recorder.diag_observe(index, game_state)  # outside the timed region
         start = time.perf_counter()
         with _Tripwires(recorder, index):
             action = original_choose(game_state)
         recorder.move(index, time.perf_counter() - start)
+        recorder.diag_acted(index, game_state, action)
         if game_state.get_walls().data != walls_before:
             recorder.violation(index, 'walls mutated')
         for config, pos, direction in configs:
@@ -147,6 +154,7 @@ def _wrap(agent, recorder):
     def final(game_state):
         if original_final is not None:
             original_final(game_state)
+        recorder.diag_final(index, game_state)
         recorder.finish(index)
 
     agent.register_initial_state = register_initial_state
@@ -163,7 +171,51 @@ class _Recorder:
         self.finished = set()
 
     def expect(self, index):
-        self.agents[index] = {'startup_s': None, 'times': [], 'violations': []}
+        self.agents[index] = {'startup_s': None, 'times': [], 'violations': [], 'diag': None}
+
+    # --- behavioural diagnostics (own observation only; local evaluation, never submitted) ---
+
+    def diag_start(self, index, game_state):
+        width = game_state.get_walls().width
+        self.agents[index]['diag'] = {
+            'start': game_state.get_initial_agent_position(index),
+            'home_x': width // 2 - 1 if self.is_red else width // 2,
+            'mid': width // 2, 'expected': None, 'prev_carry': 0,
+            'counts': {'pacman_moves': 0, 'deaths': 0, 'food_lost': 0, 'max_carry': 0,
+                       'standoff_moves': 0, 'returned': 0}}
+
+    def diag_observe(self, index, game_state):
+        d = self.agents[index]['diag']
+        if d is None:
+            return
+        c = d['counts']
+        me = game_state.get_agent_state(index)
+        pos = game_state.get_agent_position(index)
+        if d['expected'] is not None and pos == d['start'] and d['expected'] != d['start']:
+            c['deaths'] += 1
+            c['food_lost'] += d['prev_carry']
+        c['pacman_moves'] += int(me.is_pacman)
+        c['max_carry'] = max(c['max_carry'], me.num_carrying)
+        if not me.is_pacman and abs(pos[0] - d['home_x']) <= 2:
+            for i in (game_state.get_blue_team_indices() if self.is_red else game_state.get_red_team_indices()):
+                enemy = game_state.get_agent_position(i)
+                if enemy is not None and (enemy[0] >= d['mid']) == self.is_red:
+                    c['standoff_moves'] += 1
+                    break
+        d['prev_carry'] = me.num_carrying
+
+    def diag_acted(self, index, game_state, action):
+        d = self.agents[index]['diag']
+        if d is None:
+            return
+        x, y = game_state.get_agent_position(index)
+        dx, dy = Actions.direction_to_vector(action)
+        d['expected'] = (int(x + dx), int(y + dy))
+
+    def diag_final(self, index, game_state):
+        d = self.agents[index]['diag']
+        if d is not None:
+            d['counts']['returned'] = game_state.get_agent_state(index).num_returned
 
     def startup(self, index, seconds):
         self.agents[index]['startup_s'] = seconds
@@ -195,6 +247,7 @@ class _Recorder:
                 'mean_s': sum(times) / n if n else None,
                 'over_budget': sum(1 for t in times if t > self.budget),
                 'violations': data['violations'],
+                'diag': data['diag']['counts'] if data['diag'] else None,
             }
         directory = os.path.dirname(os.path.abspath(self.log))
         os.makedirs(directory, exist_ok=True)

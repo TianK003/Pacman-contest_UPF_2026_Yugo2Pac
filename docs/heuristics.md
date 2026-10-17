@@ -148,7 +148,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Evidence**:
   - [reported: AlanChaw, TianqiPeng, abhinavcreed13 (HMM / exact); loosh, lzheng1026 (particles)].
   - **Warning** [reported: KTH]: adding untested Bayesian tracking that overrode their food-diff logic dropped them from 2nd to 4th.
-- **Status**: idea.
+- **Status**: implemented, **set version** (support only): the `tracker` switch in `teams/greedy_lab_v1.py`. **Tested**: alone it makes the attacker timid, −0.11 vs greedy and −0.40 against turtle (E-007); with the breaker it adds nothing (E-010). Not adopted; a probabilistic version or a defender-side use is untested.
 
 ### H-S02: Food-diff invader detection
 - **Idea**: missing food gives an exact location.
@@ -183,7 +183,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 
   Always return when the food carried plus our returned food would reach 28 (that wins the game).
 - **Evidence**: [reported: jhammarstedt eats about 5 then returns]. Thresholds flapping back and forth is a known failure [reported: LuChenyang3842], so add hysteresis.
-- **Status**: implemented with **fixed** triggers in `GreedyAttacker`: carrying ≥ 5, ≤ 2 food left, a return that would win, out of time, or a ghost within maze distance 4. Not adaptive yet. Tested only as part of the team (E-002).
+- **Status**: implemented with **fixed** triggers in `GreedyAttacker`: carrying ≥ 5, ≤ 2 food left, a return that would win, out of time, or a ghost within maze distance 4. Tested only as part of the team (E-002). A situational version implemented as the `adaptive` switch in `teams/greedy_lab_v1.py`, plus a fixed-threshold sweep (`return_at` 3/8/12). Screening in E-007. **Tested** (E-007, E-010, E-011): alone no fixed threshold or the adaptive rule moved the total beyond noise; with the breaker, return-at-8 was the best (+0.21 tuning, +0.37 validation) and is used in greedy_v2. Return-at-8 **adopted** in my_team.py (greedy_v2) on 2026-10-18 (E-013).
 
 ### H-S05: Time and score control (endgame)
 - **Idea**: the score and the time left are visible, so use them.
@@ -192,7 +192,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Ahead late in the game: switch both agents to defence.
   - Behind: both attack, with higher risk tolerance.
 - **Evidence**: the facts are [verified] (score and `timeleft` are visible); the strategy is [untested].
-- **Status**: partly implemented: the time-based forced return (`TIME_MARGIN = 3`) in `GreedyAttacker`. No score-aware role switching yet.
+- **Status**: partly implemented: the time-based forced return (`TIME_MARGIN = 3`) in `GreedyAttacker`. greedy_v1 has no score-aware role switching. A score-aware endgame (lead → both defend, behind → both attack, last 40 own moves) implemented in the `roles` switch of `teams/greedy_lab_v1.py`. Screening in E-007.
 
 ### H-S06: Capsule timing and the scared window
 - **Idea**:
@@ -206,7 +206,8 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - The scared window is derived from enemy capsules disappearing, conservatively: counted from our previous observation, with a 3-move margin.
   - Respawn detection: a ghost that "teleports", or vanishes from Manhattan ≤ 2 of one of us, is marked unscared.
   - Capsules are escape targets when threatened.
-  - No deliberate capsule timing yet.
+  - No deliberate capsule timing in our candidate agents yet.
+  - A capsule-first attacker (`CapsuleRusher`, `teams/sparring_v1.py`) was built as a sparring opponent. With greedy's defender it beat greedy head-to-head on tuning seeds, 1.35 vs 0.90 points per game (E-006). Paired with the border camper as `rusher_camper` it is screened in E-007.
 
 ### H-S07: Defender interception and shadowing
 - **Idea**:
@@ -215,14 +216,14 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Never cross into enemy territory as a defender.
   - Use pocket entrances to trap invaders (H-M02/H-M03).
 - **Evidence**: [reported: KTH predicts the invader's border entry point from the path between the enemy base and the nearest food; the defender goes to the last eaten food (LuChenyang3842)].
-- **Status**: partly implemented in `PatrolDefender`: it chases visible invaders on our side, keeps a distance of about 3 when we are scared, and goes to the last known position. There is no path prediction yet.
+- **Status**: partly implemented in `PatrolDefender`: it chases visible invaders on our side, keeps a distance of about 3 when we are scared, and goes to the last known position; greedy_v1 has no path prediction. Path prediction is implemented as the `intercept` switch in `teams/greedy_lab_v1.py` (E-007). A border-camping defender (`BorderCamper`, `teams/sparring_v1.py`) was built as a sparring opponent; as greedy's defender it beat greedy head-to-head on tuning seeds, 1.25 vs 1.10 points per game (E-006). **Tested** (E-007, E-010): alone +0.01 (no measurable effect); with the breaker +0.17 on tuning seeds (E-010); in greedy_v2 (E-011/E-012). **Adopted** in my_team.py (greedy_v2) on 2026-10-18 (E-013).
 
 ### H-S08: Dynamic role assignment
 - **Idea**: decide attacker and defender every turn, not once.
 - **Compute**: a utility based on the number of invaders (beliefs and food events), score, time, food carried and distances. Add hysteresis so roles don't flap.
 - **Variants**: attacker + defender; double attack (no invaders and a weak enemy defence); double defence (ahead late).
 - **Evidence**: [reported: the KTH tournament concluded that "rigid roles often resulted in deadlocks, dynamic role switching was a competitive advantage"; abhinavcreed13 switches by number of invaders].
-- **Status**: idea.
+- **Status**: **tested in a basic form** (`roles` switch, E-007): +0.12 [+0.00, +0.23] against the pool, but it **loses head-to-head to greedy** (0.95) and against camper (−0.45). Probable cause: the defender joins the attack and leaves our side open. Not adopted; the next step is to screen its three parts separately.
 
 ### H-S09: Teammate coordination
 - **Idea**:
@@ -235,8 +236,8 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 
 ### H-S10: Anti-oscillation and commitment
 - **Idea**: detect cycles (e.g. a repeated position in the last 8 moves) and break them. Commit to a goal for N steps unless the threat changes. Break ties at random with our **own** RNG instance (T-02).
-- **Evidence**: [reported: abhinavcreed13 stuck detection; infinityglow border wandering; LuChenyang3842 threshold flapping].
-- **Status**: idea.
+- **Evidence**: [reported: abhinavcreed13 stuck detection; infinityglow border wandering; LuChenyang3842 threshold flapping]. We hit it ourselves [verified E-007]: without memory of ghosts that have left sight, greedy cycled through 4 cells on its own side for 180 moves (seed 41952914), and the first breaker version walked back towards the ghosts as soon as they were out of sight.
+- **Status**: partly implemented. The standoff breaker commits to its chosen entry and counts blocked moves in a 12-move window (E-007). The F1/F2 attackers penalise revisiting the last 8 cells (E-008).
 
 ### H-S11: Opponent profiling
 - **Idea**: learn the opponent's style *during the game* and adapt.
@@ -251,8 +252,8 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 
 ### H-S12: Breaking a border standoff
 - **Idea**: when an enemy ghost mirrors our Pacman at the border, either switch to a distant entry point (H-M06), forcing it to travel, or attack with both agents at different points to overload a single defender.
-- **Evidence**: [reported: infinityglow].
-- **Status**: idea.
+- **Evidence**: [reported: infinityglow]. The standoff happens to us: greedy's attacker stood on the border for 261/300 moves against turtle on seed 97464282 and never scored [verified E-005].
+- **Status**: **adopted** (E-013): in `teams/greedy_v2.py` = `my_team.py` since 2026-10-18 (the `breaker` switch). Against greedy: +0.13 [+0.02, +0.24] alone on tuning seeds 11–50 (E-010), +0.26 [+0.15, +0.38] alone on validation seeds 21–60 (E-011), and as part of greedy_v2 +0.42 on validation seeds 21–60 and 61–100 (E-011, E-012).
 
 ### H-S13: Deliberate death when carrying nothing
 - **Idea**: being eaten with 0 food teleports us to our start.

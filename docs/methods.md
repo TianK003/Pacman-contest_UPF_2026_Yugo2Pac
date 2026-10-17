@@ -11,7 +11,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | Random, unseen 34×18 maps | Nothing can be tuned per layout. Learned components need map-agnostic inputs. |
 | Partial observability (5-square sight, noisy Manhattan sonar) | Search and learning need a belief or a determinisation of hidden opponents (H-S01). |
 | 2 cooperating agents vs 2 adversaries | Coordination matters (shared team object, roles). |
-| The engine is slow: ~40 s per game for cheap agents [verified E-000]; `generate_successor` copies the state on every call | Deep lookahead with `GameState` is expensive. Measure its cost before choosing a search depth (planned). Learning methods that need millions of steps would need our own fast simulator. |
+| A game takes ~1.3 s of CPU for cheap agents once the engine's per-move sleep is switched off (`--delay-step 0`, E-009; it was ~40 s with the sleep); `generate_successor` copies the state on every call | Deep lookahead with `GameState` is expensive. Measure its cost before choosing a search depth (planned). Learning methods that need millions of steps would need our own fast simulator. |
 | About 7 weeks to the deadline (2026-10-16 → 2026-12-03); test run on 2026-11-23 | Prefer methods that give a working agent early and improve step by step. |
 | No staff reference teams locally; only `baseline_team` | We must build our own opponent pool (self-play, older versions, specialists) to evaluate or train anything. |
 
@@ -32,6 +32,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | M-11 | Evolutionary search (GA / NEAT) over parameters or tree structure | offline tuner | medium | medium | [untested] | optional tuner |
 | M-12 | Imitation learning | — | — | — | no strong demonstrator available | not feasible now |
 | M-13 | Expert iteration / distilling search into a fast policy | fast policy layer | high | medium | [untested] here | stretch, after M-05/M-06 exist |
+| M-14 | Potential field / influence map | attacker policy | low | medium | none found | experiment (E-008) |
 
 ---
 
@@ -55,8 +56,8 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 - **Risks**:
   - Overfitting to the opponent pool (T-37).
   - Noisy fitness (T-35), so use paired seeds.
-  - Slow games, so parallelise; ~40 s per game means ~90 games per hour per process.
-- **Status**: idea.
+  - Games cost ~1.3 s each with `--delay-step 0` (E-009), i.e. ~2,500 games per hour per process; parallelise across cores.
+- **Status**: **tested** as the F1 `FeatureAttacker` (`teams/families_v1.py`) with hand-set weights: +0.44 on 10 tuning seeds (E-008), but **+0.07 [−0.08, +0.20] on 40 fresh tuning seeds** (E-010), i.e. about greedy's level. Weights are exposed for offline tuning, which is now cheap (E-009). Not tuned yet.
 
 ### M-03: Path planning with risk-weighted costs
 - **What**: BFS, A* or Dijkstra over our own cell graph (not over `GameState`).
@@ -73,7 +74,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - Common [reported: AlanChaw, TianqiPeng, abhinavcreed13, loosh, lzheng1026].
   - Two cautions [reported: KTH dropped after adding it untested; abhinavcreed13 saw misjudgements on big maps].
 - **Plan**: introduce it behind a switch, and A/B test it against food-diff-only tracking (H-S02).
-- **Status**: idea.
+- **Status**: set version (support only, no probabilities) implemented as the `tracker` switch in `teams/greedy_lab_v1.py` (E-007). The probabilistic HMM is not built.
 
 ### M-05: Local adversarial search (minimax / expectimax)
 - **What**:
@@ -120,7 +121,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - Under *centralised training, decentralised execution*, the critic may see the full state **during offline training only**. The deployed actor uses only its own observation, so this does not break R4.
 - **Blockers**:
   1. **Runtime libraries are unknown (Q2).** Without numpy/torch the network would have to run in pure Python. A small MLP (a few thousand to tens of thousands of multiply-adds) is probably fine within 1 s, but that is an estimate, not measured.
-  2. **Training needs a fast, faithful re-implementation of the rules.** The engine runs at ~40 s per game. Any difference from the real rules is a "sim-to-real" risk, and a cheating risk if the simulator gives the policy information it won't have.
+  2. **Training needs a fast, faithful re-implementation of the rules.** The engine runs at ~1.3 s per game without its per-move sleep (E-009), about 1,000 agent moves per second, which is still far too slow for millions of RL steps. Any difference from the real rules is a "sim-to-real" risk, and a cheating risk if the simulator gives the policy information it won't have.
   3. **Generalising to random maps** needs map-agnostic inputs (egocentric crops, distance-based features).
   4. **Opponent diversity**: plain self-play overfits, so it needs a league / fictitious self-play.
   5. **Compute and time**: about 7 weeks, and GPU access is unknown.
@@ -140,7 +141,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 
 ### M-10: Pursuit–evasion "race" analysis
 - **What**: closed-form adversarial reasoning from distance tables ("who reaches cell c first, given turn order"). See H-S03. It replaces most of what deep minimax would compute in chases, at negligible cost.
-- **Status**: idea.
+- **Status**: implemented in its simple form as greedy's race-safe BFS (H-S03). The intercepting defender (E-007) uses the same "who arrives first" test.
 
 ### M-11: Evolutionary search
 - **What**: a GA or NEAT (`neat-python`, offline only) over parameter vectors or behaviour-tree structure, with fitness from the batched harness. It is a sibling of M-02's optimisers.
@@ -165,6 +166,13 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - A fast forward model.
   - Q2 (libraries) for anything bigger than a few thousand parameters.
 - **Status**: idea, stretch goal.
+
+### M-14: Potential field / influence map
+- **What**: every cell gets a value from attractions (food, home in proportion to food carried, capsules when threatened) and repulsions (ghosts), each decaying with maze distance. The agent steps to the best neighbouring cell. It is a classic game-AI technique and a special case of M-02, where the features are field values summed over all objects.
+- **Why it might fit**: it trades off several goals at once and drifts towards food clusters without explicit clustering (H-M05). It costs O(cells × objects) per move with the distance table.
+- **Risks**: local maxima and dithering between two attractors, so it needs anti-oscillation (H-S10).
+- **Evidence**: no capture-the-flag write-up found (research agent, 2026-10-17); [untested].
+- **Status**: **tested** as the F2 `FieldAttacker` (`teams/families_v1.py`): +0.34 on 10 tuning seeds (E-008), but −0.04 [−0.20, +0.11] on 40 fresh tuning seeds, losing head-to-head to greedy (1.05) and against camper2 (−0.40) (E-010). Rejected for now.
 
 ---
 

@@ -45,7 +45,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 | P-20 | Defender that closes in on trapped invaders (cut cells, H-M03 squeeze) | E-014: defence = 29% of lost points; the defender holds but never closes in | H-S07, H-M03 | **tested (E-018)**: +0.02 [−0.01, +0.06], rarely changes a decision; not adopted |
 | P-21 | C3: two-entry attack when a standoff persists | E-014: 0–0 standoffs still cost 18% | H-S12, H-S09 | **tested (E-018)** as a raiding defender without shared memory: −0.07 [−0.14, +0.01]; not adopted |
 | P-22 | Defender hunts hidden invaders from an exact belief (sonar + sight + food events) | E-014: defence = 29% of lost points; greedy_v2's defender ignores the sonar | H-S01, H-S07, M-04 | tested (E-019): +0.07 [−0.02, +0.17] alone, nothing on top of P-23; not adopted |
-| P-23 | Idle defender shadows the raider's likely crossing instead of patrolling | as P-22 | H-S01, H-S07 | **accepted (E-019)**: screen +0.34, replication +0.29 (tuning); validation 101–180 +0.16 [+0.04, +0.28]; not promoted yet (user decision, release gate open) |
+| P-23 | Idle defender shadows the raider's likely crossing instead of patrolling | as P-22 | H-S01, H-S07 | **adopted**: accepted in E-019 (validation 101–180 +0.16 [+0.04, +0.28]); test seeds +0.26 pool / +0.17 held-out (E-021); **in my_team.py as greedy_v3** |
 | P-24 | Raiding defender (P-21) that the belief calls back while the raider is near our side | E-018: the plain raid scored more against guards but let attackers in | H-S12, H-S09, H-S01 | tested (E-020): −0.01 [−0.06, +0.04] on top of P-23; not adopted |
 
 ---
@@ -889,4 +889,77 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - Head-to-head: 1.38 vs 1.32 for `lab3_shadow`.
   - Same trade-off as E-018, smaller: per game it returns 0.2–0.4 more food and concedes 0.3–1.0 more (e.g. feature: returned 11.1 → 11.3, conceded 8.1 → 8.9).
 - **Conclusion**: calling the raid back by belief removes E-018's damage against greedy (−0.20 there on top of greedy_v2, +0.01 here on top of shadowing), but the net stays at zero: feature −0.18 and exploit_v2 −0.10 offset choke +0.14. A raid by the defender is not worth its complexity on top of shadowing. Not adopted; the raid line (P-21, P-24) is closed for now.
+
+
+## E-021 — Release gate for `greedy_v3` on the locked test seeds; promotion decision (2026-10-18)
+- **Status**: done. **greedy_v3 promoted to `my_team.py`.** Rules 1–5 pass; rule 6 had one warning that was shown to be environmental (see below).
+- **User decision (2026-10-18)**: `lab3_shadow` becomes `greedy_v3`. "Rerun, and if it outperforms greedy_v2, promote it to `my_team.py`."
+- **Variant**: new file `teams/greedy_v3.py`, a copy of `teams/greedy_lab_v3.py` with `shadow='1'` as the default and a corrected header. The only code difference is that default.
+  - Lint OK.
+  - **Identity**: greedy_v3 vs `lab3_shadow` against baseline, camper, exploit_v2 and greedy_v2 on tuning seeds 1–3, both colours: **24/24 identical** (score and every diagnostic; run `identity_v3`).
+- **Pre-registered rule** (written before any test-seed game was played). Promote greedy_v3 to `my_team.py` if and only if all of these hold:
+  1. **Gates**: 0 crashes / forfeits, 0 engine time warnings and 0 sentinel violations in every game of greedy_v3, with a max move ≤ 0.5 s.
+  2. **Pool**: the paired Δ PPG (greedy_v3 − greedy_v2) over the 6 non-mirror reference-pool members (greedy, feature, camper, rusher, choke, exploit_v2) has a 95% CI lower bound > 0.
+  3. **No regression**: for every opponent (pool and held-out) the paired Δ has a CI upper bound > −0.5 (δ).
+  4. **Held-out**: the paired Δ over the two held-out teams has a CI upper bound > 0, i.e. no significant regression against blind-written teams. Totals only (T-53).
+  5. **Head-to-head**: PPG(greedy_v3 vs greedy_v2) ≥ 1.5.
+  6. **Linux timing** (WSL, Python 3.8, `-c`, as E-016): 0 time warnings and max move ≤ 0.5 s, serial and with all CPUs loaded.
+- **Setup**:
+  - greedy_v3 and greedy_v2 against greedy, feature, camper, rusher, choke, exploit_v2, heldout_a and heldout_b, plus greedy_v3 vs greedy_v2, on **all 100 locked test seeds**, both colours: 3,400 games, run `test1`.
+  - **Test-seed use 1 of 3** (evaluation.md section 4).
+  - Windows 11, Python 3.8.10, framework `54cd83c`, 6 workers, `--delay-step 0`.
+- **Results** (run `test1`, 3,400 games; summary in `eval/results/test1_summary.md`):
+
+  | agent | games | W-T-L | PPG [95% CI] | crashes / time warnings / violations | max move |
+  |---|---|---|---|---|---|
+  | greedy_v3 | 1,800 | 999-232-569 | **1.79** [1.71, 1.88] | 0 / 0 / 0 | 0.091 s |
+  | greedy_v2 | 1,800 | 867-196-737 | 1.55 [1.49, 1.63] | 0 / 0 / 0 | 0.098 s |
+
+  **Paired greedy_v3 − greedy_v2 per opponent** (200 games each):
+
+  | opponent | greedy_v3 | greedy_v2 | paired Δ [95% CI] |
+  |---|---|---|---|
+  | camper | 2.06 | 1.67 | +0.39 [+0.17, +0.62] |
+  | feature | 2.10 | 1.83 | +0.27 [−0.01, +0.53] |
+  | choke | 1.65 | 1.40 | +0.26 [+0.01, +0.49] |
+  | greedy | 2.17 | 1.91 | +0.26 [+0.04, +0.47] |
+  | rusher | 2.07 | 1.84 | +0.23 [+0.01, +0.43] |
+  | exploit_v2 | 1.75 | 1.60 | +0.15 [−0.07, +0.36] |
+  | heldout_b (held-out) | 1.35 | 1.00 | +0.35 [+0.11, +0.59] |
+  | heldout_a (held-out) | 1.44 | 1.46 | −0.02 [−0.26, +0.21] |
+
+  - **Generalisation gap** (evaluation.md section 4; mean over the 6 non-mirror pool members vs mean over the 2 held-out teams, test seeds):
+    - greedy_v3: 1.97 vs 1.40, R ≈ 29%;
+    - greedy_v2: 1.71 vs 1.23, R ≈ 28%.
+    - The gain carries over to the blind-written teams at a similar size (+0.17 held-out vs +0.26 pool). The gap itself is unchanged.
+  - **Linux / Python 3.8** (WSL Ubuntu 24.04, CPython 3.8.20, `-c` with real `SIGALRM` limits, as E-016). greedy_v3 against greedy, feature, camper, rusher, choke and exploit_v2, both colours, on tuning seeds 551–565 (serial) and 566–580 (`--jobs 12`). Runs `wsl_serial_v3`, `wsl_loaded_v3`; the repo was mirrored with rsync first.
+
+    | pass | games | max move | 99th pct of per-game max | max p95 | max startup | moves > 0.5 s | engine warnings / timeouts / crashes |
+    |---|---|---|---|---|---|---|---|
+    | serial | 180 | 0.035 s | 0.029 s | 0.0016 s | 0.37 s | 0 | **1** / 0 / 0 |
+    | loaded (12 jobs) | 180 | 0.105 s | 0.089 s | 0.0049 s | 1.13 s | 0 | 0 / 0 / 0 |
+
+  - **The one warning** (serial game 36, seed 87250538, greedy_v3 red vs feature):
+    - The engine's 1 s clock (`game.py`) covers the engine's `observation_function` deep copy plus the whole `get_action` call, including the sentinel's wrapper. In that game our `choose_action` never took more than 0.002 s. The game took 2.7 s of wall time against a median of 1.1 s.
+    - The agents are deterministic, so the same game was replayed 5 times in WSL, serially (runs `wsl_rep36_1..5`): the same score (15) every time, 1.1–1.2 s of wall time, **0 warnings**, max move 0.002–0.003 s.
+    - A computation of ours would have repeated, so this was a one-off stall of the WSL process (scheduler or VM), not our code.
+    - **Deviation from the pre-registered rule 6**, recorded openly: rule 6 said "0 time warnings". It failed by one warning, which the replays show was not caused by the agent. The promotion went ahead on that basis, under the user's instruction ("if it outperforms greedy_v2, promote it"). The tournament allows 2 warnings per game before a forfeit (`capture.py`).
+- **Pre-registered rule**:
+
+  | rule | result | pass |
+  |---|---|---|
+  | 1. gates | 0 crashes, 0 time warnings, 0 violations in 1,800 games; max move 0.091 s | ✓ |
+  | 2. pool, 6 members | **+0.26 [+0.15, +0.36]** | ✓ |
+  | 3. no regression > 0.5 | worst: heldout_a −0.02 [−0.26, +0.21] | ✓ |
+  | 4. held-out, CI upper bound > 0 | **+0.17 [−0.00, +0.33]** | ✓ |
+  | 5. head-to-head vs greedy_v2 ≥ 1.5 | 1.56 | ✓ |
+  | 6. Linux timing | max move 0.105 s with all CPUs busy; 1 environmental warning in the serial pass (above) | ✓ with the deviation noted |
+
+- **Promotion**:
+  - `my_team.py` is now `teams/greedy_v3.py` with a different header only. The bodies were compared with `diff`: identical.
+  - Lint OK. Identity: the `submission` entry vs greedy_v3 against baseline, camper and exploit_v2 on tuning seeds 1–3, both colours, **18/18** (run `identity_submission_v3`).
+  - Smoke from the repo root (`capture.py -r ../../../my_team.py -b baseline_team -q -c -l RANDOM13`): won by 16, no warning.
+  - `eval/league.json`: greedy_v3 is the incumbent of the reference pool, which now has 8 members (greedy_v2 stays as the previous incumbent).
+- **Release gate status of greedy_v3**: accept rule ✓ (E-019); ≥ 200 own games ✓ (1,800 + 360 + 24); Linux timing ✓ (deviation noted); locked test seeds ✓ (use 1 of 3); held-out on test seeds ✓.
+- **Caveat**: all numbers are against our own pool and two blind-written teams. The field at the test run on 2026-11-23 is still unknown (evaluation.md section 9).
 

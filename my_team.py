@@ -1,14 +1,16 @@
 # my_team.py
 # ----------
-# SUBMISSION FILE (the tournament loads this). Promoted 2026-10-18 from teams/greedy_v2.py
-# (behaviour identical; only this header differs) - see docs/experiments.md E-011..E-013.
+# SUBMISSION FILE (the tournament loads this). Promoted 2026-10-18 from teams/greedy_v3.py
+# (behaviour identical; only this header differs) - see docs/experiments.md E-019, E-021.
 # Never edit this file directly: improve a new teams/<name>_vN.py, evaluate it, then copy it here.
 #
-# Candidate successor of greedy_v1 (docs/experiments.md E-011/E-012): greedy_lab_v1 with the
-# standoff breaker (C2), the intercepting defender (C4) and a return threshold of 8 switched ON
-# by default, because the tournament calls create_team without options. Every other switch stays
-# off. Self-contained (stdlib + contest framework only). Do not edit after it has been
-# benchmarked; copy to greedy_v3.py instead.
+# Successor of greedy_v2 (docs/experiments.md E-019, E-021): teams/greedy_lab_v3.py with the
+# belief-based shadowing defender (P-23) switched ON by default, because the tournament calls
+# create_team without options. greedy_v2 = greedy_v1 + standoff breaker + intercepting defender +
+# return at 8; greedy_v3 adds: with nothing to chase, the defender waits at the border entry across
+# from where the enemy raider most likely is (exact belief over its cell from this agent's own
+# sonar, sight and food events). Self-contained (stdlib + contest framework only). Do not edit
+# after it has been benchmarked; copy to greedy_v4.py instead.
 #
 # Switches (create_team kwargs, kept for experiments; defaults = tournament configuration):
 #   breaker='1'    C2 standoff breaker (H-S12, H-M06): when a ghost blocks the border, take a
@@ -17,6 +19,13 @@
 #                     instead of chasing it (H-S07)
 #   return_at='8'  C5 carried food that triggers a return home (greedy_v1: 5)
 #   roles='0', tracker='0', adaptive='0'   screened in E-007/E-010, not adopted
+#   hunt='0'       P-22 (H-S01 + H-S07; E-019, not adopted): the defender treats a hidden enemy
+#                     that the belief probably puts on our side as an invader at its most
+#                     likely cell
+#   shadow='1'     P-23 (H-S01 + H-S07): with no invader evidence, the defender waits at the
+#                     border entry across from where the raider (the enemy last evident on our
+#                     side) probably is, instead of patrolling near our food; before any enemy
+#                     has come over it patrols as greedy_v2
 #
 # Rules this file follows (docs/rules.md): public API only, no mutation of observation objects,
 # own RNG instance, no reading of hidden opponents' AgentState fields (opponent ghost/pacman
@@ -48,6 +57,10 @@ ADAPT_HIGH = 10        # C5: threshold after ADAPT_QUIET own moves without seein
 ADAPT_RECENT = 5
 ADAPT_QUIET = 15
 ADAPT_BANK_DIST = 2    # C5: bank >= 2 carried food when home is this close
+HUNT_MASS = 0.5        # P-22: belief mass on our side above which a hidden enemy counts as an invader
+STAY_WEIGHT = 0.2      # P-22/23: motion model, weight of staying put against 1 per neighbour
+                       # (no cell is ever dropped for a small probability: an enemy walking straight
+                       # has a tiny random-walk probability, and dropping it lost the truth, E-019)
 
 
 def _flag(value):
@@ -58,19 +71,22 @@ class Config:
     """Experiment switches; one read-only object per team."""
 
     def __init__(self, roles='0', breaker='0', tracker='0', intercept='0', return_at=RETURN_AT,
-                 adaptive='0'):
+                 adaptive='0', hunt='0', shadow='0'):
         self.roles = _flag(roles)
         self.breaker = _flag(breaker)
         self.tracker = _flag(tracker)
         self.intercept = _flag(intercept)
         self.return_at = int(return_at)
         self.adaptive = _flag(adaptive)
+        self.hunt = _flag(hunt)
+        self.shadow = _flag(shadow)
 
 
 def create_team(first_index, second_index, is_red,
                 first='GreedyAttacker', second='PatrolDefender', roles='0', breaker='1',
-                tracker='0', intercept='1', return_at='8', adaptive='0', num_training=0):
-    cfg = Config(roles, breaker, tracker, intercept, return_at, adaptive)
+                tracker='0', intercept='1', return_at='8', adaptive='0', hunt='0', shadow='1',
+                num_training=0):
+    cfg = Config(roles, breaker, tracker, intercept, return_at, adaptive, hunt, shadow)
     if cfg.roles:
         return [FlexAgent(first_index, cfg, 'attack'), FlexAgent(second_index, cfg, 'defend')]
     classes = {
@@ -182,6 +198,7 @@ class V1Agent(CaptureAgent):
         self.last_seen = {}            # enemy index -> (pos, timeleft)
         self.just_respawned = set()    # enemies detected as eaten during the current update
         self.possible = {}             # C3: enemy index -> set of cells it may occupy
+        self.belief = {}               # P-22/23: enemy index -> {cell: probability}
 
     def register_initial_state(self, game_state):
         CaptureAgent.register_initial_state(self, game_state)
@@ -194,6 +211,8 @@ class V1Agent(CaptureAgent):
         self.just_respawned = set()
         self.possible = {i: {game_state.get_initial_agent_position(i)}
                          for i in self.get_opponents(game_state)}
+        self.belief = {i: {game_state.get_initial_agent_position(i): 1.0}
+                       for i in self.get_opponents(game_state)}
 
     # --- perception (derived only from public observation data) ---
 
@@ -209,6 +228,13 @@ class V1Agent(CaptureAgent):
         prev = self.get_previous_observation()
         prev_time = prev.data.timeleft if prev is not None else None
         team_prev = [prev.get_agent_position(t) for t in self.get_team(prev)] if prev is not None else []
+        if (self.cfg.hunt or self.cfg.shadow) and prev is not None:
+            # P-22/23: one of us that was eaten since (it teleported home) no longer keeps the enemy
+            # in sight, so only teammates that moved at most one cell count (E-019: without this,
+            # a ghost that ate our attacker was taken for eaten itself)
+            team_now = [game_state.get_agent_position(t) for t in self.get_team(game_state)]
+            team_prev = [t if t and c and self.map.d(t, c) <= 1 else None
+                         for t, c in zip(team_prev, team_now)]
         for i in self.get_opponents(game_state):
             pos = game_state.get_agent_position(i)
             if pos is None:
@@ -276,6 +302,73 @@ class V1Agent(CaptureAgent):
             if not cells:  # contradiction (e.g. a respawn we missed): restart from the sonar alone
                 cells = {c for c in self.map.cells if consistent(c, readings[i])}
             self.possible[i] = cells
+
+    def update_belief(self, game_state):
+        """P-22/23 (H-S01, M-04): exact forward filter over cells for each enemy, from this agent's
+        own observation only (no shared memory, rules.md Q4). Call after update_enemy_tracking.
+        Between two of our turns each enemy moves exactly once (modelled as staying with weight
+        STAY_WEIGHT and each neighbour with weight 1). An enemy we cannot see is not within SIGHT (Manhattan) of either of
+        us, and our sonar reading is Manhattan + a uniform integer in [-6, 6], so it has the same
+        likelihood 1/13 on every cell with |Manhattan - reading| <= 6 and 0 elsewhere. A food or
+        capsule of ours that vanished under no visible enemy was eaten by an enemy that has not
+        moved since (each moves once between our turns), so it stands exactly there."""
+        team = [game_state.get_agent_position(t) for t in self.get_team(game_state)]
+        me = game_state.get_agent_position(self.index)
+        readings = game_state.get_agent_distances()
+
+        def consistent(cell, reading):
+            if any(abs(cell[0] - t[0]) + abs(cell[1] - t[1]) <= SIGHT for t in team if t):
+                return False
+            return abs(abs(cell[0] - me[0]) + abs(cell[1] - me[1]) - reading) <= SONAR_NOISE
+
+        hidden = {}
+        for i in self.get_opponents(game_state):
+            pos = game_state.get_agent_position(i)
+            if pos is not None:
+                self.belief[i] = {pos: 1.0}
+                continue
+            if i in self.just_respawned:
+                prior = {game_state.get_initial_agent_position(i): 1.0}
+            else:
+                prior = self.belief.get(i) or {}
+            moved = {}
+            for c, p in prior.items():
+                share = p / (len(self.map.nbrs[c]) + STAY_WEIGHT)
+                moved[c] = moved.get(c, 0.0) + share * STAY_WEIGHT
+                for n in self.map.nbrs[c]:
+                    moved[n] = moved.get(n, 0.0) + share
+            hidden[i] = {c: p for c, p in moved.items() if consistent(c, readings[i])}
+
+        prev = self.get_previous_observation()
+        if prev is not None and hidden:
+            eaten = (set(self.get_food_you_are_defending(prev).as_list())
+                     - set(self.get_food_you_are_defending(game_state).as_list()))
+            eaten |= (set(self.get_capsules_you_are_defending(prev))
+                      - set(self.get_capsules_you_are_defending(game_state)))
+            seen = set(game_state.get_agent_position(i) for i in self.get_opponents(game_state))
+            owners = set(hidden)
+            for f in sorted(eaten - seen):
+                if not owners:
+                    break
+                owner = max(sorted(owners), key=lambda i: (hidden[i].get(f, 0.0),
+                                                           -self.expected_dist(hidden[i], f)))
+                hidden[owner] = {f: 1.0}
+                owners.discard(owner)
+
+        for i, cells in hidden.items():
+            total = sum(cells.values())
+            if total <= 0:  # contradiction (e.g. a respawn we missed): restart from the sonar alone
+                cells = {c: 1.0 for c in self.map.cells if consistent(c, readings[i])}
+                if not cells:
+                    cells = {game_state.get_initial_agent_position(i): 1.0}
+                total = float(len(cells))
+            self.belief[i] = {c: p / total for c, p in cells.items() if p > 0}
+
+    def expected_dist(self, belief, cell):
+        """Expected maze distance from an enemy with this belief to `cell` (INF if empty)."""
+        if not belief:
+            return INF
+        return sum(p * self.map.d(c, cell) for c, p in belief.items())
 
     def remembered_ghosts(self, game_state):
         """C3: cells where a hidden, non-scared enemy ghost may be, while its possible set is small."""
@@ -515,9 +608,13 @@ class PatrolDefender(V1Agent):
         self.patrol = []
         self.patrol_i = 0
         self.patrol_food_count = None
+        self.raider = None   # P-23: enemy index last evident on our side
 
     def choose_action(self, game_state):
         self.update_enemy_tracking(game_state)
+        if self.cfg.hunt or self.cfg.shadow:
+            self.update_belief(game_state)
+            self.update_raider(game_state)
         return self.defend(game_state)
 
     def defend(self, game_state):
@@ -540,6 +637,13 @@ class PatrolDefender(V1Agent):
             nearest = min(invaders, key=lambda p: self.map.d(pos, p))
             return self.keep_distance(game_state, nearest)
 
+        if self.cfg.hunt and not invaders:
+            # P-22: the belief already holds the food events, so it replaces the eaten-food target
+            self.target = None
+            suspect = self.suspected_invader(pos)
+            if suspect is not None and not scared:
+                invaders = [suspect]
+
         if invaders and self.cfg.intercept:
             nearest = min(invaders, key=lambda p: self.map.d(pos, p))
             target = self.intercept_cell(pos, nearest)
@@ -550,8 +654,14 @@ class PatrolDefender(V1Agent):
                 if target == pos:
                     return Directions.STOP
             target = nearest
+        elif invaders:  # without the intercept: the nearest invader (seen or, P-22, suspected)
+            target = min(invaders, key=lambda p: self.map.d(pos, p))
+        elif self.target is not None:
+            target = self.target
         else:
-            target = self.target if self.target is not None else self.next_patrol_point(game_state, pos)
+            target = self.shadow_post(pos) if self.cfg.shadow else None
+            if target is None:
+                target = self.next_patrol_point(game_state, pos)
         if target == pos:
             return Directions.STOP
         action, _ = self.bfs_action(game_state, [target], lambda cell, steps: self.map.is_ours(cell))
@@ -584,6 +694,42 @@ class PatrolDefender(V1Agent):
             if self.map.d(pos, cell) <= self.map.d(invader, cell):
                 return cell
         return invader
+
+    def suspected_invader(self, pos):
+        """P-22: the most likely home cell of the hidden enemy with the most belief mass on our side,
+        if that mass is at least HUNT_MASS (visible enemies have all their mass on their cell)."""
+        best = None
+        for i in sorted(self.belief):
+            ours = dict((c, p) for c, p in self.belief[i].items() if self.map.is_ours(c))
+            mass = sum(ours.values())
+            if mass >= HUNT_MASS and (best is None or mass > best[0]):
+                cell = max(ours, key=lambda c: (ours[c], -self.map.d(pos, c), c))
+                best = (mass, cell)
+        return best[1] if best is not None else None
+
+    def update_raider(self, game_state):
+        """P-23: the enemy most recently evident on our side (seen there, or with belief mass of at
+        least HUNT_MASS there). Their defender is never it, unless it has come over."""
+        for i, _, invader in self.visible_enemies(game_state):
+            if invader:
+                self.raider = i
+        for i in sorted(self.belief):
+            if game_state.get_agent_position(i) is None and \
+                    sum(p for c, p in self.belief[i].items() if self.map.is_ours(c)) >= HUNT_MASS:
+                self.raider = i
+
+    def shadow_post(self, pos):
+        """P-23: the border entry whose cell across is nearest (in expectation) to the raider, i.e.
+        where it would most likely cross; None while no enemy has come over yet. (Shadowing the
+        enemy nearest our side picked their border guard and showed it to our attacker, which
+        then stood blocked: a 0-0 against baseline_team, E-019.)"""
+        if self.raider is None or not self.map.home_border:
+            return None
+        belief = self.belief.get(self.raider)
+        if not belief:
+            return None
+        return min(self.map.home_border,
+                   key=lambda b: (self.expected_dist(belief, self.map.cross[b]), self.map.d(pos, b), b))
 
     def keep_distance(self, game_state, invader, wanted=3):
         def key(item):

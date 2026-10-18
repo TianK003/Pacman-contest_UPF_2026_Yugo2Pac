@@ -8,7 +8,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 - **What gets submitted**: `my_team.py` in the repo root, plus any helper modules next to it.
 - **Where it plays**: UPF's tournament on its SNOW cluster against teams from other universities, on random maps.
 - **Dates**: test run 2026-11-23, deadline 2026-12-03 23:59, final run 2026-12-04.
-- **Current state**: `my_team.py` = `teams/greedy_v2.py` (greedy_v1 + standoff breaker + intercepting defender + return at 8), promoted on 2026-10-18 by the user's decision (`docs/experiments.md` E-011..E-013). Never edit `my_team.py` directly: build `teams/<name>_vN.py`, pass the accept rule in `docs/evaluation.md`, then copy it over.
+- **Current state**: `my_team.py` = `teams/greedy_v3.py` (greedy_v2 + a defender that waits across from the enemy raider's likely crossing, using an exact belief from its own sonar), promoted on 2026-10-18 after the release gate on the locked test seeds (`docs/experiments.md` E-019, E-021). Before that: `teams/greedy_v2.py` (greedy_v1 + standoff breaker + intercepting defender + return at 8, E-011..E-013). `docs/agents.md` lists every team and what was tested. Never edit `my_team.py` directly: build `teams/<name>_vN.py`, pass the accept rule in `docs/evaluation.md`, then copy it over.
 
 ## Knowledge base: read before working, update after
 
@@ -24,10 +24,12 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 | `docs/traps.md` | pitfalls, including ways to cheat by accident (section A) |
 | `docs/experiments.md` | log book: every run that informs a decision, with a template |
 | `docs/evaluation.md` | how agents are compared: objective (3/1/0 points), accept rule, seed and opponent splits, league, reward-hacking guards |
+| `docs/agents.md` | catalogue of every team (league entry): what it is, what was tested, result, verdict; ideas already rejected. **Check it before building an idea** so tested agents are not redone |
 
 When you finish:
 - Log every experiment in `docs/experiments.md`, including failures.
 - Update statuses in `heuristics.md` / `methods.md`, citing the experiment ID.
+- Add every new team or league entry to `docs/agents.md`, with what was tested and the verdict.
 - Add any new trap to `traps.md`.
 - Tag every claim `[verified]`, `[source]`, `[reported]` or `[untested]`. "Unknown" beats a guess.
 
@@ -95,7 +97,7 @@ venv\Scripts\python.exe eval\evaluate.py summary --run <name>
 
 - **How a run works**: `evaluate.py` plays colour-swapped game pairs on fixed `RANDOM<seed>` maps through `capture.py -q -c`. Every team is wrapped in `eval/sentinel_team.py`, which records move times and runtime rule violations (local only, never submitted). Each run writes `eval/results/<run>.jsonl` and prints a markdown summary.
 - **Seeds**: `eval/seeds/tuning.txt` is free to use; `validation.txt` is for accept/reject decisions; `test.txt` is **locked**, only for confirming a frozen release candidate, and each use is logged.
-- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v3.py`). Since 2026-10-18 new candidates play only the **reference pool** of 7 (`greedy_v2` = incumbent, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --compare <new> greedy_v2`.
+- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v4.py`). Since 2026-10-18 new candidates play only the **reference pool** of 8 (`greedy_v3` = incumbent, `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v3 --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 --compare <new> greedy_v3`.
 - **Held-out opponents**: `eval/heldout/` (`heldout_a`, `heldout_b`; `_heldout_pool` in league.json) were written blind (E-015).
   - Never read their code or replays, and never screen, tune or debug against them (T-53).
   - Use them only for the release gate and rare logged checkpoints.

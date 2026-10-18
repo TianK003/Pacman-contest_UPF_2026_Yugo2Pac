@@ -167,7 +167,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
     - "Mass ≥ 0.5 on our side" detects a hidden invader with 66% recall and 57% precision.
     - Two pitfalls hit while building it: T-54 (pruning small probabilities) and T-55 (false respawns).
     - Uses in the defender (E-019):
-      - `shadow` (H-S07) **passes the accept rule**: +0.16 [+0.04, +0.28] on validation seeds 101–180.
+      - `shadow` (H-S07) **passes the accept rule** (+0.16 [+0.04, +0.28] on validation seeds 101–180) and is **adopted** in `my_team.py` as greedy_v3 (E-021).
       - `hunt` adds nothing measurable: +0.07 [−0.02, +0.17] alone, nothing on top of `shadow`.
     - As the alarm of a raiding defender it adds nothing on top of `shadow` (E-020).
 
@@ -246,7 +246,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
     - It rarely changes a decision: greedy_v2's intercept already holds dead-end exits.
     - Not adopted alone.
   - **Belief-based shadowing (E-019, `shadow` switch in `teams/greedy_lab_v3.py`)**: with nothing to chase, the defender waits at the border entry across from where the *raider* (the enemy last evident on our side) most likely is, using the H-S01 belief.
-    - Screen +0.34 [+0.23, +0.45] and replication +0.29 [+0.19, +0.39] on tuning seeds; validation seeds 101–180 **+0.16 [+0.04, +0.28]**, head-to-head 1.65. **Passes the accept rule**; not promoted yet (user decision, release gate open).
+    - Screen +0.34 [+0.23, +0.45] and replication +0.29 [+0.19, +0.39] on tuning seeds; validation seeds 101–180 **+0.16 [+0.04, +0.28]**, head-to-head 1.65. **Passes the accept rule.** On the locked test seeds (E-021): +0.26 [+0.15, +0.36] over the pool and +0.17 [−0.00, +0.33] over the held-out teams. **Adopted in `my_team.py` as greedy_v3 (E-021).**
     - It works by deterrence, not kills: food conceded falls by 20–30%, kills fall.
     - Shadowing the enemy *nearest* our side follows their guard instead and shows it to our own attacker, which then stands blocked (T-56).
 

@@ -191,6 +191,7 @@ Section A matters most: those traps can make us **cheat by accident**.
   - Keep the per-move compute tiny, with an internal budget far below 1 s.
   - Never run heavy work in rare branches.
   - Read timing results together with how loaded the machine was. Re-run on an idle machine before concluding that the code is slow.
+  - The engine's 1 s clock covers more than `choose_action`: its own deep copy of the state and the whole `get_action` call. A warning while the sentinel's `max_s` is tiny points to the environment. Our agents are deterministic, so **replay the same game**: a cause in our code repeats, a stall does not. E-021: one warning in 180 serial WSL games; 5 replays gave 0 warnings and the same score.
 
 **T-50: Designing on validation seeds by accident** [hit E-005/E-007]
 - **What happened**: E-002 ran on validation seeds 1–20. Its tie games were then replayed to diagnose greedy (E-005) and to debug the standoff breaker (E-007), so those maps shaped the candidates.

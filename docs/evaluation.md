@@ -88,7 +88,7 @@ Here F is the unknown field of entrants.
 |---|---|---|
 | `tuning.txt` | 600 | anything: parameter search, RL training, debugging, and **screening** candidates (decision 2026-10-17, see section 7) |
 | `validation.txt` | 300 | accept/reject decisions (section 2) |
-| `test.txt` | 100 | **locked**. Only for confirming a frozen release candidate, each use logged in experiments.md, at most 3 uses before new test seeds are drawn |
+| `test.txt` | 100 | **locked**. Only for confirming a frozen release candidate, each use logged in experiments.md, at most 3 uses before new test seeds are drawn. **Used 1 of 3** (E-021, greedy_v3 vs greedy_v2) |
 
 - **Validation seeds used so far**: 1–20 (E-002), 21–60 (E-011), 61–100 (E-012), 101–180 (E-019). E-019 showed that one set of 40 maps can miss a real effect of about +0.2 (+0.05 on seeds 101–140, +0.26 on 141–180), so prefer ≥ 80 seeds per decision. 120 seeds are left.
 - If validation seeds have been used for many decisions (rule of thumb: > 10), draw a fresh validation list from a new generator seed and record it. Repeated decisions on the same seeds overfit them too [source: Cobbe et al. 2019 used separate train and test seed sets for procedurally generated levels; Zhang et al. 2018].
@@ -113,10 +113,11 @@ Here F is the unknown field of entrants.
 - **Update 2026-10-18 (user decision, E-017)**: `choke` and `exploit_v2` (E-015) joined, so the pool has **7 members**: `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`. They were the hardest opponents for greedy_v2 in the pool (1.40 and 1.42 points per game for greedy_v2). Their strength in the 7-member round robin is in E-017.
   - `choke`: greedy_v2's attacker + `ChokeDefender` (H-M03), in `teams/sparring_v2.py`.
   - `exploit_v2`: the F1 attacker + `ShadowDefender`, written against greedy_v2's E-014 weaknesses.
+- **Update 2026-10-18 (E-021)**: `greedy_v3` replaced greedy_v2 as the incumbent (= `my_team.py`). greedy_v2 stays in the pool as the previous incumbent, so the pool has **8 members**: `greedy_v3`, `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`. Trimming it (e.g. dropping greedy v1 or rusher, the weakest in E-017) is a user decision.
 
 ```powershell
-# evaluate a new candidate against the reference pool (incumbent greedy_v2 paired on the same seeds)
-venv\Scripts\python.exe eval\evaluate.py play --candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --seeds tuning --n-seeds 40 --run <name> --compare <new> greedy_v2
+# evaluate a new candidate against the reference pool (incumbent greedy_v3 paired on the same seeds)
+venv\Scripts\python.exe eval\evaluate.py play --candidate <new> greedy_v3 --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 --seeds tuning --n-seeds 40 --run <name> --compare <new> greedy_v3
 ```
 
 The full league below remains available for occasional broader checks.

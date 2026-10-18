@@ -18,11 +18,13 @@ Every team we have built or played against, what it is, what it was tested on, a
 
 ## Lineage of our submission
 
+Each version that has been in `my_team.py` has a behaviour page in [picks/](picks/README.md): its decision rules, parameters, rule profile, evidence and blind spots.
+
 | version | = | adds | accepted in | in `my_team.py` |
 |---|---|---|---|---|
-| `greedy` (`teams/greedy_v1.py`) | race-safe greedy attacker + patrol defender | — | E-002/E-003 (provisional) | 2026-10-16 → 2026-10-18 |
-| `greedy_v2` (`teams/greedy_v2.py`) | greedy + standoff breaker + intercepting defender + return at 8 | H-S12, H-S07, H-S04 | E-011, E-012 (+0.42 vs greedy) | 2026-10-18 (E-013) → 2026-10-18 (E-021) |
-| `greedy_v3` (`teams/greedy_v3.py`) | greedy_v2 + belief-based shadowing defender | H-S01, H-S07, M-04 | E-019 (+0.16 [+0.04, +0.28] vs greedy_v2 on validation seeds); E-021 test seeds +0.26 pool / +0.17 held-out | **since 2026-10-18 (E-021)** |
+| [`greedy`](picks/greedy_v1.md) (`teams/greedy_v1.py`) | race-safe greedy attacker + patrol defender | — | E-002/E-003 (provisional) | 2026-10-16 → 2026-10-18 |
+| [`greedy_v2`](picks/greedy_v2.md) (`teams/greedy_v2.py`) | greedy + standoff breaker + intercepting defender + return at 8 | H-S12, H-S07, H-S04 | E-011, E-012 (+0.42 vs greedy) | 2026-10-18 (E-013) → 2026-10-18 (E-021) |
+| [`greedy_v3`](picks/greedy_v3.md) (`teams/greedy_v3.py`) | greedy_v2 + belief-based shadowing defender | H-S01, H-S07, M-04 | E-019 (+0.16 [+0.04, +0.28] vs greedy_v2 on validation seeds); E-021 test seeds +0.26 pool / +0.17 held-out | **since 2026-10-18 (E-021)** |
 
 ## Our teams
 

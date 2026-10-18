@@ -963,3 +963,35 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Release gate status of greedy_v3**: accept rule ✓ (E-019); ≥ 200 own games ✓ (1,800 + 360 + 24); Linux timing ✓ (deviation noted); locked test seeds ✓ (use 1 of 3); held-out on test seeds ✓.
 - **Caveat**: all numbers are against our own pool and two blind-written teams. The field at the test run on 2026-11-23 is still unknown (evaluation.md section 9).
 
+
+## E-022 — Decision trace: which rule produced each move; rule profiles of the three picks (2026-10-18)
+- **Status**: done.
+- **Question** (user request): can every move of our submissions be explained rule by rule, and how much of the game does each rule take up?
+- **Tool** (local analysis only, never submitted):
+  - `eval/trace_team.py` wraps one of our team files, like the sentinel. It wraps our agents' decision methods on the instances (`follow_entry`, `break_standoff`, `retreat`, `evade`, `bfs_action`, `keep_distance`, `intercept_cell`, `shadow_post`, `next_patrol_point`). The wrappers pass calls and results through unchanged. After each move it names the rule from the calls made and from the agent's own observation (the go-home reasons are re-evaluated).
+  - `eval/trace_game.py game` prints one game move by move and saves its replay. `trace_game.py profile` counts rule shares over many games and refuses test seeds; `--check-run` compares final scores with an `evaluate.py` run of the same games.
+  - Outputs go to `eval/traces/` (gitignored).
+- **Pass-through check**: the traced games ended with exactly the scores the evaluation recorded:
+  - greedy_v3 **24/24** (vs run `identity_v3`);
+  - greedy_v2 **18/18** (`identity_labv3`);
+  - greedy **18/18** (`identity_lab`).
+- **Rule profiles**: each pick against greedy, feature, camper, rusher, choke and exploit_v2 on **tuning seeds 581–600**, both colours, 240 games each. 0 engine warnings, 0 trace errors. Files `eval/results/trace_profile_<team>.md`.
+
+  | attacker rule | greedy | greedy_v2 | greedy_v3 | | defender rule | greedy | greedy_v2 | greedy_v3 |
+  |---|---|---|---|---|---|---|---|---|
+  | eat | 44.7% | 45.5% | 41.9% | | patrol | 54.2% | 51.1% | 16.9% |
+  | no-safe-food (v1: waiting) | 33.4% | – | – | | shadow | – | – | 50.8% |
+  | entry / switch-entry | – | 24.2% / 1.8% | 25.4% / 2.4% | | chase | 24.5% | 20.3% | 14.3% |
+  | blocked | – | 4.5% | 6.5% | | cut-off | – | 5.7% | 3.5% |
+  | home | 11.8% | 11.6% | 11.0% | | last-evidence | 11.3% | 12.2% | 7.4% |
+  | evade (incl. cut off) | 10.1% | 12.3% | 12.7% | | scared | 10.0% | 10.6% | 7.2% |
+  | (points per game in these games) | 1.40 | 1.54 | 1.90 | | | | | |
+
+- **Findings**:
+  - The trace makes three behaviours visible that no earlier diagnostic separated:
+    1. **Cut off on the enemy side** (`evade` without a go-home reason): about 12% of v2/v3 attacker moves. A ghost stands between our Pacman and home, there is no safe food, and the attacker backs away, often into a corner where it stops.
+    2. **Relocating along our border**: 25% of v2/v3 attacker moves, up to 38% against exploit_v2 and 33% against camper.
+    3. **v1's waiting at the border**: 47% / 52% of its moves against camper / exploit_v2.
+  - The attacker code of v2 and v3 is identical, yet in v3 it eats slightly less (45.5% → 41.9%) and is blocked slightly more (4.5% → 6.5%). A likely cause [untested] is shared sight (T-56): the shadowing defender reveals enemy ghosts to our attacker.
+  - The behaviour pages built on this are in `docs/picks/` (one per version that has been in `my_team.py`).
+- **Follow-ups (ideas)**: a use for the "cut off" time (e.g. a capsule or a different exit, H-S06); fewer relocation walks against guards (the breaker's entry choice).

@@ -12,6 +12,7 @@ Read the relevant files before working on the agent, and update them when you fi
 | [traps.md](traps.md) | Pitfalls, including ways to break the rules by accident | you hit or discover a pitfall |
 | [evaluation.md](evaluation.md) | How agents are compared: the objective, the accept rule, statistics, seed and opponent splits, the league, reward-hacking guards, tooling | the protocol or the tooling changes |
 | [experiments.md](experiments.md) | Log book of every experiment, including failures | every run that informs a decision |
+| [picks/](picks/README.md) | One behaviour page per version that has been our submission (`my_team.py`): decision rules, parameters, rule profile, evidence, blind spots; how to trace a game move by move | a version is promoted to `my_team.py` |
 | [agents.md](agents.md) | Catalogue of every team we built or play against: what it is, what it was tested on, the result and the verdict; ideas already rejected and when they are worth retesting | a team is built, tested, adopted, rejected or added to the league |
 
 ## Conventions

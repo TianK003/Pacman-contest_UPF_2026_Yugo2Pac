@@ -24,12 +24,14 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 | `docs/traps.md` | pitfalls, including ways to cheat by accident (section A) |
 | `docs/experiments.md` | log book: every run that informs a decision, with a template |
 | `docs/evaluation.md` | how agents are compared: objective (3/1/0 points), accept rule, seed and opponent splits, league, reward-hacking guards |
+| `docs/picks/` | one behaviour page per version that has been in `my_team.py` (rules, parameters, rule profile, evidence, blind spots). **The current one explains what our agent does** |
 | `docs/agents.md` | catalogue of every team (league entry): what it is, what was tested, result, verdict; ideas already rejected. **Check it before building an idea** so tested agents are not redone |
 
 When you finish:
 - Log every experiment in `docs/experiments.md`, including failures.
 - Update statuses in `heuristics.md` / `methods.md`, citing the experiment ID.
 - Add every new team or league entry to `docs/agents.md`, with what was tested and the verdict.
+- When a version is promoted to `my_team.py`, add its page to `docs/picks/` (decision rules from the code, a `trace_game.py profile`, evidence, blind spots).
 - Add any new trap to `traps.md`.
 - Tag every claim `[verified]`, `[source]`, `[reported]` or `[untested]`. "Unknown" beats a guess.
 
@@ -101,7 +103,7 @@ venv\Scripts\python.exe eval\evaluate.py summary --run <name>
 - **Held-out opponents**: `eval/heldout/` (`heldout_a`, `heldout_b`; `_heldout_pool` in league.json) were written blind (E-015).
   - Never read their code or replays, and never screen, tune or debug against them (T-53).
   - Use them only for the release gate and rare logged checkpoints.
-- **Diagnosis**: `eval/replay_probe.py` (`classify`, `replay`) shows where an agent loses points (E-014).
+- **Diagnosis**: `eval/replay_probe.py` (`classify`, `replay`) shows where an agent loses points (E-014). `eval/trace_game.py` (`game`, `profile`) shows which rule produced every move of our agents, with a replay to watch alongside (E-022).
 - **Accepting an agent**: a new agent replaces the incumbent only under the accept rule in `docs/evaluation.md` section 2. That rule needs zero crashes, warnings and violations, a paired points-per-game gain with a CI above 0 on validation seeds, no per-opponent regression beyond 0.5, and confirmation on unused seeds for releases. Any sentinel or lint violation is an automatic reject, whatever the score.
 
 ## Testing protocol

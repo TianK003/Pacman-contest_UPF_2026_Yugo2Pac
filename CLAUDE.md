@@ -79,6 +79,8 @@ Run games from `pacman-contest/src/contest`. On Windows the default paths only r
 
 - **Speed**: add `--delay-step 0` to batch runs. Otherwise the engine sleeps 0.03 s before every move even with `-q`: ~40 s instead of ~1.3 s per game, with identical results (E-009, T-51). `eval/evaluate.py` already does this.
 - **Linux / WSL**: `source venv/bin/activate && cd pacman-contest/src/contest && python capture.py ...`, with the same flags.
+  - On this laptop, WSL Ubuntu 24.04 has a Python 3.8.20 mirror of the repo in `~/pacman_wsl`, set up with `uv` (no sudo). Re-sync it with `rsync` before use; the recipe is in `docs/framework.md`.
+  - Use it for the Linux timing check (E-016).
 - **Other tools**: there is no lint config and no unit-test suite. `runner.py` and `scripts/play.sh` are stale; use `capture.py`. All flags are in `docs/framework.md`.
 
 ## Evaluation (decisions between agents): see docs/evaluation.md
@@ -93,7 +95,11 @@ venv\Scripts\python.exe eval\evaluate.py summary --run <name>
 
 - **How a run works**: `evaluate.py` plays colour-swapped game pairs on fixed `RANDOM<seed>` maps through `capture.py -q -c`. Every team is wrapped in `eval/sentinel_team.py`, which records move times and runtime rule violations (local only, never submitted). Each run writes `eval/results/<run>.jsonl` and prints a markdown summary.
 - **Seeds**: `eval/seeds/tuning.txt` is free to use; `validation.txt` is for accept/reject decisions; `test.txt` is **locked**, only for confirming a frozen release candidate, and each use is logged.
-- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v3.py`). Since 2026-10-18 new candidates play only the **reference pool** of 5 (`greedy_v2` = incumbent, `greedy`, `feature`, `camper`, `rusher`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher --compare <new> greedy_v2`.
+- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v3.py`). Since 2026-10-18 new candidates play only the **reference pool** of 7 (`greedy_v2` = incumbent, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --compare <new> greedy_v2`.
+- **Held-out opponents**: `eval/heldout/` (`heldout_a`, `heldout_b`; `_heldout_pool` in league.json) were written blind (E-015).
+  - Never read their code or replays, and never screen, tune or debug against them (T-53).
+  - Use them only for the release gate and rare logged checkpoints.
+- **Diagnosis**: `eval/replay_probe.py` (`classify`, `replay`) shows where an agent loses points (E-014).
 - **Accepting an agent**: a new agent replaces the incumbent only under the accept rule in `docs/evaluation.md` section 2. That rule needs zero crashes, warnings and violations, a paired points-per-game gain with a CI above 0 on validation seeds, no per-opponent regression beyond 0.5, and confirmation on unused seeds for releases. Any sentinel or lint violation is an automatic reject, whatever the score.
 
 ## Testing protocol

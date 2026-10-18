@@ -82,15 +82,27 @@ The principle: **the agent may only use what an honest player watching its own o
 
 | # | Question | Why it matters | Status |
 |---|---|---|---|
-| Q1 | What is the policy on AI/LLM tools? No source mentions it (PDF, UPF, EUTOPIA, RMIT, UoM, Berkeley). | academic integrity | not asked |
-| Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | not asked |
-| Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | grey zone above | not asked |
-| Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | not asked |
+| Q1 | What is the policy on AI/LLM tools? No source mentions it (PDF, UPF, EUTOPIA, RMIT, UoM, Berkeley). | academic integrity | being sent (2026-10-18, see below) |
+| Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | being sent (2026-10-18, see below) |
+| Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | grey zone above | being sent (2026-10-18, see below) |
+| Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | being sent (2026-10-18, see below) |
 | Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | not asked |
-| Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | not asked |
+| Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | being sent (2026-10-18, see below) |
 | Q7 | Grading: how much is tournament placement vs other deliverables (report? TEAM.md?)? The PDF says nothing. | priorities | not asked |
 | Q8 | May we use public code from other teams as **local sparring opponents only** (never submitted)? | testing | not asked |
 | Q9 | Is a `try/except` safety net in `choose_action` acceptable if it re-raises the framework's timeout exception? | crash safety vs R5 | not asked |
 | Q10 | Are fixed layouts also used this year, or only `RANDOM<seed>`? | tuning targets | not asked |
 
 When a question is answered, write the answer, the date and who answered, and update the affected rules and traps.
+
+### Questions sent to the instructors (2026-10-18)
+
+The user sends these five questions, worded as below, on 2026-10-18. Fill in each answer here when it arrives, then update the table above and the affected rules, traps and switches.
+
+| # (table above) | Question as sent | Answer | Answered by, date | What it unblocks |
+|---|---|---|---|---|
+| Q1 | What is the course policy on using AI/LLM coding tools for the project? | *pending* | | how we may keep working; what must be disclosed |
+| Q2 | Which Python libraries are installed on the tournament machines (numpy, scipy, torch)? | *pending* | | learned models, vectorised code (methods.md M-07, M-08, M-13) |
+| Q3 | May agents read `is_pacman`, `num_carrying` and `scared_timer` of opponents that are out of sight, through `get_agent_state`? | *pending* | | the grey-zone switch (default off) |
+| Q4 | Is shared memory between our own two agents (one shared Python object) allowed? | *pending* | | shared beliefs and plans between our agents (H-S01, H-S09); the raiding defender (E-018) works without it |
+| Q6 | May we ship a data file next to `my_team.py`, for example tuned weights, and load it at startup? | *pending* | | tuned parameters in a separate file (constants inside `my_team.py` work either way) |

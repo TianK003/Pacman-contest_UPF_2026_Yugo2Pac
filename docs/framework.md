@@ -131,7 +131,11 @@ On Linux / WSL: `source venv/bin/activate && cd pacman-contest/src/contest && py
 - **Speed**: ~40 s per quiet game with the default `--delay-step 0.03`, almost all of it sleep: `game.py` sleeps `delay_step` before every move even with `-q`, i.e. 36 s per game. With `--delay-step 0` a game of our current agents takes ~1.3 s [verified E-009]. The sleep is outside the agents' timed moves, so results are identical (12/12 games checked).
 - **Timing realism**:
   - Windows has no `SIGALRM`, so moves over 3 s are flagged only after they return; they are never killed.
-  - WSL `Ubuntu-24.04` is installed on this machine [verified]. Its default Python is 3.12 [not checked here], so Python 3.8 must be installed there separately.
+  - WSL `Ubuntu-24.04` is installed on this machine [verified]: 12 logical CPUs, 7.4 GB RAM, system Python 3.12.3, no passwordless sudo.
+  - Python 3.8 is installed without sudo through `uv` [verified 2026-10-18, E-016]: `uv python install 3.8.20`.
+  - The repo is mirrored to `~/pacman_wsl` (Linux filesystem; faster than `/mnt/c` and leaves the Windows checkout untouched), with `rsync -a --exclude venv/ --exclude __pycache__/ --exclude pacman-contest/src/contest/www/ --exclude eval/results/ --exclude .git/ /mnt/c/Users/Tian/Desktop/Pacman-contest_UPF_2026/ ~/pacman_wsl/`.
+  - Then: `uv venv --python 3.8.20 ~/pacman_wsl/venv`, and from `~/pacman_wsl/pacman-contest`: `VIRTUAL_ENV=~/pacman_wsl/venv uv pip install -r requirements.txt` and `... uv pip install -e .`.
+  - `eval/evaluate.py` runs there unchanged. The same seed gives the same result as on Windows (RANDOM7, greedy_v2 vs baseline: +24 on both).
 - **Other tools**:
   - `profiler.py` (in `pacman-contest/`): engine profiling, e.g. `python profiler.py -r my_team -b baseline_team -n 5` [reported, untested by us].
   - Full local tournaments: `aig-upf/pacman-eutopia` `contest_manager.py` [reported, untested].

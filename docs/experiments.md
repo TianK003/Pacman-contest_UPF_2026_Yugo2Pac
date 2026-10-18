@@ -40,7 +40,10 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 | P-15 | Promote `greedy_v2` to `my_team.py` | user decision; then the release gate: Linux / Python 3.8 timing, ≥ 200 own games, one locked test-seed run | — | **promoted 2026-10-18 (E-013)**; release gate open |
 | P-16 | Offline weight tuning of F1 (`feature`) | random search / CMA-ES on tuning seeds, now cheap (E-009); can a tuned F1 beat greedy_v2? | M-02 | planned |
 | P-17 | Split `roles` into its three parts | call back on 2 invaders / defender attacks when unopposed / endgame, each screened on top of greedy_v2 | H-S08, H-S05 | planned |
-| P-18 | New league members from greedy_v2's weaknesses | an exploiter written against greedy_v2 (evaluation.md section 5); a held-out opponent written by a teammate | — | planned |
+| P-18 | New league members from greedy_v2's weaknesses | an exploiter written against greedy_v2 (evaluation.md section 5); a held-out opponent written by a teammate | — | **built (E-015)**: `choke`, `exploit_v2` (teams/sparring_v2.py); held-out `heldout_a`, `heldout_b` (eval/heldout/, written blind by a separate agent). A teammate-written held-out team is still open |
+| P-19 | C1: exit-race check for greedy_v2's attacker | E-014: most deaths are dead-end traps the killer could close; does refusing such food help? | H-M02, H-S03 | **tested (E-018)**: halves deaths but +0.02 [−0.06, +0.10]; not adopted |
+| P-20 | Defender that closes in on trapped invaders (cut cells, H-M03 squeeze) | E-014: defence = 29% of lost points; the defender holds but never closes in | H-S07, H-M03 | **tested (E-018)**: +0.02 [−0.01, +0.06], rarely changes a decision; not adopted |
+| P-21 | C3: two-entry attack when a standoff persists | E-014: 0–0 standoffs still cost 18% | H-S12, H-S09 | **tested (E-018)** as a raiding defender without shared memory: −0.07 [−0.14, +0.01]; not adopted |
 
 ---
 
@@ -510,3 +513,258 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
     - baseline (saturated; smoke tests only).
   - The member list is in `eval/league.json` (`_reference_pool`). The command is in evaluation.md section 5.
 - **Not done**: no new experiments, per the user ("continue in the morning").
+
+## E-014 — Where greedy_v2 loses points (2026-10-18)
+- **Status**: done
+- **Question**: against which opponents, and in which kinds of games, does greedy_v2 (= `my_team.py`) lose points? What should the next candidates fix?
+- **Variants**: `greedy_v2` (`teams/greedy_v2.py`, body identical to `my_team.py`), repo `f026d02`.
+- **Setup**:
+  - greedy_v2 against greedy, feature, camper, rusher, camper2, double_attack, turtle, baseline_plus and field on **tuning seeds 51–150** (`--seed-offset 50 --n-seeds 100`; never used before), both colours: 1,800 games.
+  - 6 workers, `--delay-step 0`, ~17 minutes. Windows 11, Python 3.8.10, framework `54cd83c`. Run `diag_v2`; summary in `eval/results/diag_v2_summary.md`.
+  - New tool `eval/replay_probe.py` (local analysis only, never submitted):
+    - `classify` sorts every non-win by the sentinel diagnostics.
+    - `replay` re-plays chosen games with `--record` (deterministic: every replayed score matched the recorded one), then re-simulates the replay and measures what happened from the **true** state (offline, after the game).
+    - Measured: deaths (in a dead end or not; whether the killer was in sight when our agent went into the dead end; whether it could reach the exit first), food returned, invasions, defender distance, standoffs, capsules.
+  - Replay samples: 40 random non-wins per opponent (23 against turtle, all it had), and 60 random wins.
+- **Results**:
+  - **Gates**: 0 crashes, 0 time warnings, 0 violations; max move 0.132 s.
+  - **Overall**: 1185-256-359, **2.12 points per game [2.03, 2.20]**.
+
+  | opponent | PPG | wins / 200 | points lost |
+  |---|---|---|---|
+  | camper | **1.51** | 89 | 297 |
+  | greedy (v1) | 1.73 | 102 | 255 |
+  | feature | 1.76 | 112 | 247 |
+  | rusher | 1.81 | 110 | 237 |
+  | double_attack | 2.02 | 126 | 197 |
+  | field | 2.09 | 133 | 182 |
+  | camper2 | 2.50 | 150 | 100 |
+  | turtle | 2.77 | 177 | 46 |
+  | baseline_plus | 2.86 | 186 | 28 |
+
+  **Points lost by kind of game** (`replay_probe.py classify`; a tie costs 2, a loss 3; 1,589 points lost in total):
+
+  | kind | points lost | share | mostly against |
+  |---|---|---|---|
+  | loss: the opponent returned more (our defence) | 465 | 29% | feature 35, camper 29, double_attack 26, greedy 25, field 23 games |
+  | loss: our deaths (≥ 3 deaths or ≥ 6 food lost) | 420 | 26% | rusher 38, greedy 27, feature 26, camper 24, field 24 games |
+  | tie 0–0, we barely attacked (< 60 Pacman moves) | 292 | 18% | camper2 49, greedy 23, camper 20, rusher 20, turtle 16 games |
+  | loss: we returned ≤ 3 | 135 | 8% | camper 22 games |
+  | tie with equal scoring | 134 | 8% | |
+  | tie 0–0 after attacking | 86 | 5% | |
+  | loss: out-raced to 28 | 57 | 4% | double_attack 17 games |
+
+  **Replay probe** (true state; non-wins unless marked):
+
+  | opponent | deaths / game | deaths in a dead end | of those: killer in sight when we went in | of those: killer could reach the exit first | their food returned / game | kills / game | mean defender–invader distance | standoff plies / game | our Pacman plies / game |
+  |---|---|---|---|---|---|---|---|---|---|
+  | camper | 1.07 | 88% | 84% | 82% | 9.8 | 1.18 | 4.9 | 226 | 56 |
+  | camper2 | 0.60 | 38% | 89% | 78% | 0.0 | 0.00 | – | 445 | 11 |
+  | double_attack | 0.33 | 46% | 100% | 100% | 15.9 | 0.72 | 7.8 | 84 | 187 |
+  | feature | 1.35 | 78% | 88% | 83% | 14.6 | 0.40 | 5.7 | 130 | 106 |
+  | field | 1.65 | 82% | 91% | 76% | 12.9 | 0.97 | 6.7 | 139 | 105 |
+  | greedy | 1.68 | 94% | 79% | 86% | 9.1 | 1.20 | 5.9 | 167 | 87 |
+  | rusher | 2.02 | 90% | 92% | 92% | 11.1 | 0.80 | 8.1 | 155 | 92 |
+  | turtle (23 games) | 1.22 | 89% | 88% | 60% | 0.0 | 0.00 | – | 186 | 52 |
+  | *wins, all opponents (60)* | 0.90 | 85% | 78% | 76% | 4.3 | 1.22 | 4.9 | 122 | 141 |
+
+  - Only double_attack ever had two invaders on our side at once (52% of its invaded plies).
+  - **Mutual-trap freeze** (traced: camper, seed 78390034, a 0–0 tie). From ply ~120 to 1200 all four agents stood still or oscillated in place. Our attacker carried 2 in a corner, held by camper's ghost. Camper's attacker carried 2 on our side, held by our defender on the cell its way home passes through. Our defender never closes in, because the intercept rule only attacks an invader within distance 2. How often this happens was not measured.
+  - An earlier version of the probe reported "killer out of sight 1 ply before death" as 0%. That metric is vacuous (a ghost that eats us is always in sight one ply earlier) and was replaced by the entry-time measure above (T-52).
+- **Conclusions** (tuning seeds; our classification thresholds; replay samples of 40 per opponent):
+  1. **Dead-end deaths are greedy_v2's most frequent avoidable loss.** In non-wins against 6 of 8 opponents, 78–94% of our deaths happen inside a dead end. In 76–92% of those, the killing ghost could reach the dead end's exit before we got back out. In 79–92% it was already in sight when we went in. The same holds in wins (85%).
+     - The cause is in the code: the attacker's race-safe BFS checks only the way *to* the food (`food_is_safe`), not the way back out.
+     - The exit-race check exists (`DeadEndAttacker`, H-M02 + H-S03; F1's `trapped` feature) but was only tested in E-002, against a pool without real defenders. → candidate C1.
+  2. **Defence is the biggest single source of lost points (29%).**
+     - In non-wins our defender is on average 5–8 cells from the invader.
+     - It kills the feature attacker only 0.40 times per game while conceding 14.6 food.
+     - Two invaders at once happen only against double_attack.
+     - → candidates: defender improvements (closing in on trapped invaders, H-M03 cut cells), C2 parts.
+  3. **Standoffs still cost 18%** (0–0 ties with almost no attacking), mostly against two guards (camper2) and against greedy/camper/rusher. The breaker walks to another entry, and a guard that follows meets it there. → C3 (two-entry attack).
+  4. **A mutual-trap freeze exists** (one traced game; frequency unknown).
+- **Follow-ups**: E-015 (new league opponents built from these findings); candidates C1–C3 on top of greedy_v2 (user decision pending).
+
+## E-015 — New league opponents: chokepoint defender, an exploiter of greedy_v2, two held-out teams (2026-10-18)
+- **Status**: done
+- **Question**: do opponents built outside our current pool's styles (a chokepoint defender, an exploiter written against greedy_v2's E-014 weaknesses, blind-written held-out teams) stress greedy_v2 more than the current pool does?
+- **Variants**:
+  - New file `teams/sparring_v2.py`: a verbatim copy of greedy_v2 plus three classes.
+    - `ChokeDefender` (H-M03).
+      - At startup, for every home cell g, it computes the home cells reachable from the border only through g (one BFS per cell, 0.03–0.05 s per map).
+      - Idle, it stands on the cell that seals off the most of its remaining food, if that is at least 3.
+      - It traps a visible invader behind the tightest cut cell it reaches no later than the invader, steps only to neighbours that still seal it off, and eats it when adjacent.
+      - Food vanishing sends it to the cut behind that food. Invaders in the open are handled by greedy_v2's intercept.
+    - `ShadowDefender`: ChokeDefender's trapping; idle, it stands on the border cell across from the enemy "raider" (the enemy last seen on its side), using the raider's position seen now or within 40 plies.
+    - `FeatureAttacker`: a copy of F1 (E-008).
+  - League entries:
+    - `choke` = greedy_v2's attacker + ChokeDefender, so `choke` vs `greedy_v2` differs only in the defender.
+    - `exploit_v2` = FeatureAttacker + ShadowDefender.
+  - Held-out `heldout_a` and `heldout_b` (`eval/heldout/`):
+    - Written by a separate agent that was told not to read our code, our docs (except framework.md and rules.md) or our results, and to test only against `baseline_team` and each other (seeds RANDOM1–300).
+    - We did not read their code (T-53). Their style labels are in league.json.
+    - Its report: both 20-0-0 vs the baseline; A vs B 11-0-9; max move 0.045 s (A) and 0.103 s (B, 0.12 s search cap); startup ≤ 1.98 s.
+    - Our check: `check_rules.py` OK for both.
+- **Setup**:
+  - Smoke tests: 4 games each against baseline_team and greedy_v2 (RANDOM7, RANDOM13), plus a quick 80-game check (`quick_new`, tuning seeds 51–70; a subset of `spar2`, identical games). exploit_v2 lost both smoke games to greedy_v2 (−20, −21) but was about even over the 40 quick-check games, which is why the full run went ahead.
+  - `choke` and `exploit_v2` against the reference pool (greedy_v2, greedy, feature, camper, rusher) on tuning seeds 51–150, both colours: 2,000 games, run `spar2`.
+  - greedy_v2 and greedy against heldout_a and heldout_b on the same seeds: 800 games, run `heldout1`. It was first stopped and restarted with 50 seeds on a wrong runtime estimate, then extended to 100 with `--resume`; deterministic games, so nothing changes.
+  - 4–6 workers, `--delay-step 0`, Windows 11, Python 3.8.10, framework `54cd83c`.
+- **Results**:
+  - **Gates**: 0 crashes, 0 time warnings, 0 violations in all games. Max move 0.141 s (choke), 0.098 s (exploit_v2).
+  - **Strength in the pool** (row vs column, points per game, 200 games per pair):
+
+    | | vs greedy_v2 | vs greedy | vs feature | vs camper | vs rusher | mean |
+    |---|---|---|---|---|---|---|
+    | choke | 1.43 | 1.80 | 1.64 | 1.52 | 1.64 | 1.61 |
+    | exploit_v2 | 1.49 | 1.72 | 1.79 | 1.76 | 1.52 | 1.66 |
+
+  - **greedy_v2's points per game against each opponent** (tuning seeds 51–150; E-014 for the old ones):
+    - choke **1.40**
+    - exploit_v2 **1.42**
+    - camper 1.51 (the toughest before)
+    - greedy 1.73
+    - feature 1.76
+    - rusher 1.81
+  - **Did the exploiter hit its targets?** greedy_v2's diagnostics against exploit_v2:
+    - It kills the F1 attacker only 0.33 times per game (0.12 in its non-wins), against 1.0–1.4 against most opponents.
+    - 232 standoff moves per game (camper 265, choke 162).
+    - In its non-wins, 71% of its deaths are in dead ends, all of them with the killer able to reach the exit first.
+  - **ChokeDefender as a defender**:
+    - Against the same opponents it concedes slightly more and kills slightly less than greedy_v2's PatrolDefender (e.g. against camper it concedes 9.2 and kills 1.21; greedy_v2 concedes 8.5 and kills 1.37).
+    - In a traced game its idle post was deep in its half (x = 5, border at x = 16), and the invader ate elsewhere.
+    - The same trace showed the E-014 mutual-trap freeze again, with greedy_v2's defender holding choke's attacker (= greedy_v2's attacker) in a corner from ply ~100 on. The freeze is a greedy_v2-defender pattern, not specific to camper.
+  - **Held-out** (run `heldout1`, 800 games; totals only, T-53):
+
+    | agent | vs heldout_a | vs heldout_b | overall [95% CI] |
+    |---|---|---|---|
+    | greedy_v2 | 1.43 | **0.89** | 1.16 [1.01, 1.30] |
+    | greedy (v1) | 1.25 | 0.60 | 0.92 [0.79, 1.06] |
+
+    - Paired greedy_v2 − greedy over the held-out games: **+0.23 [+0.10, +0.39]** (heldout_a +0.18 [−0.03, +0.41], heldout_b +0.29 [+0.07, +0.52]).
+    - **Generalisation gap** (evaluation.md section 4). greedy_v2 averages 1.70 points per game against the four non-mirror reference-pool members on the same seeds (E-014: greedy 1.73, feature 1.76, camper 1.51, rusher 1.81) and 1.16 against the held-out teams: R = (1.70 − 1.16) / 1.70 ≈ **32%**.
+    - heldout_b (style label: defence first, a permanent guard plus a cautious raider, turtling when ahead late) beats greedy_v2 clearly (0.89 points per game for greedy_v2). It is the strongest opponent we have.
+- **Conclusions**:
+  - Both new sparring teams are now the hardest opponents greedy_v2 has *in the pool* (1.40–1.42 points per game) and the two strongest non-mirror agents in it.
+  - The exploiter reaches greedy_v2's known weak spots (no kills against an evasive attacker, standoffs, dead-end traps), but it is not a decisive exploit: it is about even with greedy_v2 (1.49 vs 1.42).
+  - **External validity is a real problem, now measured.** Against two blind-written teams greedy_v2 drops by about a third, and one of them beats it. Our pool overstates greedy_v2's strength. The accepted v1 → v2 gain does carry over (+0.23, CI above 0), at about half its size in the pool (+0.42).
+  - Adding choke / exploit_v2 to the reference pool, and how often to check the held-out pool, are user decisions.
+
+## E-016 — Linux / Python 3.8 timing of my_team.py; Windows–Linux identity (2026-10-18)
+- **Status**: done
+- **Question**: does `my_team.py` (= greedy_v2) stay far below the 1 s move limit on Linux with Python 3.8 and the engine's real `SIGALRM` time limits, also under full CPU load? Do Linux and Windows play the same games?
+- **Setup**:
+  - WSL Ubuntu 24.04 on this laptop (12 logical CPUs, 7.4 GB RAM).
+  - CPython 3.8.20 installed with `uv` (no sudo), frozendict 2.3.4, framework `54cd83c`, in a mirror of the repo at `~/pacman_wsl` on the Linux filesystem (recipe in framework.md).
+  - The `submission` league entry (`my_team.py`) against greedy, feature, camper, rusher, choke and exploit_v2, both colours, `-q -c`, `--delay-step 0`, sentinel timing. The Windows side was idle during both passes.
+    - **Serial**: tuning seeds 251–265, `--jobs 1`, 180 games, run `wsl_serial`.
+    - **Loaded**: tuning seeds 266–280, `--jobs 12` (all logical CPUs busy; load average ≈ 6), 180 games, run `wsl_loaded`.
+  - **Identity**: the serial pass's 180 games replayed on Windows (run `win_vs_wsl`).
+- **Results**:
+
+  | pass | games | max move | 99th percentile of per-game max | max p95 | max startup | moves > 0.5 s | engine warnings / timeouts / crashes |
+  |---|---|---|---|---|---|---|---|
+  | serial | 180 | 0.064 s | 0.031 s | 0.0010 s | 0.59 s | 0 | 0 |
+  | loaded (12 jobs) | 180 | 0.087 s | 0.069 s | 0.0039 s | 1.42 s | 0 | 0 |
+
+  - **Identity**: **180/180 games had identical scores** on Linux and Windows.
+  - The points per game in these runs (1.39 serial, 1.88 loaded; 30 games per opponent) are noise-level samples on different seeds, not a strength measurement.
+- **Conclusions**:
+  - On Linux / Python 3.8, greedy_v2 uses < 9% of the 1 s move limit even with every CPU busy, and < 10% of the 15 s startup limit. The release gate's timing item is met for this machine. The cluster's speed is still unknown (T-41), but the margin is about 11×.
+  - Windows results transfer to Linux unchanged for this agent, so our Windows evaluations measure the same games the cluster would play.
+  - **Release gate status for greedy_v2**:
+    - accept rule ✓ (E-011/E-012)
+    - ≥ 200 own games with 0 crashes / violations ✓ (E-014: 1,800; E-015: 1,200; E-016: 360)
+    - Linux timing ✓ (E-016)
+    - locked test seeds: not done
+    - held-out pool: measured on tuning seeds (E-015), not yet on test seeds
+
+## E-017 — Reference pool of 7: choke and exploit_v2 join; round robin (2026-10-18)
+- **Status**: done
+- **Change** (user decision): `choke` and `exploit_v2` (E-015) were added to `_reference_pool` in `eval/league.json`, so the pool now has 7 members: greedy_v2, greedy, feature, camper, rusher, choke, exploit_v2.
+- **Question**: does their strength from E-015 hold on fresh seeds in a full round robin of the new pool?
+- **Setup**:
+  - All 7 members, every pair, on **tuning seeds 281–330** (never used before), both colours: 2,100 games, run `pool7`.
+  - 6 workers, `--delay-step 0`, Windows 11, Python 3.8.10, framework `54cd83c`.
+  - For part of the run a second evaluation (E-018 `scr3`, 5 workers) shared the CPU.
+- **Results**: 0 crashes, 0 time warnings, 0 violations.
+
+  | agent | W-T-L | PPG [95% CI] | Nash-averaged payoff |
+  |---|---|---|---|
+  | exploit_v2 | 311-70-219 | **1.67** [1.44, 1.89] | −0.27 |
+  | greedy_v2 | 302-68-230 | 1.62 [1.47, 1.79] | **+0.00 (weight 0.99)** |
+  | choke | 285-64-251 | 1.53 [1.37, 1.70] | −0.18 |
+  | feature | 271-65-264 | 1.46 [1.26, 1.66] | −0.45 |
+  | camper | 240-111-249 | 1.39 [1.24, 1.54] | −0.33 |
+  | greedy | 207-102-291 | 1.21 [1.06, 1.35] | −0.42 |
+  | rusher | 191-106-303 | 1.13 [0.97, 1.30] | −0.51 |
+
+  **Head-to-head** (row vs column, points per game, 100 games per pair):
+
+  | | camper | choke | exploit_v2 | feature | greedy | greedy_v2 | rusher |
+  |---|---|---|---|---|---|---|---|
+  | camper | – | 1.50 | 1.01 | 1.27 | 1.56 | 1.28 | 1.69 |
+  | choke | 1.41 | – | 1.45 | 1.45 | 1.71 | 1.32 | 1.85 |
+  | exploit_v2 | 1.88 | 1.45 | – | 1.76 | 1.84 | 1.31 | 1.79 |
+  | feature | 1.57 | 1.48 | 1.13 | – | 1.70 | 1.24 | 1.66 |
+  | greedy | 1.11 | 1.20 | 1.03 | 1.19 | – | 1.24 | 1.46 |
+  | greedy_v2 | 1.61 | 1.50 | 1.58 | 1.69 | 1.66 | – | 1.70 |
+  | rusher | 1.00 | 1.04 | 1.07 | 1.21 | 1.28 | 1.19 | – |
+
+  - **Move times**: max move 0.158 s for greedy_v2. Spikes of 0.48 s (camper) and 0.43 s (exploit_v2) appeared while 11 games ran at once (T-49). camper's code is trivial, so the spikes are load, not agents.
+- **Conclusions**:
+  - **The two new members hold up**: exploit_v2 has the highest mean in the pool (1.67) and choke is third (1.53).
+  - Against greedy_v2 they are roughly even, depending on the seeds: greedy_v2 scores 1.58 / 1.50 against them here, against 1.42 / 1.40 on seeds 51–150 (E-015).
+  - greedy_v2 is still the only member that beats every other member head-to-head (all ≥ 1.50), so the Nash mixture puts all its weight on greedy_v2.
+
+## E-018 — Three candidates from E-014 on top of greedy_v2: exit race, squeeze, raid (2026-10-18)
+- **Status**: done (screen). No candidate went to validation (see conclusions).
+- **Question**: do the fixes suggested by E-014 raise greedy_v2's points per game against the 7-member reference pool?
+- **Variants**: new file `teams/greedy_lab_v2.py`, a copy of greedy_v2 plus three switches that are all off by default (league entries `lab2_*`).
+  - `exit_race` (P-19, H-M02 + H-S03): the attacker targets a food only if, for every enemy-side cell that cuts the food off from our side, it gets back past that cell (one step of margin) before any visible ghost can reach it.
+    - This generalises `DeadEndAttacker` from dead-end trees to any single-cell cut, so pockets with loops count too.
+    - The cut table is one BFS per enemy cell at startup.
+  - `squeeze` (P-20, H-M03 + H-S07): `ChokeDefender`'s trap in greedy_v2's defender.
+    - It goes to the tightest cut cell it reaches no later than the invader, and closes in only through cells that keep the invader sealed off.
+    - If the intercept stalls (8 own moves on ≤ 2 cells with an invader in sight; the E-014 freeze), it chases directly for 10 own moves.
+  - `raid` (P-21, H-S12 + H-S09): a `RaidDefender`. If the teammate stood on our side within 2 of the border with a dangerous enemy ghost within Manhattan 6 in 6 of the last 12 own moves, and there was no invader evidence for 10 own moves, it walks to the entry farthest from the teammate and attacks for 40 own moves.
+    - It returns on the first invader evidence. It uses only its own observation (no shared memory, Q4).
+- **Checks**:
+  - Lint OK.
+  - **Identity**: `lab2_off` (all new switches off) vs greedy_v2 against baseline, camper and exploit_v2 on tuning seeds 1–3, both colours: **18/18 games identical** (score and every diagnostic counter). Run `identity_labv2`; the name `identity_lab2` was already taken by E-007, and the harness refused to overwrite it.
+  - **Smoke** (`smoke_labv2`, 32 games against baseline and camper): 0 crashes / warnings, max move 0.064 s, startup ≤ 1.57 s.
+    - `exit_race` changed 1/8 games, `raid` 5/8, `squeeze` **0/8**.
+    - A scratch probe (not in the repo) showed the squeeze does act (in one game it chose the move 5 times, 4 of them while sealing an invader off), but those moves equal greedy_v2's intercept, which already handles dead-end trees. The squeeze differs only in pockets with loops and after stalls.
+- **Setup of the screen**:
+  - Each candidate and greedy_v2 against the 7-member pool on **tuning seeds 151–250**, both colours.
+  - Singles: run `scr3`, 5,400 games, 5 workers, 69 minutes. Combinations: run `scr3b`, 5,600 games, 4 workers. Each candidate is paired with greedy_v2 over 1,200 games (6 opponents × 100 seeds × 2).
+  - Windows 11, Python 3.8.10, framework `54cd83c`. Part of `scr3` shared the CPU with E-017.
+- **Results**: 0 crashes, 0 time warnings, 0 violations in all games.
+
+  | candidate | paired Δ vs greedy_v2 [95% CI] | worst opponent Δ [CI] | best opponent Δ [CI] | head-to-head vs greedy_v2 |
+  |---|---|---|---|---|
+  | `lab2_exit` (P-19) | +0.02 [−0.06, +0.10] | greedy −0.03, rusher −0.03 | exploit_v2 +0.10 [−0.06, +0.27] | 1.52 |
+  | `lab2_squeeze` (P-20) | +0.02 [−0.01, +0.06] | rusher −0.02 [−0.06, +0.00] | camper +0.07 [+0.01, +0.13] | 1.43 |
+  | `lab2_raid` (P-21) | **−0.07** [−0.14, +0.01] | greedy −0.20 [−0.35, −0.05] | camper +0.04 | – |
+  | `lab2_exit_squeeze` | +0.05 [−0.04, +0.12] | rusher −0.03 | exploit_v2 +0.10, feature +0.10 | – |
+  | `lab2_exit_raid` | −0.01 [−0.11, +0.09] | feature −0.17 [−0.39, +0.01] | choke +0.21 [+0.01, +0.41] | – |
+  | `lab2_squeeze_raid` (incomplete: 1,365/1,400 games) | −0.02 [−0.10, +0.07] | greedy −0.19 [−0.34, −0.04] | exploit_v2 +0.24 [+0.04, +0.46] | – |
+  | `lab2_all` | not played | | | |
+
+  - `scr3b` was **stopped by the user's time limit** at 4,165 of 5,600 games. To finish it (deterministic, so only the missing games are played): `evaluate.py play --candidate lab2_exit_squeeze lab2_exit_raid lab2_squeeze_raid lab2_all --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --seeds tuning --seed-offset 150 --n-seeds 100 --run scr3b --resume --jobs 6`, then `summary --run scr3 scr3b --compare <candidate> greedy_v2`.
+
+  **Did the switches change what they targeted?** (diagnostics, team totals per game, vs greedy_v2 on the same games):
+  - **exit_race**:
+    - Deaths fall by about half against every opponent (camper 1.07 → 0.57, greedy 1.03 → 0.53, choke 1.00 → 0.58, feature 1.13 → 0.64, rusher 1.57 → 1.09), and food lost falls by about half (≈ 2.7 → 1.5).
+    - But **food returned barely changes** (camper 10.7 → 11.0, greedy 12.4 → 12.4, feature 12.5 → 13.2), and standoff moves rise (camper 236 → 258, greedy 195 → 213).
+  - **raid**: returns more (camper 10.7 → 12.1, greedy 12.4 → 13.1) but concedes more (greedy 9.4 → 10.9, rusher 8.5 → 10.3, feature 10.3 → 12.0).
+  - **squeeze**: every counter within ±0.1 of greedy_v2's.
+- **Conclusions** (tuning seeds 151–250; each Δ over 1,200 paired games resolves about ±0.08):
+  - **No candidate shows a gain we can resolve**; none has a CI lower bound above 0. The best is `exit_squeeze` at +0.05 [−0.04, +0.12].
+  - **No validation run was started**, deliberately. A real effect of +0.05 would need several hundred validation seeds to pass accept rule 2, and every validation decision spends seeds (evaluation.md section 4).
+  - **E-014's diagnosis was right about the mechanism but not about the payoff.** The exit check removes about half of our deaths, yet the points stay flat: the food those deaths cost is not recovered, because the attacker waits instead. Losses "with our deaths" (E-014) are partly a symptom of games that were hard anyway.
+  - **Raiding without shared plans leaves the door open**: points rise against pure guards (camper, choke, exploit_v2) and fall against attacking teams (greedy, feature, rusher).
+  - **greedy_v2 stays the incumbent.**
+- **Follow-ups (ideas, not started)**:
+  - Give the moves the exit check saves a productive use (switch targets or entries instead of waiting).
+  - A raid that is called off by the sonar as well as by food evidence.
+  - Finish `scr3b` (command above).

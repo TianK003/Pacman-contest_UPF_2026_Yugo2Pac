@@ -173,6 +173,7 @@ Section A matters most: those traps can make us **cheat by accident**.
 
 **T-41: Local timing ≠ cluster timing**
 - **Prevention**: record timing margins (max move time), not just pass/fail.
+- **Measured (E-016)**: greedy_v2 on WSL Linux / Python 3.8.20 with real `SIGALRM` limits: max move 0.064 s serial, 0.087 s with all 12 CPUs busy; startup ≤ 1.42 s. Re-measure whenever an agent adds search.
 
 **T-46: `-Q` hides the engine's time warnings and crash messages** [verified in `game.py`]
 - **Why**: with `-Q` (mute agents), `stdout` / `stderr` are redirected into a per-agent buffer while that agent's turn is processed. The engine prints "took too long", "timed out" and "Red agent crashed" during that window, so they vanish.
@@ -203,6 +204,18 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: `capture.py --delay-step` defaults to 0.03 s, and `game.py` sleeps that long before every move whatever the display. That is 36 s of every ~40 s game.
 - **Consequence**: batch runs are ~35× slower than necessary and look CPU-light (10–13% CPU), which can lead to wrong conclusions about hardware or agent speed.
 - **Prevention**: pass `--delay-step 0` for every batch run (`eval/evaluate.py` does). It does not change results: the sleep is outside the agents' timed moves (12/12 identical games, E-009).
+
+**T-52: A death metric that is always true** [hit E-014]
+- **What happened**: the first replay probe asked "was the killer in sight one ply before the death?" and reported 0% unseen against every opponent. A ghost that eats us stands next to us one ply earlier, so it is always in sight. The metric said nothing.
+- **Prevention**:
+  - Measure at the moment of decision, not at the outcome: e.g. "was the killer in sight when we went into the dead end?" (E-014).
+  - Sanity-check any 0% or 100% diagnostic before believing it.
+
+**T-53: Leaking the held-out opponents into design** [E-015]
+- **Why**: a held-out opponent is useful only while nobody tunes against it. Reading its code, watching its replays or screening candidates against it makes it part of the tuning pool, and the generalisation gap it measures shrinks to nothing.
+- **Prevention**:
+  - `eval/heldout/` is for the release gate and rare logged checkpoints only, and only totals are reported.
+  - Its style labels in league.json are all a designer should know.
 
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.

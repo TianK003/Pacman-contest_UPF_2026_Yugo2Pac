@@ -48,6 +48,14 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Its absence is blamed for deaths [reported: Pac-Champs, MDB22, KTH report, hima950].
   - Extra relevant here because of A0.
 - **Status**: implemented, leaf-pruning version only (no articulation-point pockets), as `DeadEndAttacker` in `teams/greedy_v1.py`. Tested in E-002 with no measurable effect. Both variants beat the baseline 40/40. Over the shared opponents the paired PPG difference (greedy − deadend) was −0.01 [−0.10, +0.07], within δ, and greedy edges it head-to-head (1.43 vs 1.27). It is **not adopted**. The pocket/articulation version and a test against a defender that really guards (P-02) are still open.
+  - **Re-opened by E-014** (replays of greedy_v2, the incumbent, which has no exit check):
+    - In its non-wins against 6 of 8 pool opponents, 78–94% of its deaths happen inside a dead end (85% in wins too).
+    - In 76–92% of those, the killing ghost could reach the exit before we got back out, and it was usually in sight when we went in.
+    - So the exit-race check should matter now that the pool has real defenders. Re-test on top of greedy_v2 (candidate C1).
+  - **Re-tested (E-018)** as the `exit_race` switch, generalised to any single-cell cut, on top of greedy_v2 against the 7-member pool:
+    - It **halves our deaths and the food we lose** against every opponent.
+    - But it adds only +0.02 [−0.06, +0.10] points per game, because food returned barely rises and border waiting rises. The refused food is not replaced by anything productive.
+    - Not adopted. Avoiding traps alone is not worth points; it would need a better use of the moves it saves (e.g. other targets, a two-agent attack).
 
 ### H-M03: Chokepoints for defence
 - **Idea**: one defender standing on the right cell can protect a whole region.
@@ -59,7 +67,11 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Rank food regions by how many cells it takes to seal them.
 - **Cost**: max-flow on about 300 cells is cheap within the 15 s.
 - **Evidence**: [reported: jaredj.xyz, who went from 13th to 4th the night a max-flow chokepoint defender was added; abhinavcreed13 also uses bottlenecks]. Capsules broke the blockade in the jaredj.xyz case.
-- **Status**: idea.
+- **Status**: implemented in a **single-cell-cut** form as `ChokeDefender` in `teams/sparring_v2.py`, a league opponent and not our agent (E-015).
+  - At startup it computes, for every home cell g, the home cells reachable from the border only through g: one BFS per cell, 0.03–0.05 s per map.
+  - On 20 random maps the best single cell seals off 7.5 of our 30 food on average (range 2–22).
+  - It guards that cell and traps invaders behind a cut cell it reaches first, closing in only through cells that still seal them off.
+  - Max-flow / multi-cell cuts are not built. For results as an opponent see E-015. Using it in our own defender is untested.
 
 ### H-M04: Escape-route count
 - **Idea**: a cell with only one way home is risky even if it isn't in a dead end.
@@ -217,6 +229,13 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Use pocket entrances to trap invaders (H-M02/H-M03).
 - **Evidence**: [reported: KTH predicts the invader's border entry point from the path between the enemy base and the nearest food; the defender goes to the last eaten food (LuChenyang3842)].
 - **Status**: partly implemented in `PatrolDefender`: it chases visible invaders on our side, keeps a distance of about 3 when we are scared, and goes to the last known position; greedy_v1 has no path prediction. Path prediction is implemented as the `intercept` switch in `teams/greedy_lab_v1.py` (E-007). A border-camping defender (`BorderCamper`, `teams/sparring_v1.py`) was built as a sparring opponent; as greedy's defender it beat greedy head-to-head on tuning seeds, 1.25 vs 1.10 points per game (E-006). **Tested** (E-007, E-010): alone +0.01 (no measurable effect); with the breaker +0.17 on tuning seeds (E-010); in greedy_v2 (E-011/E-012). **Adopted** in my_team.py (greedy_v2) on 2026-10-18 (E-013).
+  - **Known gaps** (E-014):
+    - In greedy_v2's non-wins the defender is on average 5–8 cells from the invader, and it concedes 9–16 food per game.
+    - It never closes in on an invader it holds off, because it only attacks within distance 2. One traced game froze into a 0–0 for ~1,000 plies.
+    - The cut-cell "squeeze" in `ChokeDefender` (H-M03) is one possible fix.
+  - **Tested (E-018)**: the `squeeze` switch (cut-cell trap + direct chase after a stalled intercept) adds +0.02 [−0.01, +0.06] (camper +0.07 [+0.01, +0.13]).
+    - It rarely changes a decision: greedy_v2's intercept already holds dead-end exits.
+    - Not adopted alone.
 
 ### H-S08: Dynamic role assignment
 - **Idea**: decide attacker and defender every turn, not once.
@@ -253,7 +272,10 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 ### H-S12: Breaking a border standoff
 - **Idea**: when an enemy ghost mirrors our Pacman at the border, either switch to a distant entry point (H-M06), forcing it to travel, or attack with both agents at different points to overload a single defender.
 - **Evidence**: [reported: infinityglow]. The standoff happens to us: greedy's attacker stood on the border for 261/300 moves against turtle on seed 97464282 and never scored [verified E-005].
-- **Status**: **adopted** (E-013): in `teams/greedy_v2.py` = `my_team.py` since 2026-10-18 (the `breaker` switch). Against greedy: +0.13 [+0.02, +0.24] alone on tuning seeds 11–50 (E-010), +0.26 [+0.15, +0.38] alone on validation seeds 21–60 (E-011), and as part of greedy_v2 +0.42 on validation seeds 21–60 and 61–100 (E-011, E-012).
+- **Status**: **adopted** (E-013): in `teams/greedy_v2.py` = `my_team.py` since 2026-10-18 (the `breaker` switch).
+  - **Second half tested (E-018)**: the defender raiding through the farthest entry while our attacker is held at the border (`raid` switch, own observation only). Result: **−0.07** [−0.14, +0.01].
+    - It returns about 1 more food per game but concedes 1.2–1.6 more, mostly against attacking teams (greedy −0.20 [−0.35, −0.05]).
+    - Not adopted. Against greedy: +0.13 [+0.02, +0.24] alone on tuning seeds 11–50 (E-010), +0.26 [+0.15, +0.38] alone on validation seeds 21–60 (E-011), and as part of greedy_v2 +0.42 on validation seeds 21–60 and 61–100 (E-011, E-012).
 
 ### H-S13: Deliberate death when carrying nothing
 - **Idea**: being eaten with 0 food teleports us to our start.

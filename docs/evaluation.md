@@ -106,16 +106,30 @@ Here F is the unknown field of entrants.
 - They were chosen by mean points per game on validation seeds 21–60 (E-011): greedy_v2's lab twin 2.26, greedy 1.89, feature 1.48, camper 1.36, rusher 1.24.
   - The next ones were field 0.95 and double_attack 0.94.
   - The `lab_breaker*` variants scored higher but were left out as near-duplicates of greedy_v2 (redundancy, below).
-- The incumbent plays the same 4 other members on the same seeds, so every candidate gets a paired comparison against it, plus its head-to-head game against it.
+- The incumbent plays the same other members on the same seeds, so every candidate gets a paired comparison against it, plus its head-to-head game against it.
 - The baseline is saturated (3.00 for every recent agent) and is kept only for smoke tests.
 - Revise the pool when a candidate is accepted, or when another agent clearly outperforms a member. Log every change in experiments.md.
+- **Update 2026-10-18 (user decision, E-017)**: `choke` and `exploit_v2` (E-015) joined, so the pool has **7 members**: `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`. They were the hardest opponents for greedy_v2 in the pool (1.40 and 1.42 points per game for greedy_v2). Their strength in the 7-member round robin is in E-017.
+  - `choke`: greedy_v2's attacker + `ChokeDefender` (H-M03), in `teams/sparring_v2.py`.
+  - `exploit_v2`: the F1 attacker + `ShadowDefender`, written against greedy_v2's E-014 weaknesses.
 
 ```powershell
 # evaluate a new candidate against the reference pool (incumbent greedy_v2 paired on the same seeds)
-venv\Scripts\python.exe eval\evaluate.py play --candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher --seeds tuning --n-seeds 40 --run <name> --compare <new> greedy_v2
+venv\Scripts\python.exe eval\evaluate.py play --candidate <new> greedy_v2 --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --seeds tuning --n-seeds 40 --run <name> --compare <new> greedy_v2
 ```
 
 The full league below remains available for occasional broader checks.
+
+**Specialists added 2026-10-18 (E-015)** live in `teams/sparring_v2.py`; see E-015 for how they were built.
+
+**Held-out pool (2026-10-18, E-015)**: `heldout_a` and `heldout_b` in `eval/heldout/`, listed under `_heldout_pool` in `eval/league.json`.
+- They were written by a separate agent that was told not to read our code, docs (except framework.md and rules.md) or results. It tested them only against `baseline_team` and each other.
+- Isolation was by instruction, not enforced. That agent saw CLAUDE.md, which names greedy_v2's three features in one line.
+- **Rules**:
+  - Never screen, tune or debug against them, and never read their code or replays while designing candidates.
+  - Use them for the release gate and for rare, logged checkpoints. Report only totals.
+- Style labels (all we know): A = aggressive double attack with capsule use; B = defence first with a permanent guard and a cautious raider.
+- A teammate writing a third one without seeing our code would make the pool more independent.
 
 
 | Group | Members | Purpose |
@@ -173,6 +187,7 @@ Ties are *not* a hack. Under 3/1/0 a tie against a stronger team is real value. 
 | `evaluate.py` | runs colour-swapped game pairs in parallel through `capture.py -q -c` on seed lists; writes `eval/results/<run>.jsonl`; prints the summary: PPG + bootstrap CI, win % + exact Clopper–Pearson CI, W-T-L, crashes, time warnings, move-time stats, violations, head-to-head matrix, approximate Nash averaging, the behaviour diagnostics table, and with `--compare A B` a paired comparison overall **and per opponent** (needed for accept rule 3); `--resume` / `--dry-run`. `--candidate` takes several entries (each plays every `--vs` entry), so candidates added later with `--resume` pair with the games already in the run. `summary` takes several runs (`--run r1 r2`), an `--agents` filter, and `--diag AGENT` for per-opponent diagnostics |
 | `sentinel_team.py` | wraps a team during evaluation only. It records move times and runtime violations: walls mutated, shared `Configuration` mutated, global RNG seeded or read, thread / subprocess / `os.system`, file writes, `observation_function` overridden, illegal action. Since 2026-10-17 it also records **behaviour diagnostics** per agent from that agent's own observation: moves as Pacman, deaths (respawn at the start cell when the move led elsewhere), food carried at death, max carried, food returned (`num_returned` at the end), and standoff moves (a ghost within 2 columns of the border while an enemy ghost is in view; this counts defenders too) |
 | `check_rules.py` | AST lint for our team files: forbidden modules, private fields, global-RNG calls, shared-object writes, broad `except`, Python ≥ 3.9 syntax, prints and file I/O |
+| `replay_probe.py` | where an agent loses points (E-014). `classify --run R --agent A` sorts A's non-wins by kind (out-raced, deaths, defence, 0–0 standoff, ...) from the stored diagnostics. `replay --run R --agent A [--opponent O] [--label L] [--sample N] [--jobs J]` re-plays games with `--record` (deterministic; it warns if a replayed score differs) and re-simulates them from the true state: deaths in dead ends, whether the killer was in sight when we went in, food returned, invasions, defender distance, standoffs, capsules. `--trace FIRST LAST STEP` prints all positions; `--events` lists deaths and returns. Offline analysis only |
 | `league.json` | the opponent pool (path + `create_team` options) |
 | `seeds/*.txt` | tuning / validation / test seed lists |
 
@@ -222,6 +237,8 @@ venv\Scripts\python.exe eval\evaluate.py play --agents baseline greedy turtle --
 
 **Remaining weaknesses, by importance**:
 1. **External validity is the biggest unknown.** Every number measures performance *against our own pool*. The real field is unknown until the test run on 2026-11-23. A pool of our own variants shares our blind spots; the planned held-out opponents and exploiters only partly fix this.
+   - **First measurement (E-015)**: greedy_v2 scores 1.70 points per game against the non-mirror reference pool but 1.16 against two blind-written held-out teams, a generalisation gap of R ≈ 32%. One of them (heldout_b) beats it.
+   - The v1 → v2 gain carried over at about half its size (+0.23 vs +0.42).
 2. **Small samples.** 20–40 seeds resolve only large differences (about ±0.3–0.4 PPG). Small improvements are invisible without hundreds of games.
 3. **Independence assumptions.** The exact CI treats games as independent, while the two games on one map are correlated, so it is slightly optimistic.
 4. **Multiple comparisons.** Scanning many pairings will produce some "significant" differences by chance. Hence the confirmation step.

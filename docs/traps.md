@@ -237,3 +237,21 @@ Section A matters most: those traps can make us **cheat by accident**.
 **T-45: Committing generated or large files**
 - **Why**: `venv/`, `__pycache__/` and `*.pyc` are ignored, but `www/` outputs, replays and logs are not.
 - **Prevention**: keep them out of commits.
+
+## F. Agent-logic pitfalls
+
+**T-54: Dropping "negligible" belief cells loses enemies that walk straight** [hit E-019]
+- **What happened**: the first belief filter (H-S01) dropped cells below probability 1e-4, then 1e-12. Under a random-walk motion model an enemy that walks k cells straight has a probability of about (1/3)^k, so its true cell was pruned. The belief then gave the true cell probability 0 in **22.8%** (1e-4) and 2.3% (1e-12) of hidden turns, measured against the opponents' own positions.
+- **Prevention**:
+  - Never prune by probability: zeros may come only from hard evidence (sight, sonar range, food events).
+  - Check a tracker against true positions offline before using it. "Truth excluded" must be ≈ 0%; after the fix it was 0.0% of ~15,000 hidden turns.
+
+**T-55: "It vanished next to us, so it was eaten" is also true when *we* were eaten** [hit E-019]
+- **Why**: greedy_v2's respawn rule says that an enemy seen within 2 of one of us last turn and gone now must have been eaten, because it would still be within sight. But if that enemy ate *our* agent, our agent teleports home and the enemy is simply out of sight.
+- **Consequence**: the belief jumped to the enemy's start while the enemy still stood where our attacker had died; in the E-019 probe the true cell then had probability 0 in the following turns.
+- **Prevention**: only count teammates that moved at most one cell since the previous observation (implemented behind the belief switches in `teams/greedy_lab_v3.py`; greedy_v2 still has the old rule, where it only affects the scared-timer guess).
+
+**T-56: The defender's position changes what our attacker sees** [hit E-007, E-019]
+- **Why**: sight is shared (T-23): our attacker sees every enemy within 5 of *either* of us. A defender that stands at the border across from the enemy guard shows that guard to our attacker. greedy's race-safe attacker then treats the guard as blocking and waits.
+- **What happened**: the first shadowing defender followed the enemy "nearest our side", usually their border guard, and turned a 22–0 win over baseline_team into a 0–0 standoff (E-019 smoke). The tracker switch of E-007 made the attacker timid the same way, through extra (remembered) ghosts.
+- **Prevention**: when a change gives the attacker more ghost sightings, re-check the attacker's standoff and Pacman-move counts. The defender should follow the enemy that has actually come over, not their guard.

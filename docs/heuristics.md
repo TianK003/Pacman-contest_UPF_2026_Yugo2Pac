@@ -160,7 +160,16 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Evidence**:
   - [reported: AlanChaw, TianqiPeng, abhinavcreed13 (HMM / exact); loosh, lzheng1026 (particles)].
   - **Warning** [reported: KTH]: adding untested Bayesian tracking that overrode their food-diff logic dropped them from 2nd to 4th.
-- **Status**: implemented, **set version** (support only): the `tracker` switch in `teams/greedy_lab_v1.py`. **Tested**: alone it makes the attacker timid, −0.11 vs greedy and −0.40 against turtle (E-007); with the breaker it adds nothing (E-010). Not adopted; a probabilistic version or a defender-side use is untested.
+- **Status**: implemented, **set version** (support only): the `tracker` switch in `teams/greedy_lab_v1.py`. **Tested**: alone it makes the attacker timid, −0.11 vs greedy and −0.40 against turtle (E-007); with the breaker it adds nothing (E-010). Not adopted.
+  - **Probabilistic version** (E-019): an exact forward filter for the defender (`update_belief` in `teams/greedy_lab_v3.py`). Each agent uses only its own readings (Q4), with no grey-zone fields (Q3).
+    - It uses steps 1–5 above; step 6 only through food events.
+    - **Verified** against the opponents' true positions (60 games, 15,431 hidden enemy-turns): the true cell never gets probability 0. The most likely cell is a median 4 maze steps from the truth, against 9 for the last-seen position.
+    - "Mass ≥ 0.5 on our side" detects a hidden invader with 66% recall and 57% precision.
+    - Two pitfalls hit while building it: T-54 (pruning small probabilities) and T-55 (false respawns).
+    - Uses in the defender (E-019):
+      - `shadow` (H-S07) **passes the accept rule**: +0.16 [+0.04, +0.28] on validation seeds 101–180.
+      - `hunt` adds nothing measurable: +0.07 [−0.02, +0.17] alone, nothing on top of `shadow`.
+    - As the alarm of a raiding defender it adds nothing on top of `shadow` (E-020).
 
 ### H-S02: Food-diff invader detection
 - **Idea**: missing food gives an exact location.
@@ -236,6 +245,10 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - **Tested (E-018)**: the `squeeze` switch (cut-cell trap + direct chase after a stalled intercept) adds +0.02 [−0.01, +0.06] (camper +0.07 [+0.01, +0.13]).
     - It rarely changes a decision: greedy_v2's intercept already holds dead-end exits.
     - Not adopted alone.
+  - **Belief-based shadowing (E-019, `shadow` switch in `teams/greedy_lab_v3.py`)**: with nothing to chase, the defender waits at the border entry across from where the *raider* (the enemy last evident on our side) most likely is, using the H-S01 belief.
+    - Screen +0.34 [+0.23, +0.45] and replication +0.29 [+0.19, +0.39] on tuning seeds; validation seeds 101–180 **+0.16 [+0.04, +0.28]**, head-to-head 1.65. **Passes the accept rule**; not promoted yet (user decision, release gate open).
+    - It works by deterrence, not kills: food conceded falls by 20–30%, kills fall.
+    - Shadowing the enemy *nearest* our side follows their guard instead and shows it to our own attacker, which then stands blocked (T-56).
 
 ### H-S08: Dynamic role assignment
 - **Idea**: decide attacker and defender every turn, not once.

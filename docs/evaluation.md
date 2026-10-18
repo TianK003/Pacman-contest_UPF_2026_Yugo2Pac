@@ -90,6 +90,7 @@ Here F is the unknown field of entrants.
 | `validation.txt` | 300 | accept/reject decisions (section 2) |
 | `test.txt` | 100 | **locked**. Only for confirming a frozen release candidate, each use logged in experiments.md, at most 3 uses before new test seeds are drawn |
 
+- **Validation seeds used so far**: 1–20 (E-002), 21–60 (E-011), 61–100 (E-012), 101–180 (E-019). E-019 showed that one set of 40 maps can miss a real effect of about +0.2 (+0.05 on seeds 101–140, +0.26 on 141–180), so prefer ≥ 80 seeds per decision. 120 seeds are left.
 - If validation seeds have been used for many decisions (rule of thumb: > 10), draw a fresh validation list from a new generator seed and record it. Repeated decisions on the same seeds overfit them too [source: Cobbe et al. 2019 used separate train and test seed sets for procedurally generated levels; Zhang et al. 2018].
 - Fixed layouts (`defaultCapture`, ...) are sanity checks only, because the tournament uses random maps.
 
@@ -188,6 +189,7 @@ Ties are *not* a hack. Under 3/1/0 a tie against a stronger team is real value. 
 | `sentinel_team.py` | wraps a team during evaluation only. It records move times and runtime violations: walls mutated, shared `Configuration` mutated, global RNG seeded or read, thread / subprocess / `os.system`, file writes, `observation_function` overridden, illegal action. Since 2026-10-17 it also records **behaviour diagnostics** per agent from that agent's own observation: moves as Pacman, deaths (respawn at the start cell when the move led elsewhere), food carried at death, max carried, food returned (`num_returned` at the end), and standoff moves (a ghost within 2 columns of the border while an enemy ghost is in view; this counts defenders too) |
 | `check_rules.py` | AST lint for our team files: forbidden modules, private fields, global-RNG calls, shared-object writes, broad `except`, Python ≥ 3.9 syntax, prints and file I/O |
 | `replay_probe.py` | where an agent loses points (E-014). `classify --run R --agent A` sorts A's non-wins by kind (out-raced, deaths, defence, 0–0 standoff, ...) from the stored diagnostics. `replay --run R --agent A [--opponent O] [--label L] [--sample N] [--jobs J]` re-plays games with `--record` (deterministic; it warns if a replayed score differs) and re-simulates them from the true state: deaths in dead ends, whether the killer was in sight when we went in, food returned, invasions, defender distance, standoffs, capsules. `--trace FIRST LAST STEP` prints all positions; `--events` lists deaths and returns. Offline analysis only |
+| `belief_probe/` | belief accuracy check (E-019): plays games in-process with two wrapper teams, ours logging the defender's belief and the opponent's agents logging their own positions, and reports how often the true cell is excluded, the probability on it, the distance from the most likely cell, and invader detection recall/precision. Offline analysis only |
 | `league.json` | the opponent pool (path + `create_team` options) |
 | `seeds/*.txt` | tuning / validation / test seed lists |
 

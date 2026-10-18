@@ -74,7 +74,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - Common [reported: AlanChaw, TianqiPeng, abhinavcreed13, loosh, lzheng1026].
   - Two cautions [reported: KTH dropped after adding it untested; abhinavcreed13 saw misjudgements on big maps].
 - **Plan**: introduce it behind a switch, and A/B test it against food-diff-only tracking (H-S02).
-- **Status**: set version (support only, no probabilities) implemented as the `tracker` switch in `teams/greedy_lab_v1.py` (E-007). The probabilistic HMM is not built.
+- **Status**: set version (support only, no probabilities) implemented as the `tracker` switch in `teams/greedy_lab_v1.py` (E-007). **Exact HMM filtering implemented and verified** against true positions in `teams/greedy_lab_v3.py` (E-019; see H-S01): 0% truth exclusions, median error 4 cells, < 0.06 s per move. Used by the defender to shadow the enemy raider (H-S07), it passes the accept rule: +0.16 [+0.04, +0.28] on validation seeds 101–180 (E-019).
 
 ### M-05: Local adversarial search (minimax / expectimax)
 - **What**:

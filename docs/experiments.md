@@ -44,6 +44,9 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 | P-19 | C1: exit-race check for greedy_v2's attacker | E-014: most deaths are dead-end traps the killer could close; does refusing such food help? | H-M02, H-S03 | **tested (E-018)**: halves deaths but +0.02 [−0.06, +0.10]; not adopted |
 | P-20 | Defender that closes in on trapped invaders (cut cells, H-M03 squeeze) | E-014: defence = 29% of lost points; the defender holds but never closes in | H-S07, H-M03 | **tested (E-018)**: +0.02 [−0.01, +0.06], rarely changes a decision; not adopted |
 | P-21 | C3: two-entry attack when a standoff persists | E-014: 0–0 standoffs still cost 18% | H-S12, H-S09 | **tested (E-018)** as a raiding defender without shared memory: −0.07 [−0.14, +0.01]; not adopted |
+| P-22 | Defender hunts hidden invaders from an exact belief (sonar + sight + food events) | E-014: defence = 29% of lost points; greedy_v2's defender ignores the sonar | H-S01, H-S07, M-04 | tested (E-019): +0.07 [−0.02, +0.17] alone, nothing on top of P-23; not adopted |
+| P-23 | Idle defender shadows the raider's likely crossing instead of patrolling | as P-22 | H-S01, H-S07 | **accepted (E-019)**: screen +0.34, replication +0.29 (tuning); validation 101–180 +0.16 [+0.04, +0.28]; not promoted yet (user decision, release gate open) |
+| P-24 | Raiding defender (P-21) that the belief calls back while the raider is near our side | E-018: the plain raid scored more against guards but let attackers in | H-S12, H-S09, H-S01 | tested (E-020): −0.01 [−0.06, +0.04] on top of P-23; not adopted |
 
 ---
 
@@ -744,13 +747,13 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   |---|---|---|---|---|
   | `lab2_exit` (P-19) | +0.02 [−0.06, +0.10] | greedy −0.03, rusher −0.03 | exploit_v2 +0.10 [−0.06, +0.27] | 1.52 |
   | `lab2_squeeze` (P-20) | +0.02 [−0.01, +0.06] | rusher −0.02 [−0.06, +0.00] | camper +0.07 [+0.01, +0.13] | 1.43 |
-  | `lab2_raid` (P-21) | **−0.07** [−0.14, +0.01] | greedy −0.20 [−0.35, −0.05] | camper +0.04 | – |
-  | `lab2_exit_squeeze` | +0.05 [−0.04, +0.12] | rusher −0.03 | exploit_v2 +0.10, feature +0.10 | – |
-  | `lab2_exit_raid` | −0.01 [−0.11, +0.09] | feature −0.17 [−0.39, +0.01] | choke +0.21 [+0.01, +0.41] | – |
-  | `lab2_squeeze_raid` (incomplete: 1,365/1,400 games) | −0.02 [−0.10, +0.07] | greedy −0.19 [−0.34, −0.04] | exploit_v2 +0.24 [+0.04, +0.46] | – |
-  | `lab2_all` | not played | | | |
+  | `lab2_raid` (P-21) | **−0.07** [−0.14, +0.01] | greedy −0.20 [−0.35, −0.05] | camper +0.04 | 1.43 |
+  | `lab2_exit_squeeze` | +0.05 [−0.04, +0.12] | rusher −0.03 | exploit_v2 +0.10, feature +0.10 | 1.50 |
+  | `lab2_exit_raid` | −0.01 [−0.11, +0.09] | feature −0.17 [−0.39, +0.01] | choke +0.21 [+0.01, +0.41] | 1.53 |
+  | `lab2_squeeze_raid` | −0.03 [−0.11, +0.06] | greedy −0.19 [−0.34, −0.04] | camper +0.12, exploit_v2 +0.12 | 1.47 |
+  | `lab2_all` | +0.03 [−0.08, +0.12] | feature −0.09 [−0.31, +0.12] | choke +0.21 [+0.01, +0.41] | 1.51 |
 
-  - `scr3b` was **stopped by the user's time limit** at 4,165 of 5,600 games. To finish it (deterministic, so only the missing games are played): `evaluate.py play --candidate lab2_exit_squeeze lab2_exit_raid lab2_squeeze_raid lab2_all --vs greedy_v2 greedy feature camper rusher choke exploit_v2 --seeds tuning --seed-offset 150 --n-seeds 100 --run scr3b --resume --jobs 6`, then `summary --run scr3 scr3b --compare <candidate> greedy_v2`.
+  - `scr3b` was stopped by the user's time limit at 4,165 of 5,600 games and **completed later the same day** with `--resume` (1,435 games, 6 workers; 0 crashes, 0 time warnings, 0 violations; max move 0.147 s). The rows above are final. Before completion `lab2_squeeze_raid` read −0.02 [−0.10, +0.07] on 1,365 games, and `lab2_all` was not played.
 
   **Did the switches change what they targeted?** (diagnostics, team totals per game, vs greedy_v2 on the same games):
   - **exit_race**:
@@ -767,4 +770,123 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Follow-ups (ideas, not started)**:
   - Give the moves the exit check saves a productive use (switch targets or entries instead of waiting).
   - A raid that is called off by the sonar as well as by food evidence.
-  - Finish `scr3b` (command above).
+  - ~~Finish `scr3b`~~: done (rows above); `lab2_all` adds nothing either.
+
+## E-019 — A belief tracker for the defender: hunting hidden invaders, shadowing the raider (2026-10-18)
+- **Status**: done. `lab3_shadow` **passes the accept rule** on validation seeds 101–180 (+0.16 [+0.04, +0.28]); not promoted (user decision, release gate open).
+- **Question**: E-014 found that defence is greedy_v2's biggest source of lost points (29%), while its defender ignores the sonar: it reacts only to invaders it sees and to food that has already gone. Does an exact belief over each enemy's cell (H-S01, M-04) let the defender (a) catch invaders it cannot see, and (b) wait where the enemy attacker will cross, and does that raise points per game?
+- **Variants**: new file `teams/greedy_lab_v3.py`, a copy of greedy_v2 plus a belief filter and two switches, all off by default (league entries `lab3_*`).
+  - **Belief filter** (`update_belief`, defender only, its own observation; no shared memory, Q4; no grey-zone fields, Q3):
+    - Exact forward filter over cells per enemy.
+    - Motion: each enemy moves once between two of our turns; staying weighs `STAY_WEIGHT` = 0.2 against 1 per neighbour.
+    - Sonar: Manhattan within ±6 of the reading, likelihood 1/13 (T-22).
+    - Sight: no cell within Manhattan 5 of either of us unless visible (T-23).
+    - Food events: a food or capsule of ours that vanished under no visible enemy pins the most likely hidden enemy to exactly that cell. It cannot have moved since: each enemy moves once between our turns.
+    - Respawns: reset to the start cell; greedy_v2's respawn rule is corrected for our own deaths (T-55).
+  - `hunt` (P-22): with no invader in sight, a hidden enemy with belief mass ≥ 0.5 on our side counts as an invader at its most likely home cell, and greedy_v2's intercept handles it. The belief replaces the "go to the eaten food" target.
+  - `shadow` (P-23): with nothing to chase, the defender waits at the border entry whose cell across is nearest, in expectation, to the **raider**: the enemy most recently evident on our side (seen there, or belief mass ≥ 0.5 there). Before any enemy has come over, it patrols as greedy_v2 does.
+- **Belief accuracy check** (`eval/belief_probe/`, local analysis only; usage in the header of `belief_check.py`):
+  - Games were played in-process with two wrapper teams. Our wrapper logged the defender's belief after each move. The opponent's wrapper logged each opponent agent's **own** position at its own turn, which equals its position at our turn because it has not moved in between.
+  - No engine object was touched.
+  - `lab3_hunt_shadow` against greedy_v2, exploit_v2, rusher, feature, camper and choke on tuning seeds 431–435, both colours: 60 games.
+  - **Bugs found and fixed before any screen**:
+    1. Pruning cells below probability 1e-4 excluded the true cell in 22.8% of hidden turns; at 1e-12 still 2.3% (T-54). No probability pruning now.
+    2. A false respawn whenever an enemy ghost ate our attacker (T-55).
+    3. The first `shadow` followed the enemy nearest our side, usually their border guard. It showed the guard to our attacker, and a 22–0 win over baseline_team became a 0–0 standoff (T-56). It now follows the raider.
+  - **Final file** (60 games, 15,431 hidden enemy-turns):
+
+    | measure | value |
+    |---|---|
+    | true cell given probability 0 | **0.0%** (22.8% before fix 1) |
+    | mean probability on the true cell | 0.16 (STAY_WEIGHT 1.0: 0.13) |
+    | median maze distance, most likely cell → true cell | **4** |
+    | median maze distance, last-seen position → true cell (greedy_v2's knowledge) | 9 |
+    | mean expected distance to the true cell | 7.5 |
+    | enemy truly on our side: belief mass ≥ 0.5 there (recall) | 66% |
+    | belief mass ≥ 0.5 on our side: enemy truly there (precision) | 57% (72% in the run before the raider fix) |
+    | defender move time | max 0.054 s (alongside a 6-worker screen), p99 0.002 s |
+
+- **Checks**:
+  - Lint OK.
+  - **Identity**: `lab3_off` vs greedy_v2 against baseline, camper and exploit_v2 on tuning seeds 1–3, both colours: **18/18 identical** (score and every diagnostic). Repeated after the raider fix: 18/18 (runs `identity_labv3`, `identity_labv3b`).
+  - **Smoke** (`smoke_labv3`, 36 games against baseline, camper, exploit_v2 on tuning seeds 1–2): 0 crashes / warnings, max move 0.036 s. Baseline 0-0-12 after the raider fix (0-2-10 before it).
+- **Setup of the screen**: `lab3_hunt`, `lab3_shadow`, `lab3_hunt_shadow` and greedy_v2 against the 7-member pool on **tuning seeds 331–430** (`--seed-offset 330 --n-seeds 100`, never used before), both colours: 5,400 games, run `scr4`, 6 workers, `--delay-step 0`. Windows 11, Python 3.8.10, framework `54cd83c`, repo `07cc84a` + uncommitted lab file.
+- **Results** (`scr4`, 5,400 games): 0 crashes, 0 time warnings, 0 violations; max move 0.063 s (lab3_hunt_shadow), 0.051 s (lab3_shadow).
+
+  | candidate | paired Δ vs greedy_v2 [95% CI] | worst opponent Δ [CI] | best opponent Δ [CI] | head-to-head vs greedy_v2 | win % |
+  |---|---|---|---|---|---|
+  | `lab3_hunt` (P-22) | +0.07 [−0.02, +0.17] | camper −0.06 [−0.23, +0.11] | rusher +0.21 [+0.01, +0.41] | 1.50 | 49 |
+  | `lab3_shadow` (P-23) | **+0.34 [+0.23, +0.45]** | greedy +0.19 [+0.01, +0.38] | feature +0.49 [+0.28, +0.73] | **1.62** | 57 |
+  | `lab3_hunt_shadow` | **+0.33 [+0.22, +0.45]** | greedy +0.23 [+0.09, +0.39] | exploit_v2 +0.47 [+0.26, +0.69] | 1.56 | 57 |
+  | greedy_v2 (same seeds) | – | – | – | – | 43 |
+
+  - `lab3_shadow` per opponent (paired Δ): camper +0.34 [+0.14, +0.54], choke +0.34 [+0.12, +0.57], exploit_v2 +0.45 [+0.23, +0.68], feature +0.49 [+0.28, +0.73], greedy +0.19 [+0.01, +0.38], rusher +0.21 [+0.04, +0.38]. **Every CI is above 0.**
+
+  **What changed** (team totals per game, same games; greedy_v2 → lab3_shadow):
+
+  | opponent | food conceded | kills | food returned | standoff moves |
+  |---|---|---|---|---|
+  | camper | 8.1 → 6.2 | 1.14 → 0.67 | 9.8 → 9.8 | 267 → 310 |
+  | choke | 11.9 → 9.5 | 0.99 → 0.85 | 11.6 → 11.0 | 178 → 227 |
+  | exploit_v2 | 9.5 → 6.8 | 0.33 → 0.35 | 9.8 → 9.5 | 232 → 277 |
+  | feature | 10.0 → 7.5 | 0.41 → 0.47 | 12.8 → 12.4 | 184 → 226 |
+  | greedy | 8.6 → 6.8 | 1.21 → 0.81 | 11.0 → 10.4 | 225 → 292 |
+  | rusher | 9.3 → 7.5 | 0.90 → 0.72 | 11.3 → 11.0 | 203 → 248 |
+
+- **Conclusions** (tuning seeds 331–430; best of 3 candidates, so a validation on unused seeds is needed, G3):
+  - **Shadowing the raider is the largest single gain since greedy_v2** (+0.34, every opponent's CI above 0, head-to-head 1.62). It works by deterrence, not by kills. A ghost across the border keeps the pool's race-safe attackers from crossing: food conceded falls by 20–30% while kills fall. Our own scoring is almost unchanged.
+  - **Hunting adds nothing measurable**, alone (+0.07, CI includes 0) or on top of shadowing (+0.33 vs +0.34). This is consistent with its 57% precision.
+  - **Caveat (external validity)**: every pool attacker avoids visible ghosts, which is exactly what a border shadow exploits. An attacker that uses capsules first (rusher) still loses +0.21 to it. Opponents that ignore ghosts or attack with two agents are not in the pool; the held-out teams are the check for that (T-53: release gate only).
+  - `teams/greedy_lab_v3.py`'s header comment still describes the first `shadow` rule (the enemy nearest our side). The code and the docstring of `shadow_post` follow the raider. The screen games match the file as it is now (600/600 replays, below), so the comment was left alone rather than editing a benchmarked file.
+- **Replication on fresh tuning seeds 451–550** (runs `scr5` + `scr5b`; `scr5b` = greedy_v2 against the pool on the same seeds, 1,200 games):
+  - Paired `lab3_shadow` − greedy_v2: **+0.29 [+0.19, +0.39]** over 1,400 games. This counts `lab4_braid_shadow` (E-020) as a seventh opponent (+0.12 there). Over the six pool members alone the mean is +0.32.
+  - Per opponent: camper +0.54 [+0.29, +0.77], greedy +0.35 [+0.15, +0.56], feature +0.29 [+0.07, +0.52], exploit_v2 +0.28 [+0.07, +0.49], choke +0.26 [+0.06, +0.45], rusher +0.17 [+0.00, +0.35].
+- **Validation**:
+  - **`val2`, validation seeds 101–140** (never used before; one pre-registered candidate; 1,040 games): **+0.05 [−0.10, +0.20]**, head-to-head 1.51.
+    - Per opponent: greedy +0.26 [+0.04, +0.51], rusher +0.25 [+0.01, +0.54], camper +0.04, choke −0.01, feature −0.09, exploit_v2 −0.14 [−0.46, +0.16].
+    - It fails accept rule 2 on its own.
+  - **Was the gap a bug?** The screen and the validation disagreed by about 3 standard errors, consistently across all four quarters of each seed list (screen quarters +0.21 to +0.47; validation quarters −0.03 to +0.12). Checks:
+    - 600 screen games of `lab3_shadow` (against camper, feature and exploit_v2, all 100 seeds) were replayed with the current file: **600/600 identical scores** (run `repro_scr4`).
+    - The validation run used validation-list positions 101–140, with no overlap with the tuning list, as `RANDOM<seed>` maps.
+    - The lab file was last written at 19:03, by the raider-fix edit, which also normalised its line endings. The run records carry no start time, so "before the screen started" is inferred from throughput only. The replays above are the actual evidence that the screen games match the current file.
+    - No bug was found. The tuning-seed effect then replicated on seeds 451–550 (above).
+  - **Decision basis, fixed before the next run**: accept rule 2 judged on validation seeds 101–180 pooled (`val2` + `val3`), with both halves reported. This keeps a second validation run from becoming "play until it passes".
+  - **`val3`, validation seeds 141–180** (1,040 games): **+0.26 [+0.07, +0.44]**, head-to-head 1.79.
+    - Per opponent: camper +0.54 [+0.17, +0.89], exploit_v2 +0.36 [+0.06, +0.69], feature +0.35 [−0.04, +0.72], choke +0.21, rusher +0.10, greedy +0.00.
+
+  **Accept rule, validation seeds 101–180 pooled** (80 seed pairs per opponent, 960 paired games):
+
+  | rule | result | pass |
+  |---|---|---|
+  | 1. gates | lint OK; 0 crashes, 0 time warnings, 0 violations in 2,080 games; max move 0.085 s (greedy_v2 0.104 s), 6 workers | ✓ |
+  | 2. pool improvement | **+0.16 [+0.04, +0.28]** | ✓ |
+  | 3. no regression > 0.5 | per opponent: camper +0.29 [+0.06, +0.52], rusher +0.17 [−0.03, +0.38], feature +0.13 [−0.11, +0.38], greedy +0.13 [−0.06, +0.33], exploit_v2 +0.11 [−0.11, +0.33], choke +0.10 [−0.12, +0.32]; minimum against past versions: greedy 2.09, greedy_v2 1.65 | ✓ |
+  | 4. head-to-head vs greedy_v2 ≥ 1.5 | 1.65 (1.51 / 1.79 per half) | ✓ |
+  | 5. confirmation on seeds not used for selection | the screen chose among 3 candidates on tuning seeds; every validation seed was unused; `val3` alone +0.26 [+0.07, +0.44] | ✓ |
+
+- **Conclusions**:
+  - **`lab3_shadow` beats greedy_v2 under the accept rule.** The size is uncertain: +0.29 to +0.34 on tuning seeds (2 × 100 seeds), +0.16 [+0.04, +0.28] on 80 validation seeds, +0.05 on the first 40 of them. Plan with about **+0.15 to +0.3 points per game** against this pool.
+  - The effect varies a lot between sets of 40 maps. A 40-seed validation can miss a real effect of this size, so future validations should use ≥ 80 seeds.
+  - Validation seeds used for decisions so far: 1–20, 21–60, 61–100, 101–180. 120 are left (evaluation.md section 4).
+  - **Not done** (needs the user): freezing as `teams/greedy_v3.py` and promoting to `my_team.py`; the release gate (held-out teams, locked test seeds, Linux timing of the belief code).
+  - External validity is still the open question: every pool attacker avoids visible ghosts (caveat above).
+- **Follow-ups**: E-020 (belief-recalled raid on top of shadowing); a held-out checkpoint as part of the release gate if the user wants to promote.
+
+## E-020 — A raid that the belief calls back, on top of shadowing (2026-10-18)
+- **Status**: done (screen). Not adopted.
+- **Question**: E-018's raiding defender (P-21) scored more against guards but let attacking teams in. Does it help once the belief (E-019) calls the raid back, and holds it back, while the raider is near our side?
+- **Variant**: new file `teams/greedy_lab_v4.py`, a copy of `greedy_lab_v3.py` plus the switch `braid` (P-24), off by default.
+  - `RaidDefender` is E-018's raid with two changes. Invader evidence includes a hidden enemy that the belief puts on our side (P-22's test). No raid starts or continues while the raider's expected distance to our side is at most our own way home plus 3 cells (`RECALL_MARGIN`).
+  - Each agent still uses only its own observation (Q4).
+- **Checks**:
+  - Lint OK.
+  - Identity: `lab4_off` vs greedy_v2 18/18 (`identity_labv4`); `lab4_shadow` vs `lab3_shadow` 18/18 (`identity_labv4s`).
+  - Smoke (`smoke_labv4`, 16 games): 0 crashes. The defender raided a little against camper and exploit_v2 and never against greedy.
+- **Setup**: `lab4_braid_shadow` and `lab3_shadow` against `lab3_shadow` / greedy_v2 and the other 6 pool members on **tuning seeds 451–550** (never used before), both colours: 3,000 games, run `scr5`, 6 workers; partly alongside `scr5b`. Windows 11, Python 3.8.10, framework `54cd83c`.
+- **Results**: 0 crashes, 0 time warnings, 0 violations; max move 0.152 s (lab4_braid_shadow, with 9 games running at once).
+  - Paired `lab4_braid_shadow` − `lab3_shadow`: **−0.01 [−0.06, +0.04]** over 1,400 games.
+  - Per opponent: choke +0.14 [+0.05, +0.24], greedy_v2 +0.07, camper +0.02, greedy +0.01, rusher −0.04, exploit_v2 −0.10 [−0.24, +0.06], feature −0.18 [−0.35, −0.02].
+  - Head-to-head: 1.38 vs 1.32 for `lab3_shadow`.
+  - Same trade-off as E-018, smaller: per game it returns 0.2–0.4 more food and concedes 0.3–1.0 more (e.g. feature: returned 11.1 → 11.3, conceded 8.1 → 8.9).
+- **Conclusion**: calling the raid back by belief removes E-018's damage against greedy (−0.20 there on top of greedy_v2, +0.01 here on top of shadowing), but the net stays at zero: feature −0.18 and exploit_v2 −0.10 offset choke +0.14. A raid by the defender is not worth its complexity on top of shadowing. Not adopted; the raid line (P-21, P-24) is closed for now.
+

@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 eval/results/*_tmp/
 eval/results/*_progress.log
+eval/belief_probe/rows_*.json

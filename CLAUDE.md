@@ -41,7 +41,7 @@ When you finish:
 2. **No concurrency**: no threads, processes, subprocesses, async, or computation outside our own `choose_action` / `register_initial_state` calls.
 3. **No framework changes**: never modify anything in `pacman-contest/`, on disk or at runtime. No monkeypatching, no changing engine constants or methods.
 4. **No crashes**: always return an action from `game_state.get_legal_actions(self.index)`. An exception or illegal action loses the game.
-5. **Python 3.8, stdlib only** (plus the framework's `frozendict`) until the staff confirm other libraries (Q2). No `list[int]`, `X | Y`, `match`, `functools.cache`.
+5. **Python 3.8, stdlib only** (plus the framework's `frozendict`). The professor installs other libraries on demand (Q2), so a library is usable only after we have requested it and he has confirmed it is installed. No `list[int]`, `X | Y`, `match`, `functools.cache`.
 6. **Output and files**: don't print in tournament mode (logs are published), never touch `sys.stdout` / `sys.stderr`, never write files during games.
 7. **Own work only**: never copy other teams' code (public repos are research pointers, not sources).
 
@@ -51,7 +51,8 @@ When you finish:
 - **Never** override `observation_function`. The engine passes it the full true state.
 - **No private engine fields** (`data._food_eaten`, `_agent_moved`, ...) and **no introspection** (`gc`, `inspect`, frames, `__main__._display`, the `Game` object, other teams' modules).
 - **Never** catch the framework's `TimeoutFunctionException`, so no bare `except:` / `except Exception:` around heavy work without re-raising it.
-- **Grey zone** (rules.md Q3): hidden opponents' `is_pacman`, `num_carrying` and `scared_timer` are readable. Keep their use behind a single switch that defaults to off until the staff confirm.
+- **Hidden-opponent fields** (rules.md Q3): hidden opponents' `is_pacman`, `num_carrying` and `scared_timer` are readable (E-023), and the professor recommends using them (2026-10-22). Keep their use behind a single switch so it can be turned off if the ruling changes.
+- **Shared memory between our two agents and shipped read-only data files are allowed** (rules.md Q4, Q6).
 - **If you are unsure**: stop and ask the user. Don't decide a grey area yourself.
 
 ## How the game works (short)

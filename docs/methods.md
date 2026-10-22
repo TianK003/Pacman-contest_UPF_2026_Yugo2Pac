@@ -6,7 +6,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 
 | Constraint | Consequence |
 |---|---|
-| ≤ 1 s per move, likely on a loaded cluster node; Python 3.8; stdlib only until Q2 is answered | Runtime methods must be cheap and *anytime* (return the best answer so far when time runs out). Heavy neural nets need numpy/torch, which may be missing. |
+| ≤ 1 s per move, likely on a loaded cluster node; Python 3.8; stdlib only until we request a library (Q2: installed on demand) | Runtime methods must be cheap and *anytime* (return the best answer so far when time runs out). Heavy neural nets need numpy/torch, which must be requested first. |
 | 15 s startup per agent | Map analysis and loading precomputed parameters fit. Per-game training does not. |
 | Random, unseen 34×18 maps | Nothing can be tuned per layout. Learned components need map-agnostic inputs. |
 | Partial observability (5-square sight, noisy Manhattan sonar) | Search and learning need a belief or a determinisation of hidden opponents (H-S01). |
@@ -120,7 +120,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - **MAPPO** (multi-agent PPO with a centralised critic; Yu et al. 2021, "The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games") fits the structure: two cooperating agents, partial observability.
   - Under *centralised training, decentralised execution*, the critic may see the full state **during offline training only**. The deployed actor uses only its own observation, so this does not break R4.
 - **Blockers**:
-  1. **Runtime libraries are unknown (Q2).** Without numpy/torch the network would have to run in pure Python. A small MLP (a few thousand to tens of thousands of multiply-adds) is probably fine within 1 s, but that is an estimate, not measured.
+  1. **Runtime libraries must be requested (Q2: the professor installs them on demand).** Without numpy/torch the network would have to run in pure Python. A small MLP (a few thousand to tens of thousands of multiply-adds) is probably fine within 1 s, but that is an estimate, not measured.
   2. **Training needs a fast, faithful re-implementation of the rules.** The engine runs at ~1.3 s per game without its per-move sleep (E-009), about 1,000 agent moves per second, which is still far too slow for millions of RL steps. Any difference from the real rules is a "sim-to-real" risk, and a cheating risk if the simulator gives the policy information it won't have.
   3. **Generalising to random maps** needs map-agnostic inputs (egocentric crops, distance-based features).
   4. **Opponent diversity**: plain self-play overfits, so it needs a league / fictitious self-play.
@@ -137,7 +137,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
   - A pure-Python planner would be too slow.
 - **Evidence**: [reported: the abhinavcreed13 PDDL core had a 66.9% win rate, 73.4% with a Q-learning fallback; "susceptible to being cornered (dead-end)"].
 - **Verdict**: not recommended.
-- **Status**: idea, not recommended. It fails R2 as long as it needs a subprocess, and planner availability depends on Q2.
+- **Status**: idea, not recommended. It fails R2 as long as it needs a subprocess, and a planner library would have to be requested (Q2).
 
 ### M-10: Pursuit–evasion "race" analysis
 - **What**: closed-form adversarial reasoning from distance tables ("who reaches cell c first, given turn order"). See H-S03. It replaces most of what deep minimax would compute in chases, at negligible cost.
@@ -164,7 +164,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 - **Prerequisites**:
   - A strong slow expert, which we don't have yet.
   - A fast forward model.
-  - Q2 (libraries) for anything bigger than a few thousand parameters.
+  - A library request (Q2: installed on demand) for anything bigger than a few thousand parameters. Weights can ship as a data file (Q6: allowed).
 - **Status**: idea, stretch goal.
 
 ### M-14: Potential field / influence map

@@ -154,7 +154,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   3. **Negative sight**: if the opponent is not visible, zero all cells within Manhattan 5 of *either* of our agents. If it is visible, collapse the belief to the exact cell.
   4. **Food and capsule events** on our side (H-S02): an opponent stood exactly there. Assign the event to the opponent whose belief makes it most likely.
   5. **Respawn**: when we eat an opponent (it collides with us), reset its belief to its start cell.
-  6. **Side constraint**: from `is_pacman` (grey zone, Q3, off by default) or inferred from food events.
+  6. **Side constraint**: from `is_pacman` (allowed since Q3 was answered, behind the switch; untested) or inferred from food events.
 - **Sharing**: one belief per opponent, owned by the team object and updated by both of our agents, which gives two sonar readings per round.
 - **Cost**: exact inference over about 400 cells × 2 opponents is cheap; a particle filter is not needed.
 - **Evidence**:
@@ -221,7 +221,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - During the scared window, harvest pockets whose round trip fits the remaining scared moves.
   - Eating a scared ghost sends it through its prison corridor (H-M08).
   - When **we** are scared, keep a safe distance from invaders but shadow them, ready to re-engage.
-- **Compute**: track the opponents' scared window ourselves (we know when we ate the capsule, and it lasts 40 of *their* moves). Do not read their hidden `scared_timer` while Q3 is open.
+- **Compute**: track the opponents' scared window ourselves (we know when we ate the capsule, and it lasts 40 of *their* moves). Reading their hidden `scared_timer` directly is allowed since Q3 was answered (behind the switch).
 - **Evidence**: [reported: capsule rushing helped some teams; capsules broke a chokepoint defence (jaredj.xyz)].
 - **Status**: partly implemented in `V1Agent`:
   - The scared window is derived from enemy capsules disappearing, conservatively: counted from our previous observation, with a 3-move margin.

@@ -149,5 +149,5 @@ The switches `hunt`, `roles`, `tracker` and `adaptive` exist in the file but are
 | Relocating between entries | ~25% of attacker moves walking along our border against guards | E-022 profile |
 | Raider identity is a guess | the "≥ 50% on our side" evidence is right about 57% of the time; against two attackers it shadows one | E-019 probe |
 | Deterrence assumes ghost-avoiding attackers | every attacker in our pool avoids visible ghosts; one that ignores ghosts would not be deterred | E-019 caveat; held-out +0.17 suggests it carries over |
-| No coordination | the agents share nothing (Q4 open); the defender never attacks | design |
+| No coordination | the agents share nothing (designed while Q4 was open; shared memory is allowed since 2026-10-22); the defender never attacks | design |
 | Generalisation | 1.97 points per game against the pool, 1.40 against the blind-written teams (R ≈ 29%) | E-021 |

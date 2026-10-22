@@ -995,3 +995,25 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - The attacker code of v2 and v3 is identical, yet in v3 it eats slightly less (45.5% → 41.9%) and is blocked slightly more (4.5% → 6.5%). A likely cause [untested] is shared sight (T-56): the shadowing defender reveals enemy ghosts to our attacker.
   - The behaviour pages built on this are in `docs/picks/` (one per version that has been in `my_team.py`).
 - **Follow-ups (ideas)**: a use for the "cut off" time (e.g. a capsule or a different exit, H-S06); fewer relocation walks against guards (the breaker's entry choice).
+
+## E-023 — Re-check: which fields of a hidden opponent reach our observation (2026-10-22)
+- **Status**: done.
+- **Question**: the professor's answer to Q3 (rules.md) depends on whether hidden opponents' `is_pacman`, `num_carrying` and `scared_timer` are really available. Is E-000's finding still true, and where in the engine does it come from?
+- **Variant**: `eval/probe_hidden_fields.py` (local only, never submitted). It builds the true initial state of `RANDOM13`, sets blue agent 1's `is_pacman`, `num_carrying`, `scared_timer` and `num_returned` on the **true** state, and calls the engine's own `make_observation(0)`, which is what red agent 0 receives every turn.
+- **Setup**: Windows 11, Python 3.8.10, framework commit `54cd83c`. Upstream `aig-upf/pacman-contest` `main` was still `54cd83c` on 2026-10-22 (`git ls-remote`), so this is the code the tournament would run if it uses `main` [untested assumption].
+- **Results**: agent 1 is 44 cells (Manhattan) from the nearest red agent, so it is hidden.
+
+  | field | true | in agent 0's observation |
+  |---|---|---|
+  | position | (32, 15) | `None` |
+  | `is_pacman` | True | True |
+  | `num_carrying` | 7 | 7 |
+  | `scared_timer` | 23 | 23 |
+  | `num_returned` | 4 | 4 |
+
+- **Where it comes from** (engine code, read-only):
+  - `capture.py:254-278` `GameState.make_observation`: deep-copies the state, then for each opponent out of sight sets **only** `configuration = None` (line 277). No other field is touched.
+  - `game.py:157-163` `AgentState.copy`: the copy keeps `scared_timer`, `num_carrying`, `num_returned` and `is_pacman` (via the constructor, line 158).
+  - `capture.py:128-129` `get_agent_state` returns the `AgentState` as is; `capture_agents.py:136-138` `observation_function` is what calls `make_observation` each turn.
+- **Conclusion**: [verified] these fields are available for hidden opponents through the public API; E-000 still holds. `my_team.py` (greedy_v3) reads them only for our own agents.
+- **Follow-ups**: confirm to the professor (Q3); a candidate that uses the fields behind `USE_HIDDEN_OPPONENT_FLAGS`.

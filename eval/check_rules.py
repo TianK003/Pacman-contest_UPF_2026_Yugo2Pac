@@ -13,7 +13,7 @@ FORBIDDEN_MODULES = {
     'threading', '_thread', 'multiprocessing', 'concurrent', 'asyncio', 'subprocess', 'socket',
     'ssl', 'http', 'urllib', 'requests', 'gc', 'inspect', 'ctypes', 'signal', 'pickle', 'marshal',
 }
-# Not known to exist on the tournament cluster (rules.md Q2) -> error until confirmed.
+# Installed on the tournament cluster only on request (rules.md Q2) -> error until requested and confirmed.
 UNCONFIRMED_MODULES = {'numpy', 'scipy', 'torch', 'tensorflow', 'sklearn', 'keras', 'pandas', 'jax'}
 FORBIDDEN_CALLS = {
     ('random', 'seed'), ('random', 'setstate'), ('random', 'getstate'),
@@ -175,7 +175,7 @@ class Checker(ast.NodeVisitor):
             mode = node.args[1] if len(node.args) > 1 else next((k.value for k in node.keywords if k.arg == 'mode'), None)
             mode_value = getattr(mode, 'value', getattr(mode, 's', None))
             if mode is None or (isinstance(mode_value, str) and not any(c in mode_value for c in 'wax+')):
-                self.report('WARNING', node, 'file read - only shipped read-only data is OK, pending Q6 (T-21)')
+                self.report('WARNING', node, 'file read - only shipped read-only data relative to __file__ is OK (Q6, T-21)')
             else:
                 self.report('ERROR', node, 'file opened for writing (R8, T-21)')
         if isinstance(func, ast.Name) and func.id in ('eval', 'exec', '__import__'):

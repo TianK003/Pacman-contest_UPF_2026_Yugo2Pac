@@ -48,7 +48,7 @@
 | R6 | Never crash. An illegal action or an uncaught exception loses the game. | `game.py`, `capture.py` |
 | R7 | Do not touch `sys.stdout` / `sys.stderr`. Print nothing confidential (logs are published), and keep printing off in tournament mode. | CONTEST.md "Warning"; RMIT/UoM disqualify for touching stdout/stderr |
 | R8 | Do not write files to the current working directory during games. | CONTEST.md |
-| R9 | Code must run on Python 3.8 with the standard library plus what the framework installs (`frozendict`), until the staff confirm more (Q2). | PDF §3.1; numpy availability unknown |
+| R9 | Code must run on Python 3.8 with the standard library plus what the framework installs (`frozendict`). Any other library must first be requested from the professor, who installs on demand, and confirmed as installed (Q2). | PDF §3.1; Q2 answer 2026-10-22 |
 | R10 | Academic integrity: our own original work. Do not share the repo or copy other teams' code. | `pacman-contest/README.md` |
 
 ## Fair-play policy (ours, stricter than the written rules)
@@ -62,11 +62,13 @@ The principle: **the agent may only use what an honest player watching its own o
 - **Our own memory**: of earlier observations (`observation_history`, our own data structures).
 - **Values we can derive exactly**: time left (count moves, or read `data.timeleft`, which is not a private field), and when *we* ate a capsule.
 - **Simulation on our own copies**, built without mutating shared objects: own data structures, or `generate_successor` on our copy with **newly created** `Configuration` objects for hypothesised opponents.
-- **Shared memory between our two agents**: no written rule exists, so this is pending Q4. It is common practice.
+- **Shared memory between our two agents** (one shared Python object): allowed [source: professor, Q4, 2026-10-22].
+- **Data files shipped next to `my_team.py`** (e.g. tuned weights), loaded read-only at startup: allowed [source: professor, Q6, 2026-10-22]. Resolve the path from `__file__`, never the working directory (T-21).
 
-**Grey zone: switched off until the staff answer Q3**
-- Fields of *hidden* opponents that the engine leaves in the observation: `is_pacman`, `num_carrying`, `scared_timer`, `num_returned` [verified present: E-000]. They are read through the public `get_agent_state(i)`, but they reveal more than the documented observation model (position hidden; noisy distance only).
-- Implementation rule: read them only through one switch (e.g. `USE_HIDDEN_OPPONENT_FLAGS = False`), so that turning it off is a one-line change.
+**Hidden-opponent fields: allowed (Q3, answered 2026-10-22)**
+- Fields of *hidden* opponents that the engine leaves in the observation: `is_pacman`, `num_carrying`, `scared_timer`, `num_returned` [verified: E-000, E-023]. They are read through the public `get_agent_state(i)`, and reveal more than the documented observation model (position hidden; noisy distance only).
+- The professor's answer: "If it is [available], I recommend you to use it and I'll make this info public to the rest of the teams" [source: email, 2026-10-22]. It is available (E-023). Our confirmation back to him, which lets him announce it: *to send*.
+- Implementation rule (kept): read them only through one switch (e.g. `USE_HIDDEN_OPPONENT_FLAGS`), so that turning it off is a one-line change if the ruling changes. New candidates may set it to `True`. `my_team.py` (greedy_v3) does not read them.
 
 **Forbidden**
 - **Mutating shared engine objects**: anything reachable from the observation that the engine shares, i.e. walls / layout, `Configuration` objects and `AgentState.start` (T-01).
@@ -82,12 +84,12 @@ The principle: **the agent may only use what an honest player watching its own o
 
 | # | Question | Why it matters | Status |
 |---|---|---|---|
-| Q1 | What is the policy on AI/LLM tools? No source mentions it (PDF, UPF, EUTOPIA, RMIT, UoM, Berkeley). | academic integrity | being sent (2026-10-18, see below) |
-| Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | being sent (2026-10-18, see below) |
-| Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | grey zone above | being sent (2026-10-18, see below) |
-| Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | being sent (2026-10-18, see below) |
+| Q1 | What is the policy on AI/LLM tools? No source mentions it (PDF, UPF, EUTOPIA, RMIT, UoM, Berkeley). | academic integrity | **not asked**: left out of the email that was sent |
+| Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | **answered 2026-10-22**: installed on demand; tell the professor which ones (see below) |
+| Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | hidden-opponent fields above | **answered 2026-10-22**: recommended, if available (it is, E-023) |
+| Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | **answered 2026-10-22**: yes |
 | Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | not asked |
-| Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | being sent (2026-10-18, see below) |
+| Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | **answered 2026-10-22**: yes |
 | Q7 | Grading: how much is tournament placement vs other deliverables (report? TEAM.md?)? The PDF says nothing. | priorities | not asked |
 | Q8 | May we use public code from other teams as **local sparring opponents only** (never submitted)? | testing | not asked |
 | Q9 | Is a `try/except` safety net in `choose_action` acceptable if it re-raises the framework's timeout exception? | crash safety vs R5 | not asked |
@@ -95,14 +97,13 @@ The principle: **the agent may only use what an honest player watching its own o
 
 When a question is answered, write the answer, the date and who answered, and update the affected rules and traps.
 
-### Questions sent to the instructors (2026-10-18)
+### Questions sent to the course professor, and the answers (2026-10-22)
 
-The user sends these five questions, worded as below, on 2026-10-18. Fill in each answer here when it arrives, then update the table above and the affected rules, traps and switches.
+Four questions were sent by email. Q1 (AI/LLM policy) was drafted on 2026-10-18 but **left out** of the email, so it is still unasked. Answers are quoted from the professor's reply, recorded 2026-10-22 [source].
 
-| # (table above) | Question as sent | Answer | Answered by, date | What it unblocks |
-|---|---|---|---|---|
-| Q1 | What is the course policy on using AI/LLM coding tools for the project? | *pending* | | how we may keep working; what must be disclosed |
-| Q2 | Which Python libraries are installed on the tournament machines (numpy, scipy, torch)? | *pending* | | learned models, vectorised code (methods.md M-07, M-08, M-13) |
-| Q3 | May agents read `is_pacman`, `num_carrying` and `scared_timer` of opponents that are out of sight, through `get_agent_state`? | *pending* | | the grey-zone switch (default off) |
-| Q4 | Is shared memory between our own two agents (one shared Python object) allowed? | *pending* | | shared beliefs and plans between our agents (H-S01, H-S09); the raiding defender (E-018) works without it |
-| Q6 | May we ship a data file next to `my_team.py`, for example tuned weights, and load it at startup? | *pending* | | tuned parameters in a separate file (constants inside `my_team.py` work either way) |
+| # (table above) | Question as sent | Answer (quoted) | What it means for us |
+|---|---|---|---|
+| Q2 | Which Python libraries are installed on the tournament machines (numpy, scipy, torch etc.)? | "We install them on-demand. Let me know which ones you are going to use." | Stdlib only until we name a library to him and he confirms it is installed. Request it before the test run (2026-11-23), so the test run would show an install problem. The lint (`eval/check_rules.py`) keeps rejecting these imports until then. |
+| Q3 | May agents read `is_pacman`, `num_carrying` and `scared_timer` of opponents that are out of sight, through `get_agent_state`? Would accessing this information be considered a rule violation? | "I do not remember now, but is this information available? If it is, I recommend you to use it and I'll make this info public to the rest of the teams (pls, lmk)." | Allowed: it is available (E-023). We still owe him the confirmation so he can tell every team. Keep the single switch. |
+| Q4 | Is shared memory between our own two agents (one shared Python object) allowed? | "Yes, there is no problem with that." | Shared beliefs and plans between our agents are open (H-S01, H-S09; agents.md ideas that waited on Q4). |
+| Q6 | May we ship a data file next to `my_team.py`, for example tuned weights, and load it at startup? | "Yes, you can." | Tuned parameters may live in a separate read-only file, loaded relative to `__file__` (T-21). |

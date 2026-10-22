@@ -45,7 +45,7 @@ Everything here was checked against the engine source (`pacman-contest/src/conte
 | Time left | yes | `game_state.data.timeleft`: starts at 1200, minus 1 per agent move |
 | Own and teammate `AgentState` | yes | position, direction, `is_pacman`, `scared_timer`, `num_carrying`, `num_returned` |
 | Opponent position and direction | only if within Manhattan 5 of either of our agents | otherwise `configuration is None` and `get_agent_position(i)` returns `None` |
-| Opponent `is_pacman`, `scared_timer`, `num_carrying`, `num_returned`, `start` | **yes, even when hidden** | grey zone, see rules.md Q3 |
+| Opponent `is_pacman`, `scared_timer`, `num_carrying`, `num_returned`, `start` | **yes, even when hidden** | `make_observation` clears only `configuration` (E-023); allowed by rules.md Q3 |
 | Noisy distances `get_agent_distances()` | yes | one reading per agent, including self and teammate |
 | Private fields `data._food_eaten`, `_capsule_eaten`, `_food_added`, `_agent_moved` | present | **forbidden** by our fair-play policy |
 

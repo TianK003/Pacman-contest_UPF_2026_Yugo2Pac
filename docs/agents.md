@@ -140,9 +140,9 @@ All entries are greedy_v2 plus an exact belief filter over enemy cells. The filt
 | Return thresholds 3 / 12, adaptive returns | E-007, E-010, E-011 | within noise; return-at-8 adopted | the attacker changes a lot |
 | Dead-end / exit-race checks | E-002, E-018 | deaths halve, points flat | the saved moves get a productive use (another target or entry) |
 | Dynamic roles (C1 as one switch) | E-007 | loses head-to-head (0.95) | the parts are tested separately with a safe defence |
-| Defender raids (with or without belief recall) | E-018, E-020 | gains against guards = losses against attackers | coordination through shared memory (rules.md Q4) is confirmed |
+| Defender raids (with or without belief recall) | E-018, E-020 | gains against guards = losses against attackers | coordination through shared memory (rules.md Q4, allowed since 2026-10-22) is built |
 | Cut-cell squeeze in the defender | E-018 | rarely changes a decision | — |
-| Hunting hidden invaders by belief | E-019 | +0.07, CI includes 0 | the belief gets both agents' readings (Q4) |
+| Hunting hidden invaders by belief | E-019 | +0.07, CI includes 0 | the belief gets both agents' readings (Q4, allowed) or the hidden-opponent fields (Q3, allowed) |
 | Potential-field attacker (F2) | E-008, E-010 | worse than greedy | — |
 | Capsule rusher + border camper | E-006, E-007 | 0.00 | — |
 
@@ -152,4 +152,5 @@ The planned queue in experiments.md has the details. The main ones:
 - weight tuning of F1 (P-16);
 - the endgame / score-control part of roles (P-17);
 - belief-based choice of the attack entry;
-- coordination through shared memory, once rules.md Q4 is answered.
+- coordination through shared memory (rules.md Q4: allowed, 2026-10-22);
+- hidden opponents' `is_pacman` / `num_carrying` / `scared_timer` behind one switch (rules.md Q3: allowed, 2026-10-22; E-023).

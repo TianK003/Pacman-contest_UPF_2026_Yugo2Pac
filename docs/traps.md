@@ -112,8 +112,8 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Prevention**: always test with `venv` (3.8.10).
 
 **T-18: Third-party imports**
-- **Why**: numpy and torch may not exist on SNOW (Q2). An `ImportError` means the team fails to load, which loses every game.
-- **Prevention**: stdlib only until the staff confirm otherwise.
+- **Why**: numpy and torch are installed on SNOW only on request (Q2). An `ImportError` means the team fails to load, which loses every game.
+- **Prevention**: stdlib only until we have requested a library and the professor has confirmed it is installed; request before the test run (2026-11-23) so it is exercised there.
 
 **T-19: Helper module name collisions**
 - **Why**: `capture.py` adds each team's folder to `sys.path`, and Python caches modules by name in `sys.modules`. If two teams both import e.g. `utils`, the second team silently gets the first team's module.
@@ -125,7 +125,7 @@ Section A matters most: those traps can make us **cheat by accident**.
 
 **T-21: Writing files during games**
 - **Why**: the working directory isn't ours, games run in parallel, and CONTEST.md forbids it.
-- **Prevention**: don't. Read-only loading of shipped data relative to `__file__` is the only file access (pending Q6).
+- **Prevention**: don't. Read-only loading of shipped data relative to `__file__` is the only file access (allowed, Q6).
 
 ## C. Wrong assumptions about the engine (all [verified], see framework.md)
 

@@ -5,3 +5,4 @@ eval/results/*_tmp/
 eval/results/*_progress.log
 eval/belief_probe/rows_*.json
 eval/traces/
+eval/belief_probe/log_*.txt

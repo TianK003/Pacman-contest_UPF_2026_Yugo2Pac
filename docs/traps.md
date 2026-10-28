@@ -218,6 +218,14 @@ Section A matters most: those traps can make us **cheat by accident**.
   - `eval/heldout/` is for the release gate and rare logged checkpoints only, and only totals are reported.
   - Its style labels in league.json are all a designer should know.
 
+**T-57: A coarse diff says "no effect" when the change is in the defender's path** [hit E-025]
+- **What happened**: comparing smoke games on score, Pacman moves, returned food and move counts found `hunt`, `directed` and `recall` "identical" to `flags` in 8/8 games. Counting branch calls showed hunt and directed did fire (23 times each in one game vs baseline); those diagnostics simply never see where a ghost walks.
+- **Prevention**: to show that a switch changes nothing, compare every diagnostic of both teams (as the identity checks do), or count the branch directly. To show that a switch does something, count its branch.
+
+**T-58: `capture.py` loads its own copy of a team module** [hit E-025]
+- **Why**: the engine imports the team file by path into a fresh module. Patching classes in a module you imported yourself (for counting or tracing) changes nothing in the game.
+- **Prevention**: wrap the team through a small team file whose `create_team` loads the target and patches that copy (as `eval/trace_team.py` and `eval/belief_probe/probe_team.py` do). Local analysis only, never submitted.
+
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
 - **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.

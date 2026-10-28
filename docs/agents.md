@@ -123,6 +123,25 @@ All entries are greedy_v2 plus an exact belief filter over enemy cells. The filt
 |---|---|---|---|---|
 | `greedy_v3` | `lab3_shadow` as defaults (24/24 identical) | E-019, E-021 | locked test seeds (E-021): 1.79 PPG vs greedy_v2's 1.55; paired **+0.26 [+0.15, +0.36]** over the pool, **+0.17 [−0.00, +0.33]** over the held-out teams (heldout_b +0.35, heldout_a −0.02), head-to-head 1.56; Linux max move 0.105 s under full load | **incumbent** (`my_team.py` since 2026-10-18) |
 
+### `teams/greedy_lab_v5.py`: enemy-state switches on top of greedy_v3 (E-025)
+
+All entries are greedy_v3 plus the named switches. Δ is against greedy_v3 on tuning seeds 151–200, paired over the 700 games against the 7 other pool members; h2h = head-to-head against greedy_v3. Research behind each switch: heuristics.md Part D.
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab5_off` | none | 18/18 identical to greedy_v3 | **identity** |
+| `lab5_flags` | `flags` (#1, H-S14): hidden fields for the belief's side, food attribution, respawns, the raider, scared timers | +0.11 [+0.00, +0.22], h2h 1.63; food conceded 8.2 → 6.6; side detection 58% → 100% | part of `lab5_smart` |
+| `lab5_flags_hunt` | flags + `hunt` (#2) | +0.11 [−0.00, +0.22], −0.006 on top of flags, h2h 1.49 | **rejected** (hunt still adds nothing) |
+| `lab5_shared` | `shared` (#3, H-S15): one team belief from both agents' sonar | belief error 4 → 2 steps [verified]; points +0.00 [−0.08, +0.08], h2h 1.38 | part of `lab5_smart` (rule margin +0.003) |
+| `lab5_endgame` | `endgame` (#4, P-17c) | +0.01 [−0.02, +0.03], h2h 1.35 | part of `lab5_smart` (rule margin +0.006) |
+| `lab5_track` | flags + `directed` (H-S17): goal-directed motion in the belief | +0.12 [+0.01, +0.23], +0.009 on top of flags; belief p(true) 0.17 → 0.18 | part of `lab5_smart` (rule margin +0.009) |
+| `lab5_open` | flags + `open_goal` (H-S24): ignore return_at while nobody can reach us before home | **+0.17 [+0.05, +0.29]**, +0.057 on top of flags, no opponent below +0.01, h2h 1.63; max carried 7.4 → 8.9 | part of `lab5_smart`; best single entry |
+| `lab5_guard` | flags + `guard` (H-S16): defender targets hidden invaders by carrying and likely goal | +0.03 [−0.09, +0.15], −0.08 on top of flags; rusher −0.27; vs double attackers −0.12 | **rejected** |
+| `lab5_recall` | flags + `recall` (H-S26): two enemy Pacmen → attacker defends | never fired against the pool (800/800 = flags); **−0.58** vs double_attack, **−0.40** vs friend_aljaz_1 | **rejected** (it cuts our returns by a third) |
+| `lab5_intent` | flags + directed + open_goal + guard + recall | +0.10 [−0.03, +0.22]; −0.29 vs double attackers (recall) | **rejected** |
+| `lab5_all` | flags + shared + endgame + directed + open_goal + guard + recall | +0.14 [+0.01, +0.26]; −0.18 vs double attackers (recall) | **rejected** |
+| `lab5_smart` | flags + shared + endgame + directed + open_goal (the pre-registered selection from the screen) | **validation seeds 181–220: +0.25 [+0.11, +0.40]** over the pool, worst opponent greedy_v2 +0.00, h2h 1.59; food conceded 7.4 → 6.5; 0 crashes / warnings, max move 0.151 s | **passes the accept rule** (E-025); release gate open (Linux timing, test seeds + held-out); promotion = user decision |
+
 ## Opponents we did not write
 
 | name | what it is | use |
@@ -131,6 +150,8 @@ All entries are greedy_v2 plus an exact belief filter over enemy cells. The filt
 | `heldout_a` | **held-out**, written blind by a separate agent: aggressive double attack with capsule use | release gate and rare checkpoints only; never read its code or replays, never tune against it (T-53) |
 | `heldout_b` | **held-out**: defence first, permanent guard + cautious raider, turtles when ahead late | same as `heldout_a`; the strongest opponent we have (greedy_v2 scored 0.89 against it, E-015) |
 | `submission` | whatever is in `my_team.py` | release gates (E-016) |
+| `friend_andy` | a friend's team (`friends/andy/my_team.py`, received 2026-10-23): `OffensiveAgent` + `DefensiveAgent` sharing a belief tracker. Its code is not studied for design and never copied (rule 7) | sparring. E-024: greedy_v3 scored 2.10 PPG against it, 329-62-109 over 500 games. Not in the reference pool |
+| `friend_aljaz_1` … `_5` | a friend's five teams, compiled Cython `.pyd` (Windows x64, Python 3.8 only), received 2026-10-23; not inspected beyond a strings scan | sparring. E-026 (partial): greedy_v3 0.64 PPG vs aljaz_1 (it returns 22.9 food per game), 1.73 vs aljaz_2; aljaz_4/5 untested. E-025: 0.88 vs aljaz_1 on tuning 151–200. **Strongest opponent we have**. Not in the reference pool |
 
 ## Ideas already tested: don't redo them without a new reason
 
@@ -142,15 +163,20 @@ All entries are greedy_v2 plus an exact belief filter over enemy cells. The filt
 | Dynamic roles (C1 as one switch) | E-007 | loses head-to-head (0.95) | the parts are tested separately with a safe defence |
 | Defender raids (with or without belief recall) | E-018, E-020 | gains against guards = losses against attackers | coordination through shared memory (rules.md Q4, allowed since 2026-10-22) is built |
 | Cut-cell squeeze in the defender | E-018 | rarely changes a decision | — |
-| Hunting hidden invaders by belief | E-019 | +0.07, CI includes 0 | the belief gets both agents' readings (Q4, allowed) or the hidden-opponent fields (Q3, allowed) |
+| Hunting hidden invaders by belief | E-019, E-025 | +0.07, CI includes 0; with exact `is_pacman` (E-025) still −0.006 on top of the fields; a goal-recognition version (`guard`) −0.08 | the defender gets a different way to catch them (e.g. two defenders, SM-8) |
+| Attacker comes back on two invaders (`recall`) | E-007 (as part of `roles`), E-025 | −0.58 vs double_attack, −0.40 vs friend_aljaz_1: our returns fall by a third, theirs barely | — (against a double attack, race instead; proposals.md SM-9) |
 | Potential-field attacker (F2) | E-008, E-010 | worse than greedy | — |
 | Capsule rusher + border camper | E-006, E-007 | 0.00 | — |
 
 ## Open (untested) ideas
 
-The planned queue in experiments.md has the details. The main ones:
+The planned queue in experiments.md and [proposals.md](proposals.md) have the details. The main ones:
 - weight tuning of F1 (P-16);
-- the endgame / score-control part of roles (P-17);
 - belief-based choice of the attack entry;
-- coordination through shared memory (rules.md Q4: allowed, 2026-10-22);
-- hidden opponents' `is_pacman` / `num_carrying` / `scared_timer` behind one switch (rules.md Q3: allowed, 2026-10-22; E-023).
+- shared-mind team tactics (proposals.md SM-1..SM-13: power play, spotter, decoy, bait-and-trap, play selector);
+- TrailMax escape for the "cut off" attacker (heuristics.md H-S20).
+
+Tested on 2026-10-28 (E-025):
+- the hidden-opponent fields (`flags`);
+- the shared belief (`shared`);
+- the endgame part of roles (`endgame`, P-17c).

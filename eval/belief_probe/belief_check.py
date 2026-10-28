@@ -6,6 +6,7 @@
 # usage (from the repo root):
 #   venv/Scripts/python.exe eval/belief_probe/belief_check.py . "hunt=1,shadow=1" 5 430 greedy_v2 feature
 #   venv/Scripts/python.exe eval/belief_probe/belief_summary.py eval/belief_probe/rows_hunt1_shadow1.json
+# Another lab file (E-025): set BELIEF_LAB=teams/greedy_lab_v5.py; outputs then get its name as a prefix.
 # Seeds: tuning seeds <seed_offset>+1 .. <seed_offset>+<n_seeds>; options K_<CONST>=v override a
 # constant of the loaded lab module (e.g. K_STAY_WEIGHT=1.0).
 import io
@@ -33,7 +34,8 @@ league = json.load(open(os.path.join(REPO, 'eval', 'league.json')))
 seeds = [l.strip() for l in open(os.path.join(REPO, 'eval', 'seeds', 'tuning.txt'))
          if l.strip() and not l.startswith('#')][OFFSET:OFFSET + N_SEEDS]
 probe = os.path.join(HERE, 'probe_team.py')
-lab = os.path.join(REPO, 'teams', 'greedy_lab_v3.py')
+lab = os.path.join(REPO, os.environ.get('BELIEF_LAB', os.path.join('teams', 'greedy_lab_v3.py')))
+TAG = '' if 'BELIEF_LAB' not in os.environ else os.path.splitext(os.path.basename(lab))[0] + '_'
 
 
 def opts_str(d):
@@ -69,7 +71,7 @@ for opp in OPPONENTS:
             ours = 'role=ours,team=%s%s' % (lab, (',' + OURS_OPTS) if OURS_OPTS else '')
             red, blue = (ours, opts_str(theirs)) if we_red else (opts_str(theirs), ours)
             argv = ['-r', probe, '--redOpts', red, '-b', probe, '--blueOpts', blue,
-                    '-q', '-l', 'RANDOM%s' % seed, '--delay-step', '0', '-u', 'belief_probe']
+                    '-q', '-l', 'RANDOM%s' % seed, '--delay-step', '0', '-u', 'belief_probe_' + TAG + (OURS_OPTS or 'off')]
             probe_store.beliefs[:] = []
             probe_store.truth[:] = []
             with redirect_stdout(io.StringIO()):
@@ -112,6 +114,6 @@ for opp in OPPONENTS:
             print(opp, seed, 'red' if we_red else 'blue', 'score', games[0].state.data.score,
                   'rows', len(rows), file=sys.stderr)
 
-out = os.path.join(HERE, 'rows_%s.json' % (OURS_OPTS.replace(',', '_').replace('=', '') or 'off'))
+out = os.path.join(HERE, 'rows_%s%s.json' % (TAG, OURS_OPTS.replace(',', '_').replace('=', '') or 'off'))
 json.dump(rows, open(out, 'w'))
 print('wrote', out, len(rows))

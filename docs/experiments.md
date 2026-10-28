@@ -1017,3 +1017,221 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - `capture.py:128-129` `get_agent_state` returns the `AgentState` as is; `capture_agents.py:136-138` `observation_function` is what calls `make_observation` each turn.
 - **Conclusion**: [verified] these fields are available for hidden opponents through the public API; E-000 still holds. `my_team.py` (greedy_v3) reads them only for our own agents.
 - **Follow-ups**: confirm to the professor (Q3); a candidate that uses the fields behind `USE_HIDDEN_OPPONENT_FLAGS`.
+
+## E-024 — greedy_v3 (`my_team.py`) vs a friend's team, `friend_andy` (2026-10-23)
+- **Status**: done.
+- **Question**: how does our submission do against an outside team (a friend's agent, `friends/andy/my_team.py`)?
+- **Setup**: `eval/evaluate.py play --candidate submission --vs friend_andy --seeds tuning --n-seeds 250 --jobs 6 --run friend_andy_vs_v3`, i.e. 250 tuning seeds × 2 colours = 500 games, with `-c`. `my_team.py` = greedy_v3 at commit `6e419f9`, framework `54cd83c`, Windows 11, Python 3.8.10. Before running, the friend's file was checked only for safety (imports, file/process calls, `random.seed`); its strategy was not studied. A visual game on `RANDOM13` was also played (us red): Andy won by 4.
+- **Results**:
+
+  | agent | games | W-T-L | PPG [95% CI] | win % [exact CI] | avg margin | crash / warnings / violations | max move s |
+  |---|---|---|---|---|---|---|---|
+  | submission (greedy_v3) | 500 | 329-62-109 | 2.10 [1.96, 2.22] | 66 [61, 70] | +5.2 | 0 / 0 / 0 | 0.080 |
+  | friend_andy | 500 | 109-62-329 | 0.78 [0.66, 0.90] | 22 [18, 26] | −5.2 | 0 / 0 / – | 0.154 |
+
+  | side we play | W | T | L |
+  |---|---|---|---|
+  | red | 165 | 28 | 57 |
+  | blue | 164 | 34 | 52 |
+
+  | per game | returned | conceded | deaths | kills | max carried | 28-finishes |
+  |---|---|---|---|---|---|---|
+  | submission | 12.1 | 6.9 | 1.49 | 1.66 | 7.4 | 7 |
+  | friend_andy | 6.9 | 12.1 | 1.66 | 1.49 | 4.3 | 0 |
+
+- **Conclusion**: [verified] greedy_v3 beats `friend_andy` clearly and equally on both colours. It still loses 22% of the games, so the 109 losses are worth classifying (`eval/replay_probe.py`) for weaknesses. The seeds are tuning seeds, so no validation or test budget was used.
+
+## E-025 — Enemy-state agents: hidden fields, shared belief, endgame, intent model (2026-10-28)
+- **Status**: done. Pre-registered before any game was played; `lab5_smart` **passes the accept rule** (validation seeds 181–220: +0.25 [+0.11, +0.40]); not promoted (user decision, release gate open).
+- **Question** (user request, 2026-10-28): do the hidden-opponent fields (Q3), a shared team belief (Q4), score-aware endgame roles, and a model of what each enemy is doing (sonar tracking + goal recognition, with greedy reactions) raise greedy_v3's points per game? Which combination is best?
+- **Research first**: heuristics.md Part D (two literature agents, 2026-10-28) gives the sources for each switch.
+- **Variants**: new file `teams/greedy_lab_v5.py`, a copy of `teams/greedy_v3.py` plus the switches below. All are off by default, so `lab5_off` must play exactly like greedy_v3. Every read of a hidden enemy's fields goes through one method behind the module constant `USE_HIDDEN_OPPONENT_FLAGS` (rules.md Q3).
+
+  | switch | heuristic | what it does | needs |
+  |---|---|---|---|
+  | `flags` (#1) | H-S14 | belief: zero cells on the wrong half (`is_pacman`); the enemy whose `num_carrying` rose ate the vanished food; respawn when carrying → 0 without `num_returned` rising, or `scared_timer` ≥ 2 → 0. Raider = the enemy that is a Pacman now (else the last one). Enemy scared state from its exact `scared_timer` | — |
+  | `hunt` (#2, P-22) | H-S01 | with no invader in sight, chase the most likely cell of a hidden enemy on our side. With `flags`, "on our side" is `is_pacman` (exact) instead of belief mass ≥ 0.5 (57% precision, E-019) | — |
+  | `shared` (#3) | H-S15 | one team belief, updated at both agents' turns. Only the enemy that just moved, `(index − 1) % 4`, is spread; both agents' sonar is applied; a vanished food dot pins that enemy. Respawns are detected once per team update | — |
+  | `endgame` (#4, P-17c) | H-S27 | in the last 40 own moves: ahead → both defend; behind → both attack, and a carrier banks as soon as its food would take the lead | — |
+  | `directed` | H-S17 | belief motion model: a neighbour that moves an enemy towards its goal gets weight 1 + 2 instead of 1. Goal: our nearest food while it forages, its home when it returns (carrying ≥ the amount it banked at before, default 5). Ghosts keep the random walk. No cell's weight drops to 0 (T-54) | `flags` |
+  | `open_goal` | H-S24 | the attacker ignores `return_at` while no enemy can reach it before it gets home (pessimistic 10% quantile of each enemy's belief distance; scared timers count) + 4 moves | `flags` |
+  | `guard` | H-S16 | defender: an invader in sight or hidden (`is_pacman`) is a target; prefer the one carrying most. A hidden returning invader → the border cell across its most likely exit, if we get there first; a hidden forager → the food it most likely eats next, if we get there first; otherwise P-22's chase of its most likely cell | `flags` |
+  | `recall` | H-S26 | while both enemies are Pacmen and our attacker is on our side (or carries nothing within 3 of home), it defends too; the two defenders split the invaders by min-max distance | `flags` |
+
+- **Entries** (`eval/league.json`):
+
+  | entry | switches |
+  |---|---|
+  | `lab5_off` | none (identity check) |
+  | `lab5_flags` | flags |
+  | `lab5_flags_hunt` | flags + hunt |
+  | `lab5_shared` | shared |
+  | `lab5_endgame` | endgame |
+  | `lab5_track` | flags + directed (the sonar-tracking agent) |
+  | `lab5_open` | flags + open_goal |
+  | `lab5_guard` | flags + guard |
+  | `lab5_recall` | flags + recall |
+  | `lab5_intent` | flags + directed + open_goal + guard + recall (the enemy-intent agent) |
+  | `lab5_all` | flags + shared + endgame + directed + open_goal + guard + recall |
+  | `lab5_smart` | chosen from the screen by the rule below |
+
+- **Checks before the screen**: lint; smoke vs baseline; identity `lab5_off` vs greedy_v3 (baseline, camper, exploit_v2 on tuning seeds 1–3, both colours: must be 18/18 identical); belief probe (accuracy against true positions, `eval/belief_probe/`, tuning seeds 431–435 against the E-019 opponents) for the perception switches.
+- **Screen**: tuning seeds 151–200 (50 seeds, both colours) against the 8-member reference pool, with greedy_v3 in the same run, so every Δ is paired.
+- **Pre-registered rule for `lab5_smart`**:
+  1. `shared`, `endgame` (independent): include if Δ(entry) vs greedy_v3 > 0.
+  2. `hunt`, `directed`, `open_goal`, `guard`, `recall` (need `flags`): include if Δ(entry) − Δ(`lab5_flags`) > 0. `hunt` and `guard` are alternatives: if both qualify, keep the larger gain.
+  3. `flags`: include if Δ(`lab5_flags`) > 0 or any component of rule 2 is included.
+  4. Exclude a component whose entry has any gate failure (crash, time warning, sentinel violation, max move > 0.5 s) or a per-opponent Δ below −0.3.
+- **Decision run**: `lab5_smart` on validation seeds 181–220 (40 seeds, fresh) against the pool, paired with greedy_v3, and the accept rule of evaluation.md section 2. No test seeds; promotion is a user decision.
+- **Diagnostic, not a decision input**: greedy_v3, `lab5_all` and `lab5_smart` against `friend_aljaz_1` on tuning seeds 1–100, the seeds of the unlogged 2026-10-24 run (`eval/results/friend_aljaz_vs_v3.jsonl`), where greedy_v3 scored 0.64 points per game.
+- **Setup**: Windows 11, Python 3.8.10, framework `54cd83c`, `my_team.py` = greedy_v3 at commit `6e419f9`; `--jobs 8` on 12 logical CPUs.
+- **Checks** (all before the screen):
+  - Lint OK (`eval/check_rules.py teams/greedy_lab_v5.py`).
+  - **Smoke** (`smoke_labv5`): all 11 entries vs baseline and camper on tuning seeds 1–2, both colours, 88 games: 0 crashes, 0 time warnings, max move 0.068 s.
+  - **Identity** (`identity_labv5`): `lab5_off` vs greedy_v3 against baseline, camper, exploit_v2 on tuning seeds 1–3, both colours: **18/18 identical** (score and every sentinel diagnostic of both teams).
+  - **Branches fire**: a smoke comparison on score + Pacman moves + returned food could not tell `hunt` / `directed` / `recall` from `flags` (8/8 equal), because it does not see the defender's path. Counted directly in one game vs baseline (RANDOM27904464, a local wrapper in the scratchpad): the hunt suspect was found 23 times, guard chose a target 39 times, `goal_open` was open in 67 of 75 checks, the directed goal field was used 23 times (only for hidden enemy Pacmen). `recall` cannot fire against baseline or camper: neither ever has both agents on our side.
+  - **Belief accuracy** (`eval/belief_probe/`, now with `BELIEF_LAB=teams/greedy_lab_v5.py`; the defender's belief against the opponents' true positions; tuning seeds 431–435 against greedy_v2, exploit_v2, rusher, feature, camper, choke, both colours, 60 games per row; files `rows_greedy_lab_v5_*.json`):
+
+    | variant | hidden enemy-turns | truth ruled out | mean p(true cell) | mean expected distance to truth | median distance, most likely cell → truth | "on our side" recall | precision | defender max move |
+    |---|---|---|---|---|---|---|---|---|
+    | greedy_v3 (`shadow=1`) | 15,396 | 0.0% | 0.16 | 7.5 | 4 | 66% | 58% | 0.034 s |
+    | `flags` | 14,840 | 0.0% | 0.17 | 6.9 | 4 | **100%** | **100%** | 0.032 s |
+    | `shared` | 15,461 | 0.0% | 0.24 | 5.5 | **2** | 76% | 67% | 0.039 s |
+    | `flags` + `shared` | 14,898 | 0.0% | **0.26** | **5.2** | **2** | **100%** | **100%** | 0.019 s |
+    | `flags` + `directed` | 14,840 | 0.0% | 0.18 | 6.8 | 4 | 100% | 100% | 0.032 s |
+    | `flags` + `shared` + `directed` | 14,898 | 0.0% | 0.26 | 5.2 | 2 | 100% | 100% | 0.030 s |
+
+    - The greedy_v3 row reproduces E-019 (0.16 / 7.5 / 4 / 9 last-seen / 66% / 57%), which checks the modified tool.
+    - [verified] **Sharing halves the error** of the most likely cell (4 → 2 steps) and raises the probability on the true cell by half (0.16 → 0.24). **The fields make the side exact.** The directed motion model adds almost nothing measurable (0.17 → 0.18): it acts only on hidden enemy Pacmen, a small share of the hidden turns.
+    - The truth is never ruled out in any variant, so the side constraint, the respawn rules and the exact food attribution of `shared` introduced no false exclusions (T-54, T-55).
+- **Screen results** (run `scr_labv5`: tuning seeds 151–200, both colours, 8,700 games):
+  - **Gates**: 0 crashes, 0 time warnings, 0 sentinel violations, 0 moves over the 0.5 s budget. Max move per entry 0.065–0.198 s; greedy_v3 0.310 s (all under 8 parallel jobs).
+  - **Points** (paired over the 700 games against the 7 pool members other than greedy_v3; head-to-head = 100 games against greedy_v3):
+
+    | entry | paired Δ vs greedy_v3 [95% CI] | exact Δ | worst opponent | best opponent | head-to-head |
+    |---|---|---|---|---|---|
+    | `lab5_open` | **+0.17 [+0.05, +0.29]** | +0.169 | rusher +0.01 | exploit_v2 +0.39 | 1.63 |
+    | `lab5_all` | +0.14 [+0.01, +0.26] | +0.137 | rusher −0.05 | exploit_v2 +0.28 | 1.67 |
+    | `lab5_track` | +0.12 [+0.01, +0.23] | +0.120 | rusher −0.19 | exploit_v2 +0.29 | 1.63 |
+    | `lab5_flags` | +0.11 [+0.00, +0.22] | +0.111 | rusher −0.19 | exploit_v2 +0.29 | 1.63 |
+    | `lab5_recall` | +0.11 [+0.00, +0.22] | +0.111 | rusher −0.19 | exploit_v2 +0.29 | 1.63 |
+    | `lab5_flags_hunt` | +0.11 [−0.00, +0.22] | +0.106 | rusher −0.15 | exploit_v2 +0.24 | 1.49 |
+    | `lab5_intent` | +0.10 [−0.03, +0.22] | +0.103 | rusher −0.07 | exploit_v2 +0.25 | 1.68 |
+    | `lab5_guard` | +0.03 [−0.09, +0.15] | +0.029 | rusher −0.27 | feature +0.21 | 1.60 |
+    | `lab5_endgame` | +0.01 [−0.02, +0.03] | +0.006 | choke −0.03 | greedy +0.06 | 1.35 |
+    | `lab5_shared` | +0.00 [−0.08, +0.08] | +0.003 | choke −0.10 | exploit_v2 +0.12 | 1.38 |
+
+  - **Diagnostics** (team totals per game against the same 7 opponents):
+
+    | entry | returned | conceded | deaths | kills | max carried | Pacman moves | standoff moves |
+    |---|---|---|---|---|---|---|---|
+    | greedy_v3 | 12.0 | 8.2 | 1.02 | 0.76 | 7.4 | 124 | 239 |
+    | `lab5_flags` | 11.4 | **6.6** | 0.97 | 0.69 | 7.2 | 121 | 256 |
+    | `lab5_flags_hunt` | 11.4 | 6.6 | 1.00 | 0.65 | 7.2 | 123 | 254 |
+    | `lab5_shared` | 12.0 | 7.8 | 1.03 | 0.79 | 7.5 | 125 | 241 |
+    | `lab5_endgame` | 12.1 | 8.6 | 0.98 | 0.76 | 7.4 | 122 | 238 |
+    | `lab5_track` | 11.4 | 6.6 | 0.97 | 0.69 | 7.3 | 121 | 256 |
+    | `lab5_open` | **12.0** | **6.5** | 0.94 | 0.63 | **8.9** | 117 | 259 |
+    | `lab5_guard` | 11.4 | 6.7 | 0.95 | 0.67 | 7.2 | 121 | 259 |
+    | `lab5_recall` | 11.4 | 6.6 | 0.97 | 0.69 | 7.2 | 121 | 256 |
+    | `lab5_intent` | 11.9 | 6.4 | 0.94 | 0.60 | 8.9 | 117 | 264 |
+    | `lab5_all` | 11.5 | 6.3 | 0.90 | 0.59 | 8.7 | 114 | 267 |
+
+  - **Reading** (screen on tuning seeds; with 10 entries, one or two positive CIs are expected by chance):
+    - **`flags` works through the defence**: food conceded falls by a fifth (8.2 → 6.6), because the raider identity is now exact (E-025 probe: 58% → 100%). Our own returns fall a little (12.0 → 11.4) and standoff moves rise (239 → 256), plausibly T-56 again: a better-placed defender reveals more of their guards to our attacker [untested].
+    - **`open_goal` recovers the attack**: on top of `flags` it carries more per trip (max 8.9) and returns food back to greedy_v3's level, with fewer deaths (0.94). It has the only clearly positive CI, and no opponent below +0.01.
+    - **`recall` never fired**: 800/800 games give `lab5_recall` exactly `lab5_flags`'s points. No pool member ever has both agents on our side (as E-014 found), so the screen cannot test it → diagnostic run below.
+    - **`shared`** improves the belief (E-025 probe) but not the points (+0.003): the defender's shadow post seldom changes with a 2-step better estimate [untested].
+    - **`endgame`** changes little (+0.006): most games are decided before the last 40 moves.
+    - **`hunt`** and **`guard`** do not add to `flags`; guard costs against rusher (−0.27), the capsule rusher whose scared windows a chasing defender walks into [untested].
+  - **Pre-registered selection** (rules 1–4):
+
+    | component | test | value | included |
+    |---|---|---|---|
+    | `flags` | Δ > 0 | +0.111 | yes |
+    | `shared` | Δ > 0 | +0.003 | yes (noise-level margin) |
+    | `endgame` | Δ > 0 | +0.006 | yes (noise-level margin) |
+    | `directed` | Δ(track) − Δ(flags) > 0 | +0.009 | yes (noise-level margin) |
+    | `open_goal` | Δ(open) − Δ(flags) > 0 | +0.057 | yes |
+    | `hunt` | Δ(flags_hunt) − Δ(flags) > 0 | −0.006 | no |
+    | `guard` | Δ(guard) − Δ(flags) > 0 | −0.083 | no |
+    | `recall` | Δ(recall) − Δ(flags) > 0 | 0.000 (never fired) | no |
+
+    No gate failure and no opponent Δ below −0.3, so rule 4 excluded nothing. **`lab5_smart` = flags + shared + endgame + directed + open_goal** (league entry added). Smoke (`smoke_labv5_smart`): 4/4 vs baseline, 0 warnings, max move 0.040 s.
+- **Diagnostic: double attackers** (run `diag_labv5_double`, user request 2026-10-28; not a decision input): greedy_v3, `lab5_flags`, `lab5_recall`, `lab5_guard`, `lab5_intent`, `lab5_all` against `double_attack` (league specialist, 2 × greedy attacker) and `friend_aljaz_1` on the screen's tuning seeds 151–200, both colours, 1,200 games. Gates: 0 crashes, 0 warnings, max move 0.128 s (ours).
+
+  | entry | Δ vs greedy_v3 [95% CI], 200 games | vs double_attack | vs friend_aljaz_1 |
+  |---|---|---|---|
+  | `lab5_flags` | +0.01 [−0.17, +0.20] | −0.02 | +0.05 |
+  | `lab5_recall` | **−0.49 [−0.70, −0.27]** | **−0.58 [−0.90, −0.27]** | **−0.40 [−0.67, −0.12]** |
+  | `lab5_guard` | −0.12 [−0.37, +0.12] | −0.08 | −0.16 |
+  | `lab5_intent` | −0.29 [−0.53, −0.04] | −0.51 | −0.08 |
+  | `lab5_all` | −0.18 [−0.43, +0.07] | −0.33 | −0.04 |
+
+  | entry | opponent | returned | conceded | deaths | kills | our Pacman moves |
+  |---|---|---|---|---|---|---|
+  | greedy_v3 | double_attack | 19.5 | 14.7 | 0.22 | 1.43 | 207 |
+  | `lab5_recall` | double_attack | **12.6** | 14.3 | 0.70 | 1.73 | 138 |
+  | greedy_v3 | friend_aljaz_1 | 18.0 | 21.8 | 1.15 | 2.14 | 151 |
+  | `lab5_recall` | friend_aljaz_1 | **12.0** | 21.6 | 1.26 | 2.70 | 97 |
+
+  - [verified on these games] **`recall` is harmful exactly where it was meant to help.** Against a double attack it cuts our own returns by a third (19.5 → 12.6; 18.0 → 12.0) and barely reduces theirs (14.7 → 14.3; 21.8 → 21.6). The second defender gets more kills (1.43 → 1.73) but does not stop their scoring. When both enemies attack, their half is empty, and our attacker scores more by staying there.
+  - **Lesson for SM-9 / SM-13** (proposals.md): against double attackers, race them; do not pull the attacker back.
+  - `lab5_smart` contains none of `recall`, `guard`, `hunt`.
+  - friend_aljaz_1 remains the strongest opponent we have: greedy_v3 0.88 points per game on these seeds (0.64 on tuning 1–100, the 2026-10-24 run).
+
+- **Decision run** (run `val_labv5_smart`: **validation seeds 181–220**, unused before, 40 seeds × 2 colours against the pool; 1,200 games):
+
+  | opponent | games | PPG `lab5_smart` | PPG greedy_v3 | paired Δ [95% CI] |
+  |---|---|---|---|---|
+  | camper | 80 | 1.96 | 1.81 | +0.15 [−0.15, +0.46] |
+  | choke | 80 | 1.99 | 1.66 | +0.33 [−0.01, +0.66] |
+  | exploit_v2 | 80 | 2.11 | 1.80 | +0.31 [+0.05, +0.59] |
+  | feature | 80 | 2.44 | 2.16 | +0.28 [+0.03, +0.54] |
+  | greedy | 80 | 2.27 | 1.85 | +0.42 [+0.12, +0.71] |
+  | greedy_v2 | 80 | 1.93 | 1.93 | +0.00 [−0.33, +0.34] |
+  | rusher | 80 | 2.30 | 2.05 | +0.25 [−0.09, +0.59] |
+  | **pool (560 paired games)** | | | | **+0.25 [+0.11, +0.40]** |
+
+  | team totals per game (all 640 games each) | returned | conceded | deaths | kills | max carried |
+  |---|---|---|---|---|---|
+  | greedy_v3 | 10.0 | 7.4 | 0.96 | 0.59 | 6.8 |
+  | `lab5_smart` | 9.9 | **6.5** | 0.95 | 0.53 | 7.6 |
+
+  **Accept rule** (evaluation.md section 2):
+
+  | condition | result | pass |
+  |---|---|---|
+  | 1. gates: lint; 0 crashes, warnings, violations; max move ≤ 0.5 s | lint OK; 0 / 0 / 0 in 1,200 games (and in the 800 screen games); max move 0.151 s (8 parallel jobs) | ✓ |
+  | 2. paired pool Δ > 0 with CI lower bound > 0, validation seeds, ≥ 40 seed-pairs per opponent | **+0.25 [+0.11, +0.40]**, 40 seed-pairs each | ✓ |
+  | 3. no opponent with CI upper bound ≤ −0.5; past versions not worse by > 0.5 | worst greedy_v2 +0.00 [−0.33, +0.34]; greedy +0.42, greedy_v2 +0.00 | ✓ |
+  | 4. head-to-head vs greedy_v3 ≥ 1.5 | **1.59** (80 games) | ✓ |
+  | 5. confirmation on seeds not used for selection | the selection used tuning seeds 151–200 only; validation 181–220 is fresh, so this run is that confirmation | ✓ |
+
+- **Diagnostic, not a decision input** (user instruction 2026-10-28: decisions must not rest on one friend's team, which may simply counter us):
+
+  | opponent | seeds | run | greedy_v3 PPG | `lab5_all` PPG | `lab5_smart` PPG | `lab5_smart` − greedy_v3 [95% CI] |
+  |---|---|---|---|---|---|---|
+  | friend_aljaz_1 | tuning 1–100 (pre-registered) | `diag_labv5_aljaz` | 0.70 | 0.75 | **1.06** | +0.36 [+0.14, +0.58] |
+  | double_attack | tuning 151–200 | `diag_labv5_double` + `diag_labv5_smart_double` | 2.05 | 1.72 | **2.64** | +0.59 [+0.29, +0.89] |
+
+  - Against friend_aljaz_1, `lab5_smart` returns less food than greedy_v3 (15.6 vs 17.5) but ends more games itself by returning 28 (24 vs 9 of 200) and concedes a little less (21.7 vs 22.8).
+  - greedy_v3 scored 0.70 here and 0.64 in E-026 on the same seeds and code. Our agents are deterministic, so friend_aljaz_1 probably is not (e.g. a time-limited search) [untested inference]. Its numbers carry extra noise.
+  - Gates: 0 crashes, 0 warnings; our max move 0.107 s.
+- **Conclusion**: [verified on validation seeds 181–220] **`lab5_smart` passes the accept rule** against greedy_v3: +0.25 [+0.11, +0.40] points per game over the pool, head-to-head 1.59. Its gain comes mainly from defence (food conceded 7.4 → 6.5 per game) at equal returns. The screen attributes it to `flags` (exact raider and side) and `open_goal` (carry more when nobody can catch us). `shared`, `endgame` and `directed` entered on noise-level margins (< +0.01 each).
+- **Not done yet (release gate, user decision)**: Linux / Python 3.8 timing under load (E-016 recipe); one locked test-seed run against the pool **and the held-out teams**; promotion to `my_team.py`. Optional Occam check before that: `lab5_open` (2 switches) vs `lab5_smart` (5 switches) on further validation seeds, since three of smart's parts showed no measurable effect.
+
+## E-026 — greedy_v3 (`my_team.py`) vs a friend's five compiled teams, `friend_aljaz_1..5` (2026-10-24; logged 2026-10-28)
+- **Status**: partial (interrupted). The run stopped after 411 games: aljaz_1 and aljaz_2 complete, aljaz_3 has 11 games, aljaz_4 and aljaz_5 none. Logged afterwards from `eval/results/friend_aljaz_vs_v3.jsonl` because E-025 relies on it.
+- **Question**: how does our submission do against a friend's agents (`friends/aljaz_1-5_windows_x64_python38/`, compiled Cython `.pyd` for Windows x64 / Python 3.8, received 2026-10-23)?
+- **Setup**: `--candidate submission --vs friend_aljaz_1 … --seeds tuning --n-seeds 100`, i.e. tuning seeds 1–100, both colours, with `-c`. `my_team.py` = greedy_v3. The binaries were checked only with a strings scan (league.json notes); their strategy was not studied, and they can only run on Windows / Python 3.8.
+- **Results**:
+
+  | opponent | games | greedy_v3 W-T-L | greedy_v3 PPG | opponent food returned per game | opponent 28-finishes |
+  |---|---|---|---|---|---|
+  | friend_aljaz_1 | 200 | 41-5-154 | **0.64** | 22.9 | 71 |
+  | friend_aljaz_2 | 200 | 108-21-71 | 1.73 | 13.7 | 11 |
+  | friend_aljaz_3 | 11 | 5-0-6 | 1.36 | 18.8 | 1 |
+
+  Gates: 0 crashes, 0 time warnings for both sides; max move 0.058 s (ours), 0.300 s (aljaz_2).
+- **Conclusion**: [verified] friend_aljaz_1 is the strongest opponent we have met. It beats greedy_v3 77% of the time, mostly by scoring fast: 22.9 food per game, 71 of 200 games ended by returning 28. It is not in the reference pool. aljaz_4 and aljaz_5 are untested.

@@ -305,6 +305,54 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Map-dependent parameters**: H-M09 sets the thresholds used by H-S04, H-S06 and H-S08.
 - **Evidence**: practically every well-placed team in the write-ups is a hybrid. A rule or decision layer picks goals, search executes them, the map is analysed at startup, and opponents are tracked [reported: see the sources; DeNero & Klein say effective entries "combine search, adversarial search, and probabilistic tracking, and exploit various domain-specific strategies"].
 
+---
+
+## Part D: research survey 2026-10-28 (grid-maze heuristics and inferring hidden enemies)
+
+Two research agents searched the literature on 2026-10-28; they opened every source cited here unless it is marked otherwise.
+- **Topic 1**: movement, safety, territory and pursuit in 4-connected grid mazes.
+- **Topic 2**: inferring what hidden enemies are doing from noisy sensors, and reacting to it.
+
+The numbers are the sources' own, mostly from other games (Ms Pac-Man, Tron, robot pursuit, human judgements). Carrying them over to our game is [untested] throughout. Entries marked "E-025" are built in `teams/greedy_lab_v5.py`.
+
+### D1. Perception: what the enemy is and where it is
+
+| ID | heuristic | idea and computation in our game | use | cost | source | status |
+|---|---|---|---|---|---|---|
+| H-S14 | **Hidden-field perception** | Read the hidden enemies' fields (rules.md Q3) through one switch: `is_pacman` zeroes the belief on the wrong half; `num_carrying` +1 names the enemy that ate a vanished food; carrying → 0 without `num_returned` rising, or `scared_timer` dropping to 0 from ≥ 2, means it was eaten (respawn); `scared_timer` gives the exact scared window. "Not seen" and side information act as likelihoods, as in probabilistic pursuit-evasion [source: Vidal et al. 2002] | both | negligible | Vidal et al. 2002; engine `capture.py:487-495, 666-727` [verified] | **tested** (E-025, `flags`): side detection 58% → 100% correct, truth never ruled out; screen +0.11 [+0.00, +0.22] vs greedy_v3, food conceded 8.2 → 6.6 per game; in `lab5_smart` |
+| H-S15 | **Shared team belief with exact one-enemy steps** | Turn order is fixed (0→1→2→3, random starter), so between our two agents' consecutive turns exactly **one** enemy moves: `(my_index − 1) % 4` [verified: `game.py:644-749`]. One team belief, updated at both agents' turns, spreads that enemy only, applies both agents' sonar readings, and attributes a vanished food dot to that enemy exactly | defender (both agents feed it) | halves the per-agent work | engine fact; sharing allowed (Q4) | **tested** (E-025, `shared`): most-likely-cell error 4 → 2 steps, p(true cell) 0.16 → 0.24 [verified]; but screen points +0.003 [−0.08, +0.08]; in `lab5_smart` by the pre-registered rule |
+| H-S16 | **Cost-difference goal recognition** | A near-rational agent most likely heads to the goal that its route so far cost the least extra to reach: X_g(n) = d(n,g) − d(s,g), P(g\|n) ∝ e^(−βX) / (1 + e^(−βX)) [source]. Over a belief: P(g) = Σ_n b(n) P(g\|n). Goals: our food while the invader carries little, its home border once it carries a lot. Same ranking as Ramírez–Geffner, 4–12× faster [source]; probabilities flatten on long paths [source] | defender | ~1–2k lookups per enemy per turn | Masters & Sardina, AAMAS 2017; Ramírez & Geffner, AAAI 2010 | simplified version (next food = the nearest food under the belief; exit = the crossing nearest in expectation) **tested** (E-025, `guard`): +0.03 [−0.09, +0.15], −0.08 against `flags` alone, rusher −0.27; not in `lab5_smart` |
+| H-S17 | **Goal-directed motion model in the HMM** | Replace the random walk by "roughly optimal toward a goal": π(s'\|s,g) ∝ exp(β(d(s,g) − d(s',g))), mixed with the random walk (ε > 0) so the true cell is never ruled out (T-54) [source: Ziebart et al. 2009, planning-based prediction]. Mode-switching filters (attack / return / escape) generalise it [source: Liao et al. 2004: goal prediction 0.66 → 0.98 along a trip, against 0.69 for a Markov baseline] | both | ~20k operations per enemy per turn, or one BFS field per mode | Ziebart et al., IROS 2009; Liao, Fox & Kautz, AAAI 2004 | built as a 2-mode bonus (forage → nearest food, return → home); **tested** (E-025, `directed`): belief p(true cell) 0.17 → 0.18 only; screen +0.009 on top of `flags`; in `lab5_smart` by the rule (noise-level) |
+| H-S18 | **Goals that change; recency** | Bayesian inverse planning in which the goal can change with probability γ per step fits human judgements best (r = 0.97); "the goal it most recently moved toward" is almost as good (0.96); a fixed goal much worse (0.82) [source] | defender | O(\|G\|) | Baker, Saxe & Tenenbaum, Cognition 2009 | idea (supports re-estimating the goal every turn, as E-025 does) |
+| H-S28 | **Opponent type classification** | Each enemy is one of K types (raider, camper, rusher, capsule-taker); update a posterior over types from windowed counts (share of turns as Pacman, carrying when it turns home, time to first crossing), with Beta / Dirichlet priors; switch formation when one type passes ~0.8 [source] | both | O(K) | Albrecht & Stone, AIJ 2018; Riley & Veloso, DARS 2000; Southey et al., UAI 2005 | partly: E-025 learns each enemy's return amount from its own past returns |
+
+### D2. Defence and pursuit
+
+| ID | heuristic | idea and computation in our game | use | cost | source | status |
+|---|---|---|---|---|---|---|
+| H-S19 | **Cover-maximising pursuit (CRA)** | The cover is the set of cells some pursuer reaches before the target. Each pursuer picks the move that makes the cover largest, given the other's position, which surrounds the target instead of trailing it. With 2 pursuers: 253/300 captures vs MTS 234 and minimax 211 [source]. Ours: count home cells where min(our two distances) < the invader's distance; for a hidden invader weight by the belief | defender, 2 defenders | ≤ 10 × O(N) | Isaza, Lu, Bulitko & Greiner, AIIDE 2008 | idea |
+| H-S21 | **Global-max belief pursuit** | Move to the reachable cells that maximise the belief mass captured, not the single most likely cell (local-max has no progress guarantee; global-max has a bound on expected capture time) [source]. A one-step variant: pick the move whose sight disc (Manhattan 5) covers the most belief mass [source: Hespanha et al. 2000] | defender | ≤ 100 pairs | Vidal et al. 2002; Hespanha, Prandini & Sastry 2000 | idea |
+| H-S25 | **Pincer roles, anti-clumping** | Each pursuer targets the junction in front of or behind the evader; no two pursuers in the same corridor in the same direction [source: Pepels & Winands 2012]. Arcade ghosts: Pinky aims 4 tiles ahead; Clyde chases from far and retreats when close [source: Pac-Man Dossier] | 2 defenders | O(1) | Pepels & Winands, CIG 2012; Pittman, Pac-Man Dossier | idea |
+| H-M14 | **Cop-number structure** | One cop always catches a robber on a tree; a cycle longer than 3 needs two [source]. A lone defender should chase only inside dead-end trees and otherwise hold a cut cell or wait for its partner; one cop can guard a shortest path between two border cells (a basis for shadowing) | defender | precomputed | Aigner & Fromme 1984 (via Wikipedia, *Cop number*) | idea |
+| H-S26 | **Formation by enemy-Pacman count** | Roles are swapped at run time on triggers [source: Stone & Veloso 1999]; assign agents to targets so the longest travel is shortest [source: SCRAM, MacAlpine et al. 2015]. Ours: 0 enemy Pacmen → normal; 1 → the defender marks it; 2 → both defend, split by min-max distance | both | trivial | Stone & Veloso, AIJ 1999; MacAlpine, Price & Stone, AAAI 2015 | built as `recall`; never fired against the pool (E-025, 800 games). Against double attackers (E-025 diagnostic): **−0.58** vs `double_attack`, **−0.40** vs `friend_aljaz_1`. It cuts our returns by a third and barely reduces theirs. **Rejected** in this form: against a double attack, race instead |
+
+### D3. Attack and escape
+
+| ID | heuristic | idea and computation in our game | use | cost | source | status |
+|---|---|---|---|---|---|---|
+| H-S20 | **TrailMax escape** | Spread from evader and pursuer together, drop the evader cells the pursuer has reached, run to the evader cell the pursuer reaches last. 98.3% of optimal survival time, against 80.3% for minimax(11) and 76.0% for greedy distance (perfect information, cop at speed 2) [source]. Ours: for the "cut off" 12% of attacker moves (E-022), go to the cell we reach first that the ghosts reach last, buying time for the capsule, the scare timer or the teammate | attacker | one BFS | Moldenhauer & Sturtevant, IJCAI 2009 | idea (**top candidate for the next round**: it targets a measured loss) |
+| H-M12 | **Junction graph with a safe-edge test** | Search over junctions instead of cells; a move is safe if its corridor holds no ghost coming towards us and we reach the next junction before every ghost; switch to survival when the best survival rate falls below 0.7; reward clearing a whole corridor (no isolated food left behind). Removing the rule-based playouts cut the score from 107,561 to 44,758 [source] | attacker | built once at startup | Pepels & Winands, CIG 2012 | idea |
+| H-M13 | **Voronoi territory, chambers, battlefront** | Each cell belongs to whoever reaches it first; score K1·cells + K2·edges with K2 ≈ 3.5·K1; across cut vertices a chamber tree chooses which region to claim [source]. Ours: an invader whose region holds no border cell is sealed in, so hold the sealing cut cell instead of chasing | both | O(N) per position | Sloane (a1k0n), Google AI Challenge post-mortem 2010 | idea |
+| H-S22 | **Capsule lure** | Eat the capsule only when it pays: wait next to it while safe, eat it when a defender comes within k, then eat the defender (its respawn behind the prison is expensive) [source: Brauers 2011; ICE Pambush 3 reported] | attacker | O(1) | Brauers, BSc paper, Maastricht 2011 | idea |
+| H-S23 | **Orienteering trip builder** | Choose a trip of several food dots that still gets home within a budget: sample the next stop among the top 4 by (prize / distance)^4 [reported: Tsiligirides 1984 via Kool et al. 2019]; a survival-constrained variant accepts a trip only if its estimated survival probability is ≥ p_s [source: Jorgensen et al. 2016, abstract only] | attacker | O(F²) per trip | Kool, van Hoof & Welling, ICLR 2019; Jorgensen et al., arXiv 2016 | idea |
+| H-S24 | **Marginal value rule for returning** | Leave a patch when its intake rate falls to the habitat's average including travel; longer travel → stay longer [source]. Ours: with long prison corridors, carry more when no defender can reach us before we get home | attacker | trivial | Charnov 1976 (via Wikipedia, *Marginal value theorem*) | **tested** (E-025, `open_goal`): screen **+0.17 [+0.05, +0.29]**, +0.057 on top of `flags`, max carried 7.4 → 8.9, deaths 1.02 → 0.94; in `lab5_smart` |
+| H-S27 | **Bold play when behind, timid when ahead** | To reach a target, bold play is optimal at unfavourable odds and timid play at favourable odds [reported: Dubins & Savage]; generalised to two-person games [source: Secchi 1997]; in hockey, pulling the goalie at ~5:40 left when down one is optimal although it raises the opponent's scoring rate more [reported: Asness & Brown]. Ours: maximise 3·P(W) + P(T): ahead late → both defend; behind late → both attack and bank as soon as a trip would take the lead | both | trivial | Secchi, J. Appl. Prob. 1997; Asness & Brown (via Chicago Booth Review) | **tested** (E-025, `endgame`): screen +0.006 [−0.02, +0.03]; in `lab5_smart` by the rule (noise-level) |
+| H-S29 | **Deceptive routing** | An observer using H-S16 is only certain within a goal's "radius of maximum probability"; keep two food clusters tied on cost difference as long as possible [source] | attacker | precomputed heat map | Masters & Sardina, IJCAI 2017 | idea |
+
+Checked and found nothing new for us: the Ms Pac-Man vs Ghost Team CIG 2016 competition (partial observability by line of sight; ghosts remember the last sighting for ~50 ticks; sharing sightings cut Ms Pac-Man's score to 33%) [source: Williams, Perez-Liebana & Lucas 2016]. Our exact belief and Q4 sharing cover it.
+
+Sources the agents could not open (status unknown): Blom & Bar-Shalom 1988 (IMM), Bruce & Gordon 2004 (PDF 404), Dubins & Savage (book), Baudiš 2011 (403), Asness & Brown's original (403).
+
 ## Sources
 
 | Key | Link |
@@ -327,5 +375,33 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 | lzheng1026 | <https://github.com/lzheng1026/Pacman-Capture-The-Flag> |
 | pcgotan | <https://github.com/pcgotan/PacmanCTF_Agent> |
 | TacModd | <https://github.com/TacModd/404-team-name-not-found> |
+| Isaza, Lu, Bulitko & Greiner, AIIDE 2008 (cover pursuit) | <https://cdn.aaai.org/ojs/18672/18672-52-22262-1-10-20210927.pdf> |
+| Huang et al., CDC-ECC 2011 (Voronoi pursuit) | <https://skoge.folk.ntnu.no/prost/proceedings/cdc-ecc-2011/data/papers/1841.pdf> |
+| Moldenhauer & Sturtevant, IJCAI 2009 (TrailMax) | <https://ijcai.org/proceedings/2009/0103.pdf> |
+| Sloane (a1k0n), 2010 (Tron Voronoi / chambers) | <https://www.a1k0n.net/2010/03/04/google-ai-postmortem.html> |
+| Pepels & Winands, CIG 2012 (MCTS Ms Pac-Man) | <https://dke.maastrichtuniversity.nl/m.winands/documents/CIG2012_paper_106.pdf> |
+| Brauers, BSc paper 2011 (capsule lure) | <https://project.dke.maastrichtuniversity.nl/games/files/bsc/Brauers_BSc-paper.pdf> |
+| Kool, van Hoof & Welling, ICLR 2019 (orienteering, App. D.3) | <https://arxiv.org/pdf/1803.08475> |
+| Jorgensen et al., 2016 (Team Surviving Orienteers) | <https://arxiv.org/abs/1612.03232> |
+| Cop number (Aigner & Fromme 1984) | <https://en.wikipedia.org/wiki/Cop_number> |
+| Hespanha, Prandini & Sastry, 2000 (one-step Nash pursuit) | <https://web.ece.ucsb.edu/~hespanha/published/one-nash.pdf> |
+| Pittman, The Pac-Man Dossier | <https://pacman.holenet.info/> |
+| Marginal value theorem (Charnov 1976) | <https://en.wikipedia.org/wiki/Marginal_value_theorem> |
+| Williams, Perez-Liebana & Lucas, 2016 (Ms Pac-Man vs Ghost Team) | <https://arxiv.org/abs/1609.02316> |
+| Masters & Sardina, AAMAS 2017 (cost-based goal recognition) | <https://ifaamas.csc.liv.ac.uk/Proceedings/aamas2017/pdfs/p750.pdf> |
+| Ramírez & Geffner, AAAI 2010 (probabilistic plan recognition) | <https://ojs.aaai.org/index.php/AAAI/article/view/7745> |
+| Sohrabi, Riabov & Udrea, IJCAI 2016 | <https://www.ijcai.org/Abstract/16/461> |
+| Ziebart et al., IROS 2009 (planning-based prediction) | <https://publications.ri.cmu.edu/planning-based-prediction-for-pedestrians> |
+| Vidal et al., IEEE T-RA 2002 (probabilistic pursuit-evasion) | <https://people.eecs.berkeley.edu/~sastry/pubs/PDFs%20of%20Pubs2000-2005/Pdfs%20of%20Misc.Others/Vidal/VidalShakerniaProbabilistic2002.pdf> |
+| Baker, Saxe & Tenenbaum, Cognition 2009 (inverse planning) | <https://dspace.mit.edu/handle/1721.1/60852> |
+| Liao, Fox & Kautz, AAAI 2004 (transportation routines) | <https://www.cs.virginia.edu/~rmw7my/papers/gps-tracking.pdf> |
+| Stone & Veloso, AIJ 1999 (formations) | <https://www.cs.utexas.edu/~pstone/Papers/bib2html/b2hd-AIJ99.html> |
+| MacAlpine, Price & Stone, AAAI 2015 (SCRAM) | <https://ojs.aaai.org/index.php/AAAI/article/view/9424> |
+| Secchi, J. Appl. Prob. 1997 (red-and-black games) | <https://www.cambridge.org/core/journals/journal-of-applied-probability/article/twoperson-redandblack-stochastic-games/82AFFDDFFB59F5D9E574C16FB2C1111F> |
+| Asness & Brown via Chicago Booth Review | <https://www.chicagobooth.edu/review/when-hockey-teams-and-money-managers-should-go-broke> |
+| Albrecht & Stone, AIJ 2018 (agents modelling agents) | <https://arxiv.org/abs/1709.08071> |
+| Riley & Veloso, DARS 2000 (adversary classes) | <https://www.cs.cmu.edu/~coral/old/publications/b2hd-DARS-AdvClass.html> |
+| Southey et al., UAI 2005 (Bayes' bluff) | <https://arxiv.org/abs/1207.1411> |
+| Masters & Sardina, IJCAI 2017 (deceptive path-planning) | <https://www.ijcai.org/proceedings/2017/610> |
 
 These are research pointers only. **Do not copy code from them** (rules.md R10).

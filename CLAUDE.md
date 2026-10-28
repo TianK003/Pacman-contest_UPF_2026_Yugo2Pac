@@ -21,6 +21,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 | `docs/framework.md` | verified engine facts, observation contents, random map generator, all CLI flags, testing protocol |
 | `docs/heuristics.md` | map heuristics (`H-M`) vs sensory heuristics (`H-S`), with status and evidence |
 | `docs/methods.md` | agent-building methods (`M-`), their fit, the proposed architecture and timeline |
+| `docs/proposals.md` | proposed, unbuilt work: shared-mind team tactics (`SM-`) and team learning options (`RL-`), with targets, risks, tests and order |
 | `docs/traps.md` | pitfalls, including ways to cheat by accident (section A) |
 | `docs/experiments.md` | log book: every run that informs a decision, with a template |
 | `docs/evaluation.md` | how agents are compared: objective (3/1/0 points), accept rule, seed and opponent splits, league, reward-hacking guards |

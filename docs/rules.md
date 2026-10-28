@@ -94,6 +94,7 @@ The principle: **the agent may only use what an honest player watching its own o
 | Q8 | May we use public code from other teams as **local sparring opponents only** (never submitted)? | testing | not asked |
 | Q9 | Is a `try/except` safety net in `choose_action` acceptable if it re-raises the framework's timeout exception? | crash safety vs R5 | not asked |
 | Q10 | Are fixed layouts also used this year, or only `RANDOM<seed>`? | tuning targets | not asked |
+| Q11 | Does the tournament play several games of a match in one process, and if so, may our agents keep what they learned about an opponent **in memory** (never in files) from one game to the next? | proposals.md section 4 (opponent learning across games) | not asked (added 2026-10-28); not used until answered |
 
 When a question is answered, write the answer, the date and who answered, and update the affected rules and traps.
 

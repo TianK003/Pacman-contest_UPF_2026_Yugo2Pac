@@ -34,6 +34,12 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | M-13 | Expert iteration / distilling search into a fast policy | fast policy layer | high | medium | [untested] here | stretch, after M-05/M-06 exist |
 | M-14 | Potential field / influence map | attacker policy | low | medium | none found | experiment (E-008) |
 
+Team-level options that rely on shared memory (Q4) are proposed in [proposals.md](proposals.md):
+- the "team brain" (SM-1) and the shared-mind tactics SM-2..SM-13;
+- learning options RL-1..RL-6: tuning before learning, an in-game play bandit, a learned formation selector.
+
+With shared memory the team is one player (a multiagent POMDP), so decentralised-execution methods (QMIX, VDN, MAPPO, DIAL; M-08) fit less [source: Oliehoek & Amato 2016; see proposals.md section 6].
+
 ---
 
 ### M-01: Rule-based / behaviour tree / FSM ("fixed policies")

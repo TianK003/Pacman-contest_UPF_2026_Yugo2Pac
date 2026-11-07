@@ -47,7 +47,7 @@ Columns: what it exploits, which measured weakness it targets, cost, risk, and h
 |---|---|---|---|---|---|---|---|---|
 | SM-1 | **Team brain** | One object sets roles, targets and entries for both agents each turn, and does the map analysis once (H-M11) | everything | needed by every row below | `lab_off`-style identity with all tactics off | medium | low (structure only) | idea |
 | SM-2 | **Shared belief** | One belief per enemy, updated at both agents' turns: spread only the enemy that just moved; apply both agents' sonar; a vanished food pins that enemy exactly | sonar, sight, food events | defender's tracking (E-019: median error 4) | belief error | — | — | **built** (`shared`, E-025): error 4 → 2, truth never ruled out; screen pending |
-| SM-3 | **Power play** | After we kill an enemy (it is in its prison for a known number of moves) or eat their capsule (exact scared timer), the defender joins the attack and comes back before the window closes | respawn detection, exact timers, belief | raids by the defender gained against guards and lost the same against attackers (E-018, E-020); a known window removes the attackers | food returned per game rises; food conceded does not rise | low | medium | idea |
+| SM-3 | **Power play** | After we kill an enemy (it is in its prison for a known number of moves) or eat their capsule (exact scared timer), the defender joins the attack and comes back before the window closes | respawn detection, exact timers, belief | raids by the defender gained against guards and lost the same against attackers (E-018, E-020); a known window removes the attackers | food returned per game rises; food conceded does not rise | low | medium | **built** as `formation='power'` (`lab7_power`, teams/greedy_lab_v7.py); screen E-030 |
 | SM-4 | **Decoy / two-entry overload** | Agent A shows itself at entry X; the enemy guard shadows A (visible in the shared belief); agent B crosses at a far entry Y | belief of their guard, both positions | 0–0 standoffs (18% of lost points, E-014); 25% of attacker moves are walks between entries (E-022) | fewer standoff moves, more Pacman moves | medium | medium | idea |
 | SM-5 | **Spotter** | Before the attacker picks an entry, the defender stands where it reveals the enemy guard; the attacker then crosses where the guard is not | pooled sight | T-56 (our defender showing the guard to our attacker made it wait) turned into an advantage; entry walks (E-022) | fewer `entry` / `blocked` moves in the trace profile (E-022 tool) | low | low | idea |
 | SM-6 | **Border bait-and-trap** | A chased carrier runs home past our teammate waiting just inside our border; a chasing ghost that crosses becomes a Pacman next to our ghost and is eaten | both positions, the chaser's position | carriers chased home by a ghost; how often a chaser follows across the border is **not measured** (E-014 found most deaths inside dead ends, a different case) | kills of chasers on our side | low | low (only fires if they chase across) | idea |
@@ -95,9 +95,9 @@ With one team brain, the team is in effect **one agent with two bodies** (sectio
 
 | ID | method | what is learned | what it needs | fit |
 |---|---|---|---|---|
-| RL-1 | **Black-box tuning** (CMA-ES or random search, M-02 / M-11) of the team brain's thresholds: power-play margins, decoy distances, recall and endgame rules, SM-13's multipliers | about 5–15 numbers | ~1,000s of harness games on tuning seeds (~2,500 games per hour per process, E-009); shipped as constants or a data file (Q6). Reported: CMA-ES tuned 14 of 40+ RoboCup 3D parameters with 210,000 evaluations in under a day on a cluster, and fitness on tasks resembling real play worked better; that team then won 24/24 games, 136–0 [source: MacAlpine et al. 2012] | **first step**: cheap, low risk |
+| RL-1 | **Black-box tuning** [tooling built 2026-11-08: `eval/rl/cmaes_tune.py`; runs E-031] (CMA-ES or random search, M-02 / M-11) of the team brain's thresholds: power-play margins, decoy distances, recall and endgame rules, SM-13's multipliers | about 5–15 numbers | ~1,000s of harness games on tuning seeds (~2,500 games per hour per process, E-009); shipped as constants or a data file (Q6). Reported: CMA-ES tuned 14 of 40+ RoboCup 3D parameters with 210,000 evaluations in under a day on a cluster, and fitness on tasks resembling real play worked better; that team then won 24/24 games, 136–0 [source: MacAlpine et al. 2012] | **first step**: cheap, low risk |
 | RL-2 | **Learned formation selector**: a contextual bandit or tabular Q-learning over a small abstract state (score, time, enemy Pacmen, carried food, respawn window), choosing SM-9's formation every N moves | a small table | ~10k games against the pool; a data file (Q6) | good; medium effort. Overfitting risk (T-37): validate on fresh seeds and check the held-out teams |
-| RL-3 | **Joint value function for search**: a learned evaluation, distilled from a slow offline search (M-13) | evaluation weights | a fast simulator of the rules | stretch |
+| RL-3 | **Joint value function for search** [first version built 2026-11-08: a 12-16-1 value net for the width planner's leaves, trained on greedy games (E-030 `lab7_danger_net`)]: a learned evaluation, distilled from a slow offline search (M-13) | evaluation weights | a fast simulator of the rules | stretch |
 | RL-4 | **Deep multi-agent RL** (MAPPO, QMIX; M-08) | a whole policy | a fast simulator, maybe numpy (Q2: on request), millions of steps | stretch; with shared memory the multi-agent parts add little |
 | RL-5 | **League with exploiters** around any learned part (evaluation.md section 5) | — | our existing league tooling. Reported: plain self-play forgets and cycles, exploiter agents expose the main agent's flaws [source: Vinyals et al. 2019, AlphaStar] | required with RL-2 or RL-4 |
 | RL-6 | **In-game bandit** (SM-13): learns within one game which play pays, no training games | play weights, reset every game | nothing offline; within-game memory only (not Q11's across-game memory) | medium; may not converge within 300 moves [untested] |
@@ -154,3 +154,18 @@ Gaps the search could not fill (unknown, not guessed):
 - No source gives numbers for the effect of role hysteresis.
 - The hockey and cop-number transfers are analogies.
 - The Pepels 2014 tree-reuse paper was read as an abstract only.
+
+---
+
+## 7. Added 2026-11-08 (overnight session, E-027..)
+
+| ID | idea | status |
+|---|---|---|
+| WP-1 | Width-based lookahead (IW(1) / p-IW / novelty best-first) for the attacker near ghosts, over our own forward model (methods.md M-15) | built (`plan*` in lab6/lab7); screened E-028, confirmed/ablated E-030 |
+| WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7); E-030 |
+| WP-3 | Learned leaf value for the planner (greedy policy's Monte-Carlo value, 12-16-1 MLP) — "greedy + RL" | built (lab7 `plan_leaf=net`); E-030 |
+| WP-4 | Planner-free scared-ghost hunting (`hunt_scared`), to tell lookahead from kill-farming | built (lab7); E-030 |
+| MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built (lab6 `focus`, `select_focus`); mode table E-029 |
+| MM-2 | Linear food-choice policy (`focus=linear`, `fw_*` weights) tuned by CMA-ES | built (lab6/lab7); tuning queued (fallback of E-031) |
+| JX-1 | Junction-graph macro-IW (longer horizon), novelty over tactical features, offline privileged-teacher distillation (docs/research/width_planning.md §7.e) | idea |
+

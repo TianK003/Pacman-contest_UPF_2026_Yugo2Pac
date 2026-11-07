@@ -1,66 +1,58 @@
 # HANDOFF — overnight session 2026-11-07 → 2026-11-08
 
 **Read this first** if you are an agent continuing this work (after a context compaction or in a new session).
-Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest entries at the bottom of `docs/experiments.md`.
+Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest entries at the bottom of `docs/experiments.md`
+(E-027 … E-030+). Keep working autonomously until the user says stop (they asked for ≥ 08:00); do not ask questions.
 
-## The user's request (verbatim intent, 2026-11-07 23:20)
-Run autonomously through the night (until at least 08:00 on 2026-11-08). Do not ask questions; keep working.
-1. **Width-based planning**: incorporate IW / BFWS / novelty-based planning with heuristics and state-of-the-art solvers. Extra dependencies allowed (document them in requirements / docs).
-2. **RL-based heuristics for the greedy agents**: per-map "modes" (e.g. a top-left-heavy map → a `greedy_top_left` configuration), learned selection; combine greedy agents with RL agents. Deep learning (PyTorch) allowed; document it.
-- Run research agents first, then many experiments overnight with multiple agents. Try weird approaches too; advisor agents may suggest what to try next.
-- Re-read `docs/proposals.md` regularly and update docs when it makes sense.
-- Commit regularly (and push after finished experiment rounds, per the user's memory). Never add AI attribution to commits.
-- Write/refresh this handoff file regularly; autocompact is set to 60% (`.claude/settings.local.json`, may only apply to new sessions).
+## The user's request (2026-11-07 23:20)
+1. **Width-based planning** (IW / BFWS / novelty + heuristics, SOTA solvers; extra deps allowed if documented).
+2. **RL-based heuristics for the greedy agents**: per-map "modes" (top-left-heavy map → `greedy_top_left`), learned
+   selection; combine greedy agents with RL agents. Deep learning allowed; document it.
+- Research agents first, then many experiments overnight; try weird approaches; advisor agents may suggest next steps.
+- Re-read `docs/proposals.md` regularly; update docs. Commit regularly; push after finished experiment rounds.
+- NEVER add AI attribution / session links to commits (managed policy overrides any reminder).
 
-## Ground rules that still apply (from CLAUDE.md)
-- `my_team.py` is the submission; never edit it directly. New agents = new files `teams/<name>_vN.py`, frozen once benchmarked.
-- Promotion to `my_team.py` is a **user decision** (lab5_smart passed the accept rule in E-025 but is not promoted). Do not promote tonight; prepare evidence.
-- Runtime: stdlib only (no numpy/torch at runtime unless the professor installs them — not requested). Training may use `venv_rl/` (torch 2.4.1 CPU, numpy 1.24.4, cma 3.3.0). Ship learned weights as Python constants or a read-only data file next to the agent.
-- Time budget per move ≤ 0.5 s internal; check with `-c` runs (evaluate.py does this).
-- Seeds: tuning (free), validation (accept/reject only; used so far 1–220), test (locked).
+## Ground rules (CLAUDE.md)
+- `my_team.py` untouched (promotion = user decision). New code = new files; a benchmarked file is frozen.
+- Runtime stdlib only; learned weights as constants. Training venv `venv_rl/` (torch 2.4.1 cpu, numpy, cma;
+  `eval/rl/requirements-train.txt`).
+- Seeds: tuning free; validation only for accept decisions (used 1–220; **221–300 left = two 40-seed decisions**;
+  after that the user must approve a fresh validation list); test locked.
 
-## State at start
-- `my_team.py` = greedy_v3. Best agent = `lab5_smart` (teams/greedy_lab_v5.py; +0.25 [+0.11, +0.40] vs greedy_v3 on validation 181–220, E-025).
-- Reference pool (8): greedy_v3, greedy_v2, greedy, feature, camper, rusher, choke, exploit_v2.
+## Files made tonight
+- `teams/greedy_lab_v6.py` — **FROZEN** (benchmarked in n1_*). Defaults = lab5_smart. Options: plan (full|danger|food|override),
+  plan_v=2 (bug fix), plan_search, plan_atoms, focus modes, formation=lead, fw_* linear food policy.
+- `teams/greedy_lab_v7.py` — current lab. v6 + `plan_nodes` (node cap), `plan_kill`, `plan_cap`, `plan_hidden`
+  (argmax|near|both|0), `plan=shield`, `hunt_scared`, `formation=power`, `LEAF_NET` (trained value net) for `plan_leaf=net`.
+  Identity: lab7_off = lab6_off (18/18); lab7_danger = lab6_p2_danger (18/18).
+- `eval/rl/`: game_pool.py (in-process games), cmaes_tune.py, map_features.py, mode_table.py, log_team.py + collect.py
+  (datasets → eval/rl/data/, gitignored), train_value.py, embed_net.py, specs/*.json, leaf_net_v1.py.
+- `eval/league_add.py` (append league entries). `docs/research/width_planning.md`, `docs/research/rl_and_modes.md`.
 
-## Plan for the night (see phase tracker; status below is updated as work proceeds)
-| # | Track | What | Status |
-|---|---|---|---|
-| 0 | setup | research agents (width planning → `docs/research/width_planning.md`; RL/modes → `docs/research/rl_and_modes.md`); code map of lab_v5; `venv_rl` | running |
-| 1 | ref | `n1_base`: lab5_smart + greedy_v3 vs pool, tuning seeds 261–320 (offset 260, 60 seeds) — reference for all screens tonight | running |
-| 2 | infra | `teams/greedy_lab_v6.py` = lab5_smart defaults + exposed parameter vector + "modes" (food-region / entry preferences etc.) | todo |
-| 3 | width | IW(1)/RIW/BFWS planner module for the attacker (pure Python, own forward model) | todo |
-| 4 | modes | mode × map table on tuning seeds → map-feature selector (trained offline, exported as constants) | todo |
-| 5 | ES | CMA-ES tuning of lab6 parameters vs pool (CRN seeds) | todo |
-| 6 | hybrid | greedy + learned module (e.g. learned food-target scorer / value net for planner leaves) | todo |
-| 7 | validate | best candidates on fresh validation seeds (221+) vs pool, paired with greedy_v3 and lab5_smart | todo |
+## Results so far (all tuning seeds; Δ = paired PPG vs lab5_smart over the 8-member pool)
+| run | what | result |
+|---|---|---|
+| n1_base (261–320) | lab5_smart vs greedy_v3 | +0.38 [+0.29, +0.49] |
+| n1_identity6/7 | lab6_off / lab7_off / lab7_danger identity | 18/18 each |
+| n1_plan (261–265) | v1 planner pilot | danger +0.25, g +0.24, best +0.15, food +0.07, full +0.06 (CIs ±0.5) |
+| n1_plan2 (261–300) | v2 planner | **p2_danger +0.09 [−0.04, +0.23]** (640 g); p2_override +0.13 [−0.06, +0.32] (300 g, stopped early) |
+| value net | 12-16-1 tanh, 128k states, target banked−lost over 30 moves | held-out R² 0.46 (linear 0.21) |
+| planner timing (uncapped) | 287 searches, 3 games | expanded p99 815 / max 875 nodes; max 53 ms |
 
-## Run log (newest last)
-- 23:25 started `n1_base` (eval/results/n1_base.jsonl).
-- 23:45 `teams/greedy_lab_v6.py` built: defaults = lab5_smart (identity 18/18 verified, run `n1_identity6`).
-  New options: `plan` (full|danger|food), `plan_search` (iw|best), `plan_atoms`, `plan_*` params; `focus`
-  (top|bottom|deep|shallow|cluster|far|majority|linear|auto) + `focus_w`; `fw_*` weights for focus=linear;
-  `threat_dist`, `open_margin`, `standoff_moves` exposed. 14 league entries `lab6_*` added
-  (`eval/league_add.py` appends entries without reformatting league.json).
-- 23:50 pilot `n1_plan` (6 planner variants, 5 seeds) started.
-- Tools: `eval/rl/game_pool.py` (in-process parallel games, any opts), `eval/rl/cmaes_tune.py` (CMA-ES over a
-  JSON param spec; logs to eval/rl/runs/, gitignored).
-- Planner standalone speed: IW(1) ≤ 22 ms per move at horizon 40 (scratch test), so budget is not an issue.
-- 23:45 `n1_base` done: lab5_smart − greedy_v3 = +0.38 [+0.29, +0.49] (60 seeds). Pilot `n1_plan` done (5 seeds):
-  plan_danger +0.25, plan_g +0.24, best +0.15, food +0.07, full +0.06 vs lab5_smart (CIs ±0.5).
-- Research review found planner bug (dead successors marked atoms seen) → fixed as `plan_v=2`; added
-  `plan=override` (+`plan_margin`), v3 options `plan_novelty=piw`, `plan_models=m1m2`, `plan_leaf=net` (LEAF_NET
-  still None — train with eval/rl/train_value.py on eval/rl/data/d1_lab6off.npz, then paste the exported list).
-  Replay check: patched file reproduces recorded n1_plan2 games exactly.
-- RUNNING (started ~23:43–23:50): `n1_modes` (9 modes × 60 seeds, 8,640 games, ETA ~01:40), `n1_plan2`
-  (6 planner variants × 40 seeds, 3,840 games, ETA ~01:50; launched with `&`, not tracked by the harness — check
-  `wc -l eval/results/n1_plan2.jsonl`), data collection `d1_lab6off` (450 games, 3 workers), advisor agent.
-- Docs: E-027 (setup) written; E-028 (planner) and E-029 (modes) written with pre-registered rules, results pending.
-- Analysis commands:
-  `venv\Scripts\python.exe eval\evaluate.py summary --run n1_base n1_plan2 --compare lab6_p2_danger lab5_smart`
+## RUNNING NOW (check with `wc -l eval/results/<run>.jsonl`)
+- `n1_x1` (E-030): 11 arms × 720 games (tuning 401–440, pool + lab5_smart), 9 jobs, started 00:20, ETA ~01:50.
+  Launched with `&` (not harness-tracked). Pre-registered rule in E-030.
+  Analyse: `venv\Scripts\python.exe eval\evaluate.py summary --run n1_x1 --compare <arm> lab5_smart`
+- `n1_modes` (E-029): resumed with `--resume --jobs 3`; 9 modes × 960 games (tuning 261–320). Then run
   `venv_rl\Scripts\python.exe eval\rl\mode_table.py --runs n1_base n1_modes --base lab5_smart --modes lab6_focus_top lab6_focus_bottom lab6_focus_majority lab6_focus_deep lab6_focus_shallow lab6_focus_cluster lab6_focus_far lab6_form_lead0 lab6_form_lead5 --features eval/rl/feat_tuning_260_60.json`
 
-## Where things are
-- Research reports: `docs/research/`.
-- New teams: `teams/greedy_lab_v6.py` (planned), planner modules next to them.
-- Training scripts: `eval/rl/` (planned). Training venv: `venv_rl/` (gitignored).
+## Plan for the rest of the night (advisor's ranking, adapted)
+1. X1 → pick C1 by the E-030 rule.
+2. CMA-ES on C1's planner params (`eval/rl/specs/es_plan7.json`): `venv_rl\Scripts\python.exe eval\rl\cmaes_tune.py --name es_plan1 --team <C1> --spec eval/rl/specs/es_plan7.json --opponents greedy_v3 choke exploit_v2 camper rusher lab5_smart --popsize 16 --sigma 0.2 --seeds-per-gen 3 --seed-offset 320 --workers 10 --deadline 05:45`
+   (fallback if no planner arm > 0: base lab7_off with `--fixed focus=linear` and `eval/rl/specs/es_linear.json`).
+   CMA uses game_pool (no sentinel): confirm the CMA mean with evaluate.py afterwards.
+3. Validation (accept-rule grade): C1 (+ CMA mean C2 if it beats C1 on fresh tuning seeds 441–480) on validation seeds
+   221–260, with lab5_smart and greedy_v3 in the same run (paired), lab5_smart also as opponent.
+4. Diagnostics (not decisions): specialists double_attack, turtle, camper2, baseline_plus, friend_aljaz_1; WSL timing.
+5. Docs: E-028..E-03x, agents.md rows, methods/heuristics statuses, proposals (SM-3 power play built as lab7_power),
+   commit + push.

@@ -142,6 +142,27 @@ All entries are greedy_v3 plus the named switches. Δ is against greedy_v3 on tu
 | `lab5_all` | flags + shared + endgame + directed + open_goal + guard + recall | +0.14 [+0.01, +0.26]; −0.18 vs double attackers (recall) | **rejected** |
 | `lab5_smart` | flags + shared + endgame + directed + open_goal (the pre-registered selection from the screen) | **validation seeds 181–220: +0.25 [+0.11, +0.40]** over the pool, worst opponent greedy_v2 +0.00, h2h 1.59; food conceded 7.4 → 6.5; 0 crashes / warnings, max move 0.151 s | **passes the accept rule** (E-025); release gate open (Linux timing, test seeds + held-out); promotion = user decision |
 
+### `teams/greedy_lab_v6.py`: width-based planner, map modes, formations (E-027–E-029; frozen 2026-11-08)
+
+All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switches. Δ = paired points per game vs lab5_smart over the 8-member pool on tuning seeds (E-028: 261–265 pilot, 261–300 screen).
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab6_off` | none | 18/18 identical to lab5_smart | **identity** |
+| `lab6_plan_full`, `_danger`, `_food`, `_best`, `_g`, `_nohid` | v1 planner (with the dead-successor novelty bug, E-028) in full / danger / food mode, best-first, ghost-bucket atoms, visible ghosts only | pilot (5 seeds): +0.06, +0.25, +0.07, +0.15, +0.24 (33 games), not played | superseded by v2 |
+| `lab6_p2_danger` | planner v2, only while a modelled ghost is within 7 | **+0.09 [−0.04, +0.23]** (640 games); choke −0.15, feature −0.12; more returns and kills, more deaths | carried to E-030 as `lab7_danger` |
+| `lab6_p2_override` | planner v2 overrides greedy by margin 0.3 | +0.13 [−0.06, +0.32] (300 of 640 games; run stopped early) | carried to E-030 as `lab7_override` |
+| `lab6_p2_danger_g`, `_full_g`, `_best_g` | ghost-bucket atoms; full control; best-first | not played (screen stopped early for the fresh-seed confirmation) | `_danger_g` carried to E-030 |
+| `lab6_focus_*` (top, bottom, majority, deep, shallow, cluster, far), `lab6_form_lead0/5` | map / sensory food-choice modes; double attack while not leading | E-029 (mode table) | see E-029 |
+
+### `teams/greedy_lab_v7.py`: v6 + node cap, ablations, shield, hunt, power play, learned leaf value (E-030–)
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab7_off` | none | 18/18 identical to lab6_off | **identity** |
+| `lab7_danger` | = lab6_p2_danger + 2,000-node cap | 18/18 identical to lab6_p2_danger | E-030 |
+| `lab7_override`, `lab7_danger_g`, `lab7_danger_nokill`, `lab7_danger_nocap`, `lab7_danger_d8`, `lab7_danger_near`, `lab7_hunt`, `lab7_shield`, `lab7_danger_net`, `lab7_power` | see league.json notes and E-030 | E-030 | pending |
+
 ## Opponents we did not write
 
 | name | what it is | use |

@@ -12,6 +12,9 @@
 #                    whose scared time exceeds our distance + 1
 #   formation='power' SM-3: the home defender attacks while no enemy is a Pacman and the enemies stay
 #                    scared long enough for a trip (or one respawned within the last 10 own moves)
+#   dplan='0'        defender planner: IW(1) over (our defender cell, invader cell) atoms against a
+#                    modelled invader (forages to the nearest food; flees home when carrying >= dplan_ret
+#                    or when we are within 3); overrides the rule defender's move by dplan_margin
 #
 # v6 header follows.
 # greedy_lab_v6.py
@@ -156,6 +159,11 @@ class Config:
         self.plan_cap = float(e['plan_cap'])
         self.hunt_scared = _flag(e['hunt_scared'])
         self.hunt_d = int(e['hunt_d'])
+        self.dplan = _flag(e['dplan'])
+        self.dplan_ret = int(e['dplan_ret'])
+        self.dplan_margin = float(e['dplan_margin'])
+        self.dplan_h = int(e['dplan_h'])
+        self.dplan_nodes = int(e['dplan_nodes'])
         self.plan_budget = float(e['plan_budget'])
         self.plan_trigger = int(e['plan_trigger'])
         self.plan_gamma = float(e['plan_gamma'])
@@ -187,6 +195,7 @@ V6_DEFAULTS = {
     'plan_novelty': 'iw', 'plan_models': 'm1', 'plan_leaf': 'hand',
     # v7 options (see header)
     'plan_nodes': '0', 'plan_kill': '1', 'plan_cap': '0.3', 'hunt_scared': '0', 'hunt_d': '10',
+    'dplan': '0', 'dplan_ret': '5', 'dplan_margin': '0.3', 'dplan_h': '20', 'dplan_nodes': '3000',
     'focus': 'none', 'focus_w': '3',
     # focus='linear': learned food-choice weights (maze steps per unit feature)
     'fw_top': '0', 'fw_depth': '0', 'fw_cluster': '0', 'fw_ghost': '0', 'fw_deadend': '0',
@@ -295,6 +304,8 @@ class WidthModel:
         self.dist = dist
         self.dhome = [mapinfo.dist_home[c] for c in cells]
         self.gnbr = [tuple(j for _, j in nbr[i] if not self.home[j]) for i in range(n)]
+        self.denemy = [mapinfo.dist_enemy_side[c] for c in cells]
+        self.hnbr = [tuple((a, j) for a, j in nbr[i] if self.home[j]) for i in range(n)]
         self.depthv = [min(mapinfo.depth.get(c, 0), 10) / 10.0 for c in cells]
         # intercept target (ghost model M2): the enemy cell across our nearest home-border cell
         icept = []
@@ -628,6 +639,113 @@ class WidthPlanner:
         if best_i < 0:
             return None, info
         return n_root[best_i], info
+
+
+class DefPlanner:
+    """v7 dplan: IW(1) over (defender cell, invader cell) atoms. We move (on our side, Stop allowed),
+    then the invader moves: it flees to its side (nearest enemy-side cell, keeping away from us) when it
+    carries >= dplan_ret or we are within 3 steps, else walks to its nearest food (avoiding cells next
+    to us when it can). Capture +3 + carried (its food is dropped back), terminal; it eats a food
+    -0.1 (it comes back if we catch it); it gets home -carried, terminal. Leaf: -0.5*carried
+    - 0.05*distance to it. Root value = best node value in its subtree."""
+
+    def __init__(self, model, cfg):
+        self.m = model
+        self.cfg = cfg
+
+    def plan(self, me, inv, carried, food, budget_s):
+        t0 = time.perf_counter()
+        m = self.m
+        cfg = self.cfg
+        idx = m.index
+        dist = m.dist
+        home = m.home
+        nbr = m.nbr
+        hnbr = m.hnbr
+        denemy = m.denemy
+        ret_k = cfg.dplan_ret
+        horizon = cfg.dplan_h
+        cap = cfg.dplan_nodes
+        d0 = idx[me]
+        v0 = idx[inv]
+        fbit = {}
+        for k, f in enumerate(food):
+            fbit[idx[f]] = 1 << k
+        fcells = list(fbit.keys())
+        nodes = [(d0, v0, carried, (1 << len(food)) - 1, 0.0, 0, None)]
+        seen = {(d0, v0)}
+        q = deque([0])
+        root_best = {}
+        expanded = 0
+        while q:
+            if expanded >= cap or ((expanded & 15) == 0 and time.perf_counter() - t0 > budget_s):
+                break
+            i = q.popleft()
+            d, v, c, fm, val, depth, root = nodes[i]
+            if depth >= horizon:
+                continue
+            expanded += 1
+            disc = 0.97 ** depth
+            moves = hnbr[d] + ((Directions.STOP, d),)
+            for act, nd in moves:
+                r = 0.0
+                term = False
+                nv = v
+                nc = c
+                nfm = fm
+                if nd == v and home[v]:
+                    r += 3.0 + c
+                    term = True
+                else:
+                    drow = dist[nd]
+                    cand = nbr[v]
+                    flee = c >= ret_k or drow[v] <= 3
+                    best = None
+                    bkey = None
+                    for _, n2 in cand:
+                        adj = 1 if drow[n2] <= 1 else 0
+                        if flee:
+                            key = (adj, denemy[n2], -drow[n2], n2)
+                        else:
+                            fd = 999
+                            row2 = dist[n2]
+                            for fc in fcells:
+                                if nfm & fbit[fc] and row2[fc] < fd:
+                                    fd = row2[fc]
+                            key = (adj, fd, -drow[n2], n2)
+                        if bkey is None or key < bkey:
+                            bkey = key
+                            best = n2
+                    if best is not None:
+                        nv = best
+                    if not home[nv]:
+                        r -= nc
+                        term = True
+                    elif nv == nd:
+                        r += 3.0 + nc
+                        term = True
+                    else:
+                        b = fbit.get(nv)
+                        if b is not None and nfm & b:
+                            nfm &= ~b
+                            nc += 1
+                            r -= 0.1
+                nval = val + disc * r
+                key = (nd, nv)
+                if key in seen and not term and depth > 0:
+                    continue
+                if not term:
+                    seen.add(key)
+                ra = act if depth == 0 else root
+                if term:
+                    tv = nval
+                else:
+                    tv = nval + disc * 0.97 * (-0.5 * nc - 0.05 * dist[nd][nv])
+                    nodes.append((nd, nv, nc, nfm, nval, depth + 1, ra))
+                    q.append(len(nodes) - 1)
+                if tv > root_best.get(ra, -1e9):
+                    root_best[ra] = tv
+        return root_best, {'expanded': expanded, 'time': time.perf_counter() - t0}
 
 
 ##############
@@ -2081,7 +2199,36 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
             ghosts = self.dangerous_ghosts(game_state)
             threatened = any(self.map.d(g, pos) <= self.cfg.threat_dist for g in ghosts)
             return self.retreat(game_state, ghosts, threatened, self.safe_fn(ghosts))
-        return self.defend(game_state)
+        g = self.defend(game_state)
+        if self.cfg.dplan:
+            return self.dplan_move(game_state, g)
+        return g
+
+    def dplan_move(self, game_state, g):
+        """v7 dplan: the defender planner overrides the rule defender's move g by dplan_margin, against
+        the nearest visible invader within 8 steps, while we are not scared."""
+        me = game_state.get_agent_state(self.index)
+        if me.scared_timer > 0:
+            return g
+        pos = game_state.get_agent_position(self.index)
+        inv = [(self.map.d(pos, p), p, i) for i, p, invader in self.visible_enemies(game_state) if invader]
+        if not inv:
+            return g
+        dd, p, i = min(inv)
+        if dd > 8:
+            return g
+        if getattr(self, 'dplanner', None) is None:
+            self.dplanner = DefPlanner(WidthModel(self.map), self.cfg)
+        carried = game_state.get_agent_state(i).num_carrying
+        food = self.get_food_you_are_defending(game_state).as_list()
+        rv, info = self.dplanner.plan(pos, p, carried, food, 0.15)
+        if not rv:
+            return g
+        best = max(sorted(rv), key=lambda a: rv[a])
+        if best != g and rv[best] - rv.get(g, -1e9) > self.cfg.dplan_margin and \
+                best in game_state.get_legal_actions(self.index):
+            return best
+        return g
 
     def role_of(self, game_state, t):
         home = self.home_roles[t]

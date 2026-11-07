@@ -1,0 +1,12 @@
+[
+ {"name": "return_at", "lo": 3, "hi": 14, "type": "int", "x0": 8},
+ {"name": "threat_dist", "lo": 2, "hi": 7, "type": "int", "x0": 4},
+ {"name": "open_margin", "lo": 0, "hi": 10, "type": "int", "x0": 4},
+ {"name": "standoff_moves", "lo": 2, "hi": 8, "type": "int", "x0": 3},
+ {"name": "fw_depth", "lo": -6, "hi": 6, "x0": 0},
+ {"name": "fw_cluster", "lo": -6, "hi": 6, "x0": 0},
+ {"name": "fw_ghost", "lo": -6, "hi": 10, "x0": 0},
+ {"name": "fw_deadend", "lo": -6, "hi": 6, "x0": 0},
+ {"name": "fw_capsule", "lo": -6, "hi": 6, "x0": 0},
+ {"name": "fw_mate", "lo": -6, "hi": 6, "x0": 0}
+]

@@ -1,0 +1,11 @@
+[
+ {"name": "plan_r", "lo": 2, "hi": 10, "type": "int", "x0": 6},
+ {"name": "plan_death", "lo": 0.5, "hi": 8, "x0": 3},
+ {"name": "plan_a", "lo": 0.15, "hi": 0.85, "x0": 0.5},
+ {"name": "plan_h", "lo": 12, "hi": 50, "type": "int", "x0": 30},
+ {"name": "plan_min", "lo": -0.5, "hi": 1.5, "x0": 0.05},
+ {"name": "plan_trigger", "lo": 3, "hi": 14, "type": "int", "x0": 7},
+ {"name": "plan_gamma", "lo": 0.9, "hi": 0.995, "x0": 0.97},
+ {"name": "return_at", "lo": 3, "hi": 14, "type": "int", "x0": 8},
+ {"name": "threat_dist", "lo": 2, "hi": 7, "type": "int", "x0": 4}
+]

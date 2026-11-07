@@ -33,14 +33,20 @@ def main():
     X = np.concatenate(Xs).astype(np.float32)
     y = np.concatenate(ys).astype(np.float32)
     n = len(y)
-    cut = int(n * 0.8)  # rows of one game are contiguous: this split is (almost) by game
-    Xtr, ytr, Xte, yte = X[:cut], y[:cut], X[cut:], y[cut:]
-    print('rows %d (train %d, test %d); y mean %.3f sd %.3f' % (n, cut, n - cut, y.mean(), y.std()))
+    # rows of one game are contiguous and games are ordered by opponent: split random chunks of
+    # 300 rows (about one game) so train and test cover the same opponents
+    rng = np.random.RandomState(0)
+    chunk = np.arange(n) // 300
+    test_chunks = rng.rand(chunk.max() + 1) < 0.2
+    te = test_chunks[chunk]
+    Xtr, ytr, Xte, yte = X[~te], y[~te], X[te], y[te]
+    cut = len(ytr)
+    print('rows %d (train %d, test %d); y mean %.3f sd %.3f' % (n, cut, len(yte), y.mean(), y.std()))
 
     # linear baseline (least squares)
     A = np.hstack([Xtr, np.ones((cut, 1))])
     w = np.linalg.lstsq(A, ytr, rcond=None)[0]
-    pred = np.hstack([Xte, np.ones((n - cut, 1))]) @ w
+    pred = np.hstack([Xte, np.ones((len(yte), 1))]) @ w
     r2_lin = 1 - ((pred - yte) ** 2).mean() / yte.var()
     print('linear R2 (test) %.3f' % r2_lin)
 

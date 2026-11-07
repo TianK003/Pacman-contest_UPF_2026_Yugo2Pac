@@ -46,6 +46,19 @@ Run autonomously through the night (until at least 08:00 on 2026-11-08). Do not 
 - Tools: `eval/rl/game_pool.py` (in-process parallel games, any opts), `eval/rl/cmaes_tune.py` (CMA-ES over a
   JSON param spec; logs to eval/rl/runs/, gitignored).
 - Planner standalone speed: IW(1) ≤ 22 ms per move at horizon 40 (scratch test), so budget is not an issue.
+- 23:45 `n1_base` done: lab5_smart − greedy_v3 = +0.38 [+0.29, +0.49] (60 seeds). Pilot `n1_plan` done (5 seeds):
+  plan_danger +0.25, plan_g +0.24, best +0.15, food +0.07, full +0.06 vs lab5_smart (CIs ±0.5).
+- Research review found planner bug (dead successors marked atoms seen) → fixed as `plan_v=2`; added
+  `plan=override` (+`plan_margin`), v3 options `plan_novelty=piw`, `plan_models=m1m2`, `plan_leaf=net` (LEAF_NET
+  still None — train with eval/rl/train_value.py on eval/rl/data/d1_lab6off.npz, then paste the exported list).
+  Replay check: patched file reproduces recorded n1_plan2 games exactly.
+- RUNNING (started ~23:43–23:50): `n1_modes` (9 modes × 60 seeds, 8,640 games, ETA ~01:40), `n1_plan2`
+  (6 planner variants × 40 seeds, 3,840 games, ETA ~01:50; launched with `&`, not tracked by the harness — check
+  `wc -l eval/results/n1_plan2.jsonl`), data collection `d1_lab6off` (450 games, 3 workers), advisor agent.
+- Docs: E-027 (setup) written; E-028 (planner) and E-029 (modes) written with pre-registered rules, results pending.
+- Analysis commands:
+  `venv\Scripts\python.exe eval\evaluate.py summary --run n1_base n1_plan2 --compare lab6_p2_danger lab5_smart`
+  `venv_rl\Scripts\python.exe eval\rl\mode_table.py --runs n1_base n1_modes --base lab5_smart --modes lab6_focus_top lab6_focus_bottom lab6_focus_majority lab6_focus_deep lab6_focus_shallow lab6_focus_cluster lab6_focus_far lab6_form_lead0 lab6_form_lead5 --features eval/rl/feat_tuning_260_60.json`
 
 ## Where things are
 - Research reports: `docs/research/`.

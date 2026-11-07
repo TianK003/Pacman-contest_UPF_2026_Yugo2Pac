@@ -134,6 +134,9 @@ class Config:
         self.plan_trigger = int(e['plan_trigger'])
         self.plan_gamma = float(e['plan_gamma'])
         self.plan_v = int(e['plan_v'])
+        self.plan_novelty = str(e['plan_novelty'])
+        self.plan_models = str(e['plan_models'])
+        self.plan_leaf = str(e['plan_leaf'])
         self.plan_margin = float(e['plan_margin'])
         self.focus = str(e['focus']).strip().lower()
         self.focus_w = float(e['focus_w'])
@@ -153,6 +156,9 @@ V6_DEFAULTS = {
     # plan_v='2': atoms only for surviving states, Stop generated; plan='override': greedy decides,
     # the planner overrides only if its best root value beats greedy's action by plan_margin
     'plan_v': '1', 'plan_margin': '0.3',
+    # v3 options: 'piw' reward-aware novelty (p-IW); 'm1m2' chase + intercept ghost models, min over
+    # root values; 'net' learned leaf value (LEAF_NET, trained offline on lab6 games)
+    'plan_novelty': 'iw', 'plan_models': 'm1', 'plan_leaf': 'hand',
     'focus': 'none', 'focus_w': '3',
     # focus='linear': learned food-choice weights (maze steps per unit feature)
     'fw_top': '0', 'fw_depth': '0', 'fw_cluster': '0', 'fw_ghost': '0', 'fw_deadend': '0',
@@ -217,6 +223,9 @@ def create_team(first_index, second_index, is_red,
 # +KILL, capsule +CAP. Node value = discounted reward + discounted leaf value of the carried food.
 
 PLAN_KILL = 1.0
+# plan_leaf='net': (W1 [hidden x 12], b1 [hidden], w2 [hidden], b2) of a 12-tanh-1 MLP predicting the
+# food this agent banks minus the food it drops over its next 30 moves (trained offline, E-0xx).
+LEAF_NET = None
 PLAN_CAPSULE = 0.3
 PLAN_FOOD_SHAPE = 0.02
 PLAN_CARRY_BUCKET = (0, 1, 2, 3, 4, 4, 5, 5, 5, 6, 6, 6, 6)
@@ -251,6 +260,17 @@ class WidthModel:
         self.dist = dist
         self.dhome = [mapinfo.dist_home[c] for c in cells]
         self.gnbr = [tuple(j for _, j in nbr[i] if not self.home[j]) for i in range(n)]
+        self.depthv = [min(mapinfo.depth.get(c, 0), 10) / 10.0 for c in cells]
+        # intercept target (ghost model M2): the enemy cell across our nearest home-border cell
+        icept = []
+        for c in cells:
+            row = mapinfo.dist[c]
+            if mapinfo.home_border:
+                b = min(mapinfo.home_border, key=lambda bb: (row.get(bb, INF), bb))
+                icept.append(index[mapinfo.cross[b]])
+            else:
+                icept.append(index[c])
+        self.icept = icept
 
 
 class WidthPlanner:
@@ -260,7 +280,23 @@ class WidthPlanner:
 
     def plan(self, me, carried, food, capsules, ghosts, steps_left, budget_s):
         """me: (x, y); food/capsules: (x, y) lists on the enemy side; ghosts: [((x, y), scared)] for
-        the modelled enemy ghosts. Returns (action or None, info dict)."""
+        the modelled enemy ghosts. Returns (action or None, info dict).
+        plan_models='m1m2': one search per ghost model (M1 chase-in-range, M2 intercept), root values
+        aggregated by min (robust to the model), best root action by that min."""
+        if self.cfg.plan_models != 'm1m2' or not ghosts:
+            return self._search(me, carried, food, capsules, ghosts, steps_left, budget_s, False)
+        a1, i1 = self._search(me, carried, food, capsules, ghosts, steps_left, budget_s * 0.5, False)
+        a2, i2 = self._search(me, carried, food, capsules, ghosts, steps_left, budget_s * 0.5, True)
+        r1, r2 = i1['root_values'], i2['root_values']
+        agg = dict((a, min(v, r2[a])) for a, v in r1.items() if a in r2)
+        if not agg:
+            return a1, i1
+        best = max(sorted(agg), key=lambda a: agg[a])
+        info = {'expanded': i1['expanded'] + i2['expanded'], 'timed_out': i1['timed_out'] or i2['timed_out'],
+                'best_value': agg[best], 'time': i1['time'] + i2['time'], 'root_values': agg}
+        return best, info
+
+    def _search(self, me, carried, food, capsules, ghosts, steps_left, budget_s, m2):
         t0 = time.perf_counter()
         m = self.m
         cfg = self.cfg
@@ -280,6 +316,11 @@ class WidthPlanner:
         best_first = cfg.plan_search == 'best'
         v2 = cfg.plan_v >= 2
         root_best = {}
+        piw = cfg.plan_novelty == 'piw'
+        icept = m.icept
+        net = LEAF_NET if cfg.plan_leaf == 'net' else None
+        depthv = m.depthv
+        cap_cells = [idx[c] for c in capsules]
 
         s0 = idx[me]
         fbit = {}
@@ -312,12 +353,53 @@ class WidthPlanner:
             return 0 if best <= 2 else (1 if best <= 5 else 2)
 
         seen = set()
+        seen_best = {}
         if atoms_kind == 'pos_carry':
             seen.add((s0, _carry_bucket(carried)))
         elif atoms_kind == 'pos_carry_g':
             seen.add((s0, _carry_bucket(carried), gbucket(s0, g0)))
         else:
             seen.add(s0)
+
+        def leaf_net(c, carry, fm, cm, gl, sl, depth):
+            row = dist[c]
+            gds = sorted((row[g], sl[k]) for k, g in enumerate(gl) if g >= 0)
+            g1 = gds[0] if gds else (99, 0)
+            g2 = gds[1] if len(gds) > 1 else (99, 0)
+            nf = 0
+            near = 999
+            in5 = 0
+            for fc in fcells:
+                if fm & fbit[fc]:
+                    nf += 1
+                    d = row[fc]
+                    if d < near:
+                        near = d
+                    if d <= 5:
+                        in5 += 1
+            cd = 999
+            for k, cc in enumerate(cap_cells):
+                if cm & (1 << k) and row[cc] < cd:
+                    cd = row[cc]
+            x = (min(carry, 20) / 20.0, min(dhome[c], 40) / 40.0, min(g1[0], 15) / 15.0,
+                 min(g2[0], 15) / 15.0, min(g1[1], 40) / 40.0, nf / 30.0,
+                 (min(near, 30) / 30.0) if nf else 1.0, in5 / 10.0, (steps_left - depth) / 300.0,
+                 0.0 if home[c] else 1.0, (min(cd, 30) / 30.0) if cd < 999 else 1.0, depthv[c])
+            w1, b1, w2, b2 = net
+            y = b2
+            for wr, bb, wo in zip(w1, b1, w2):
+                h = bb
+                for wi, xi in zip(wr, x):
+                    h += wi * xi
+                if h > 15.0:
+                    h = 15.0
+                elif h < -15.0:
+                    h = -15.0
+                e2 = 2.718281828459045 ** (2.0 * h)
+                y += wo * (e2 - 1.0) / (e2 + 1.0)
+            if carry > 0 and dhome[c] > steps_left - depth:
+                return -a * carry
+            return y - a * carry
 
         def leaf_value(c, carry, fm, depth):
             left = steps_left - depth
@@ -417,12 +499,13 @@ class WidthPlanner:
                                     bd = drow[nn]
                                     bestn = nn
                             gl[k] = bestn
-                        elif drow[g] <= chase_r:
+                        elif drow[g] <= chase_r or (m2 and drow[g] <= chase_r + 4):
+                            trow = drow if (not m2 or drow[g] <= 2) else dist[icept[j]]
                             bestn = g
-                            bd = drow[g]
+                            bd = trow[g]
                             for nn in gnbr[g]:
-                                if drow[nn] < bd:
-                                    bd = drow[nn]
+                                if trow[nn] < bd:
+                                    bd = trow[nn]
                                     bestn = nn
                             gl[k] = bestn
                         if gl[k] == j and not home[j]:
@@ -440,7 +523,19 @@ class WidthPlanner:
                     key = (j, _carry_bucket(ncarry), gbucket(j, gl))
                 else:
                     key = j
-                atom_new = key not in seen
+                if dead:
+                    tv = v
+                elif net is not None:
+                    tv = v + disc * gamma * leaf_net(j, ncarry, nfm, ncm, gl, sl, depth + 1)
+                else:
+                    tv = v + disc * gamma * leaf_value(j, ncarry, nfm, depth + 1)
+                if piw:
+                    old = seen_best.get(key)
+                    atom_new = old is None or tv > old + 1e-9
+                    if atom_new and not dead:
+                        seen_best[key] = tv
+                else:
+                    atom_new = key not in seen
                 if atom_new and not (v2 and dead):
                     seen.add(key)
                 if atoms_kind == 'pos_food':
@@ -463,10 +558,7 @@ class WidthPlanner:
                 n_val.append(v)
                 n_depth.append(depth + 1)
                 n_root.append(act if depth == 0 else n_root[i])
-                if dead:
-                    tv = v
-                else:
-                    tv = v + disc * gamma * leaf_value(j, ncarry, nfm, depth + 1)
+                if not dead:
                     if best_first:
                         heapq.heappush(q, (-tv, counter, ni))
                         counter += 1

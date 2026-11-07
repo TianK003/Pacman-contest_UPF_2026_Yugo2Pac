@@ -33,6 +33,8 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | M-12 | Imitation learning | — | — | — | no strong demonstrator available | not feasible now |
 | M-13 | Expert iteration / distilling search into a fast policy | fast policy layer | high | medium | [untested] here | stretch, after M-05/M-06 exist |
 | M-14 | Potential field / influence map | attacker policy | low | medium | none found | experiment (E-008) |
+| M-15 | Width-based planning (IW(1), p-IW, novelty-pruned best-first) over our own forward model | attacker lookahead near ghosts | medium | medium | Ms Pac-Man (Atari) only; no CTF report | experiment (E-028) |
+| M-16 | Map-mode portfolio + selector (algorithm selection from map features) | strategy choice at startup | low | low | per-map labels noisy (research re-analysis of E-025) | experiment (E-029) |
 
 Team-level options that rely on shared memory (Q4) are proposed in [proposals.md](proposals.md):
 - the "team brain" (SM-1) and the shared-mind tactics SM-2..SM-13;
@@ -179,6 +181,18 @@ With shared memory the team is one player (a multiagent POMDP), so decentralised
 - **Risks**: local maxima and dithering between two attractors, so it needs anti-oscillation (H-S10).
 - **Evidence**: no capture-the-flag write-up found (research agent, 2026-10-17); [untested].
 - **Status**: **tested** as the F2 `FieldAttacker` (`teams/families_v1.py`): +0.34 on 10 tuning seeds (E-008), but −0.04 [−0.20, +0.11] on 40 fresh tuning seeds, losing head-to-head to greedy (1.05) and against camper2 (−0.40) (E-010). Rejected for now.
+
+### M-15: Width-based planning (IW / p-IW / BFWS-style) [E-028]
+- **What**: breadth-first IW(1) (Lipovetzky & Geffner 2012) as used with simulators (Lipovetzky, Ramirez & Geffner 2015), reward-aware novelty p-IW, and a novelty-pruned best-first variant, over **our own** model of the attacker's world (cells, carried food, food/capsule masks, modelled enemy ghosts that chase within a radius or intercept at our way home). Root action of the best-valued node; optionally a learned leaf value (M-13-style distillation of the greedy policy's value).
+- **Why it might fit**: greedy is myopic about multi-food sequencing and ghost timing; IW(1) over (cell, carried) atoms costs ≤ 22 ms in pure Python [verified, scratch benchmark], so it fits the move budget.
+- **Evidence**: Atari Ms Pac-Man: IW(1) 21,695 vs breadth-first 1,709; Rollout IW with a large death penalty near human level [source: docs/research/width_planning.md]. No Pacman CTF report; no evidence that it beats a tuned rule agent against adaptive opponents (open question).
+- **Library**: LAPKT (the reference width-based planner toolkit) has no Windows / Python 3.8 wheel after 0.1.8 and works on PDDL, so it cannot be used at runtime (rule R2/R5) [source: research report].
+- **Status**: implemented in `teams/greedy_lab_v6.py` (`plan*` switches); being screened (E-028).
+
+### M-16: Map-mode portfolio and selector [E-029]
+- **What**: a portfolio of agent configurations ("modes": food-region focus top/bottom/majority, deep/shallow, cluster, far-from-ghosts, double-attack formations) and a selector from startup map features (algorithm selection, Rice 1976; SATzilla-style per-mode regression).
+- **Evidence**: the research re-analysis of E-025 found per-map best-mode labels to be noise (oracle +0.20, cross-validated −0.03); food is rarely concentrated in one half (fuller half 57% on a typical map).
+- **Status**: implemented (`focus`, `formation`, `select_focus` in lab6); mode × map table being measured (E-029).
 
 ---
 

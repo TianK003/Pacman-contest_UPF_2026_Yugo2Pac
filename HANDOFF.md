@@ -2,7 +2,7 @@
 
 **Read this first** if you are an agent continuing this work (after a context compaction or in a new session).
 Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest entries at the bottom of `docs/experiments.md`
-(E-027 … E-039). **Afternoon session 2026-11-08 (see "Afternoon" below): E-039 screen `n2_s1` done; option C splits `n2_s2` may be running.**
+(E-027 … E-039). **Afternoon session 2026-11-08 (see "Afternoon" below): E-039 finished: stage 2 rejected `lab12_combo`; greedy_v4 stays the release candidate.**
 
 ## The user's requests (overnight)
 1. (23:20) **Width-based planning** (IW / BFWS / novelty + heuristics; extra deps allowed if documented) and **RL-based
@@ -91,3 +91,7 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
   (`lab12_v5guard lab12_v5asym lab13_defsc_posture lab13_defsc_cap`, 3,520 games). Analyse with `summary --run n2_s1 n2_s2 --compare <arm> greedy_v4`
   and scratchpad-style exact deltas; then build `lab13_combo` = B with plan_nodes 1200, plan_models m1m2, assist 1, plan_blocked 1, def_scared = the
   promising parts; smoke on tuning 141–143; stage 2 on validation2 81–160 (`--seeds validation2 --seed-offset 80 --n-seeds 80`).
+- **Option C** (`n2_s2`): def_scared posture +0.07 (top 3 +0.25), capsule guard +0.01, override guard +0.02, margin 0.1 +0.00.
+- **Stage 2** (`n2_val`, validation2 81–160, 3,360 games): `lab12_combo` (assist + def_scared + plan_blocked + m1m2) − greedy_v4 =
+  pool −0.06 [−0.15, +0.02], h2h 1.37 → **rejected**; it attacks less (returned −0.8, standoff +36 per game). New trap T-61.
+  validation2 used: 1–160; free: 161–300. greedy_v4 remains `my_team.py` (release gate passed, E-037).

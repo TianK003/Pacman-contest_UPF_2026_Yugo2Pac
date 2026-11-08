@@ -1650,7 +1650,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Reading**: the tuning-seed edge (+0.06 [+0.00, +0.12] over 1,440 games, E-034) did not replicate on fresh seeds; it is the second time tonight that a small tuning gain vanished on validation (the defender planner: +0.10 on tuning, −0.03 on V2). Override mode dies a little less and drops less food but concedes a little more and finishes fewer games by returning 28; overall it is equal to danger mode within ±0.15. [untested] Selecting the best of several E-034 arms on the same tuning seeds inflated its estimate (winner's curse, evaluation.md G3).
 
 ## E-039 — Improvements from the external review of greedy_v4 / greedy_v5 (2026-11-08)
-- **Status**: screen (`n2_s1`) and option C splits (`n2_s2`) done; stage 2 (`n2_val`) running. Screen pre-registered before any game was played.
+- **Status**: done. Stage 2 **rejected** `lab12_combo` (pool −0.06 [−0.15, +0.02], h2h 1.37); greedy_v4 stays. Screen and option C splits pre-registered before any game. Screen pre-registered before any game was played.
 - **Why** (user, 2026-11-08): have an external reviewer (Fable 5.1, maximum effort) inspect greedy_v4 and greedy_v5, propose at least two improvements to each, then think them through, implement them and test the new agents against greedy_v4 and our top 3 agents. Review: `docs/research/review_v4_v5.md` (read-only reviewer; tuning-seed data only, no test seeds, no held-out teams, no running validation).
 - **Base**: greedy_v4 (V3 rejected greedy_v5 while the review ran, E-038), so the v4 proposals are arms on greedy_v4 and the v5 proposals one arm on override mode.
 - **What was chosen and why** (from the review's 9 proposals plus two of ours):
@@ -1750,3 +1750,21 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
     5. Selection used tuning seeds 101–140 only, so these validation seeds are not selection seeds and this run is also the confirmation.
   - Reported, not counted: Δ over all 10 opponents and over the top 3.
   - If accepted: `teams/greedy_v6.py` = v12 with `lab12_combo`'s options as defaults (identity-checked) → `my_team.py`, picks page. It would then not yet have passed the release gate (locked test seeds have 1 use left; Linux timing), which is a separate step before 2026-11-23. If rejected: greedy_v4 stays.
+- **Stage-2 result** [verified, `n2_val`, validation2 seeds 81–160, 3,360 games]. The run was stopped once by Claude Code at 2,492 games (the laptop ran low on memory) and resumed with `--resume --jobs 6` (871 games, 1,348 s): the 3 games in flight at the stop have records without a score ("no score file", harness errors from the stop, not agent crashes); `summary` skips them and all 3,360 scheduled games were scored.
+
+  | criterion | result | pass |
+  |---|---|---|
+  | 1. gates | lint OK; 0 crashes, 0 time warnings, 0 sentinel violations; max move **0.424 s** (greedy_v4 0.349 s), p95 0.279 s (greedy_v4 0.126 s) | ✓ |
+  | 2. pool Δ (lab12_combo − greedy_v4, 7 members, 1,120 paired games) | **−0.06 [−0.15, +0.02]** | ✗ |
+  | 3. no regression | worst camper −0.25 [−0.43, −0.07] (upper > −0.5); past versions: greedy_v3 2.46 vs 2.61, greedy_v2 2.66 vs 2.67 | ✓ |
+  | 4. head-to-head vs greedy_v4 (160 games) | **1.37** (63-30-67) | ✗ |
+
+  Reported, not counted: all 10 opponents −0.07 [−0.16, +0.02]; top 3 −0.08 [−0.26, +0.11] (greedy_v5 −0.14, lab10_quad −0.23, lab7_netf_dplan +0.13). Per pool member: camper −0.25, greedy_v3 −0.14, feature −0.04, exploit_v2 −0.03, choke −0.01, greedy_v2 −0.01, lab5_smart +0.04.
+
+  Team totals per game (lab12_combo / greedy_v4, all games): returned 14.5 / 15.3, conceded 9.3 / 9.4, deaths 0.34 / 0.33, food lost 0.8 / 1.0, Pacman moves 129 / 136, standoff moves 243 / 207, 28-food finishes 10 / 23.
+- **Decision** (pre-registered rule): **rejected** (criteria 2 and 4). greedy_v4 stays in `my_team.py`; no greedy_v6. `lab12_combo` stays in the league as a rejected candidate.
+- **Reading**:
+  - The combination attacks less: fewer Pacman moves (−7), more standoff moves (+36), fewer returned (−0.8) and less than half the 28-food finishes, for no defensive gain (conceded −0.1). [untested] Three of its four switches each take time from the attack (`assist` sends the attacker to defend, `plan_blocked` hands border standoffs to the waiting breaker, `m1m2` plans against more pessimistic ghosts); alone each was ≈ 0 on tuning, together they add up.
+  - `def_scared`'s tuning-seed gain against the top 3 (+0.24) does not show here (the combo's top-3 Δ is −0.08), but the combo cannot separate it from the other switches.
+  - `m1m2` roughly doubles the planner's p95 move time (0.279 s vs 0.126 s); max 0.424 s is close to the 0.5 s budget.
+  - Third time today that tuning-seed gains did not survive validation (defender planner E-032, override E-038, this). Two of the four "promising" arms were +1 point in 800 games: "Δ > 0" lets noise into a combination (new trap T-61).

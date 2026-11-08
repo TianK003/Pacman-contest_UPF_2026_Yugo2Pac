@@ -226,6 +226,10 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: the engine imports the team file by path into a fresh module. Patching classes in a module you imported yourself (for counting or tracing) changes nothing in the game.
 - **Prevention**: wrap the team through a small team file whose `create_team` loads the target and patches that copy (as `eval/trace_team.py` and `eval/belief_probe/probe_team.py` do). Local analysis only, never submitted.
 
+**T-61: Combining screen arms that are ≈ 0** [hit E-039]
+- **Why**: with ~800 paired games a screen arm's CI half-width is ≈ 0.08–0.10, so "Δ > 0" admits arms that are pure noise (two E-039 arms qualified by +1 point). Switches that are each ≈ 0 can still share a direction of harm (E-039: three of them took time from the attack) and add up in the combination: −0.07 on validation.
+- **Prevention**: pre-register a screen threshold well above 0 (e.g. Δ ≥ +0.05 or CI lower > −0.02), validate the best single arm rather than a bundle, and check the diagnostics of the arms for a shared side effect before combining.
+
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
 - **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.

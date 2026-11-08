@@ -1356,6 +1356,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   The same rule against lab5_smart (the better, unpromoted agent) also passes: +0.58 [+0.42, +0.74], every opponent's CI above 0, head-to-head 2.31.
 - **Conclusion (V1)**: [verified on validation seeds 221–260] **`lab7_danger_net` passes the accept rule** against greedy_v3 and against lab5_smart. `lab7_danger_netf` (faster code, 24/24 identical games) is the version to ship if promoted. **Not done (release gate, user decision)**: Linux timing under load (WSL run planned tonight as a diagnostic), one locked test-seed run with the held-out teams, promotion to `my_team.py`.
 - **RL loop, iteration 2** (written before X3): data `d2_net` = 450 games of `lab7_danger_net` (pool + double_attack, tuning seeds 26–50; 123,096 states; it scored 2.55 PPG there vs lab6_off's 2.11 in `d1`). Nets: `v2` on d1 + d2 (held-out R² 0.588, linear 0.344) → `LEAF_NET2` / `plan_leaf=net2f`; `v2o` on d2 only (R² 0.552) → `LEAF_NET3` / `net3f`. **X3** (`n1_x3`): `lab7_danger_netf`, `lab7_net2`, `lab7_net3` against the 8 pool members on tuning seeds 481–520 (unused), 640 games each. Rule: the better of net2/net3 replaces net in the candidate if its paired Δ vs lab7_danger_netf > 0.
+- **X3 result** [verified, `n1_x3`, 1,920 games]: `lab7_net2` (trained on d1 + d2) − lab7_danger_netf = **−0.04 [−0.12, +0.04]**; `lab7_net3` (on-policy d2 only) = **−0.15 [−0.28, −0.03]** (camper −0.29). Neither replaces the first net, though both predict the 30-move outcome better (R² 0.59 / 0.55 vs 0.46). Better held-out prediction of the target did not give better play. One plausible reason [untested]: the first net was trained on the greedy policy, which is what the leaf is meant to price (the planner hands control back to greedy after the trigger), while the planner's own games mix policies. Approximate policy iteration stops after one step here; X3 closes the RL-loop track (proposals RL-1).
 - `lab7_danger_netf` (fast leaf code) = `lab7_danger_net`: 24/24 identical games (`n1_identity_netf`), planner time p50 47 → 21 ms, p99 178 → 116 ms.
 
 ## E-032 — Promote the learned-leaf planner to `my_team.py` (greedy_v4); V2: defender planner on top (2026-11-08)
@@ -1364,3 +1365,48 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **File** `teams/greedy_v4.py` = `teams/greedy_lab_v7.py` with the `lab7_danger_netf` options as defaults (plan=danger, plan_v=2, plan_nodes=2000, plan_budget=0.3, plan_leaf=netf); no other change. Lint OK. **Identity** (`n1_identity_v4`): greedy_v4 = lab7_danger_net on 18/18 X2 games; `lab7_netf_dplan` = `lab7_net_dplan` on 18/18 X2 games. `my_team.py` = copy of greedy_v4 (commit below); smoke vs baseline both colours: wins, 0 warnings.
 - **Release gate items still open** (evaluation.md §2): Linux / Python 3.8 timing under load (WSL run planned), one locked test-seed run with the held-out teams (user decision).
 - **V2** (`n1_v2`, pre-registered before the run): `lab7_netf_dplan` vs the new incumbent greedy_v4 on **validation seeds 261–300** (the last 40 unused validation seeds), both against the 8 pool members + lab5_smart, plus their head-to-head. Decision: the accept rule of evaluation.md §2 with greedy_v4 as incumbent. If it passes, `teams/greedy_v5.py` (= lab7_netf_dplan as defaults) replaces greedy_v4 in `my_team.py` (user's instruction). After V2 the validation list is used up (seeds 1–300): a fresh validation list needs the user's approval.
+
+## E-033 — Non-deep-learning search: Monte-Carlo planners and lookup-table leaves (2026-11-08)
+- **Status**: pre-registered 04:10, screen running.
+- **Why** (user, 03:35): after the learned-leaf result, try simpler non-deep-learning methods "e.g. using MCTS or similar to combine it with existing knowledge"; design first, have an advisor critique it, then build.
+- **Design**: `docs/research/mcts_design.md`. Draft 1 (03:45) was critiqued by an advisor agent (Fable, xhigh effort), with these main points:
+  1. UCT with 150 iterations is noise-dominated: SE 0.3–0.8 per root child against decision gaps of 0.3–1.0.
+  2. Per-step ghost mixing makes ghosts too slow, so the mean backup stays optimistic.
+  3. ε-random rollouts make corridors look deadly.
+  4. A table leaf without side and scared would price border standoffs as deaths.
+  5. Use enumerated weighted scenarios, deterministic rollouts and override-by-margin; fit leaf parameters instead of guessing them.
+
+  Draft 2 = what was built, with all of these points applied.
+- **File** `teams/greedy_lab_v8.py` = v7 + default-off options (header lists them). No random numbers anywhere.
+  - `plan_leaf=table`: IW leaf = 7×7×7×2×2 lookup table of the mean 30-move outcome (carried, nearest ghost, distance home, side, nearest ghost scared ≥ distance + 1), sparse cells shrunk to the (carried, ghost, side) parent (K = 30). Fitted by `eval/rl/fit_leaves.py` on the same data and split as LEAF_NET (d1, 128k states): **held-out R² 0.453 vs the net's 0.464 on the same rows** (the 3-D table without side / scared was not kept).
+  - `plan_leaf=lin`: least squares on the net's 12 features (R² 0.209).
+  - `plan=fmc`: flat paired Monte Carlo.
+    - Scenarios: every legal root move is simulated against the same weighted ghost scenarios. A scenario is a joint placement (the top 4 belief cells per hidden ghost, best 4 joint placements) × a ghost type per ghost: chase 0.5, intercept 0.3 (heads for the enemy cell across our nearest home border, chases within 2), camp 0.2 (chases within 3). The 12 heaviest scenarios are kept.
+    - Ghost awareness: visible ghosts know where we are. Hidden ones hold their post until we come within 6 or eat food.
+    - Rollouts: deterministic greedy-in-model, of 20 moves, ending at banking.
+    - Value = weighted mean return.
+    - Greedy's move is replaced only when the best move is > 0.3 better (`mc_margin`), under the same trigger as plan=danger.
+  - `plan=mcts`: fmc + open-loop UCT over the next 4 moves (150 iterations, scenarios round-robin by weight, UCB on min-max normalised returns, c = 1). Each root move's most visited line is re-evaluated on all scenarios; the root value is the better of the flat and tree values.
+  - `eval/check_rules.py` now warns (not errors: T-02 allows it) on draws from the global `random` module.
+- **Identity** (`n1_identity8`, tuning seeds 1–3 × baseline, camper, exploit_v2, both colours):
+  - `lab8_off` = `lab7_off` = `lab6_off`: 18/18.
+  - `lab8_v4` = greedy_v4: 17/18. The 18th game had a 0.31 s move in both versions (the planner's 0.3 s clock fired under a 30-process load); replayed with the clock off, both score identically (blue +12).
+- **Timing** (3 games each vs greedy_v3 / choke / greedy_v2, laptop under full load), planner call times:
+
+  | arm | p50 | p99 | max | time-outs |
+  |---|---|---|---|---|
+  | fmc | 2 ms | 14 ms | 15 ms | 0 |
+  | mcts | 14 ms | 59 ms | 73 ms | 0 |
+  | IW + table | 9 ms | 35 ms | 46 ms | 0 |
+  | IW + lin | 20 ms | 136 ms | 257 ms | 0 |
+  | greedy_v4 (IW + net) | 30 ms | 106 ms | 170 ms | 0 |
+
+  Most fmc rollouts stop after one move: on our side with no race-safe food the line is worth 0.
+- **Screen** (`n1_x4a` + `n1_x4b`, merged for the analysis):
+  - Arms: `lab8_table`, `lab8_lin`, `lab8_fmc`, `lab8_fmc_table` (H = 12, table cutoff), `lab8_mcts`, each paired with the incumbent `greedy_v4`.
+  - Seeds and opponents: fresh tuning seeds 521–560, both colours, against the 8 pool members + lab5_smart + greedy_v4.
+- **Pre-stated reading**:
+  - An arm **matches** greedy_v4 if its paired Δ ≥ 0 with a CI lower bound > −0.15, and **beats** it if the CI is above 0.
+  - Any arm that beats greedy_v4 is confirmed on fresh tuning seeds 561–600 before anything else. The validation seeds are used up after V2, and a fresh validation list is the user's decision.
+  - Ingredient reading: the planner with the hand leaf scored +0.06 vs lab5_smart (E-030) and the net leaf +0.57. If the order comes out hand < lin < table ≈ net, the gain comes from the outcome signal, not the model class.
+  - Gates as always: 0 crashes / warnings / violations.

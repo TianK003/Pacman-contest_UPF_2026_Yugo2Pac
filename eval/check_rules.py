@@ -21,6 +21,10 @@ FORBIDDEN_CALLS = {
     ('os', 'system'), ('os', 'popen'), ('os', 'fork'), ('functools', 'cache'),
 }
 PY39_STR_METHODS = {'removeprefix', 'removesuffix'}
+# Draws from the engine's global RNG (it also drives the sonar noise). Allowed by T-02, but they make our
+# games non-reproducible and couple our search to the noise stream: prefer an own random.Random().
+GLOBAL_RNG_DRAWS = {'random', 'choice', 'choices', 'randint', 'randrange', 'shuffle', 'uniform',
+                    'sample', 'gauss'}
 # Attributes of engine objects (AgentState, Configuration, GameState(.data), Grid, Layout).
 # Writing them on anything but `self` is a likely mutation of shared engine state (T-01).
 ENGINE_ATTRS = {'pos', 'direction', 'start', 'is_pacman', 'scared_timer', 'num_carrying', 'num_returned',
@@ -107,6 +111,9 @@ class Checker(ast.NodeVisitor):
         base = node.value.id if isinstance(node.value, ast.Name) else None
         if (base, node.attr) in FORBIDDEN_CALLS:
             self.report('ERROR', node, '%s.%s is forbidden (T-02/T-04/T-07/T-17)' % (base, node.attr))
+        if base == 'random' and node.attr in GLOBAL_RNG_DRAWS:
+            self.report('WARNING', node, 'random.%s draws from the global RNG (allowed by T-02; prefer an own '
+                        'random.Random for reproducibility)' % node.attr)
         if base == 'sys' and node.attr in ('stdout', 'stderr') and isinstance(node.ctx, ast.Store):
             self.report('ERROR', node, 'assignment to sys.%s (R7)' % node.attr)
         if node.attr.startswith('_') and not node.attr.startswith('__') and base not in ('self', 'cls'):

@@ -1,6 +1,28 @@
 # Design: non-deep-learning search for the attacker (MCTS and knowledge leaves) — draft for review
 
-Status: **draft 1, 2026-11-08 03:45**, written before any code; to be critiqued by an advisor agent, then fixed, then built as `teams/greedy_lab_v8.py` and screened (E-033). Tags as in docs/README.md; everything here is [untested] unless cited.
+Status: **draft 2, 2026-11-08 04:10** = what was built in `teams/greedy_lab_v8.py` (E-033). Draft 1 (03:45, kept below as history) was critiqued by an advisor agent (Fable, xhigh effort) before any code was written. Tags as in docs/README.md; everything is [untested] unless cited.
+
+## Draft 2: changes after the review
+
+| draft 1 | review finding | draft 2 (built) |
+|---|---|---|
+| UCT, 150 iterations, c = 2 on raw returns, most-visited root | noise-dominated: per-child SE 0.3–0.8 vs decision gaps 0.3–1.0; c = 2 on a ~17-unit return range is near-greedy selection | **flat paired MC** (`plan=fmc`): every root move is simulated against the *same* scenarios, so the scenario effect cancels in differences; UCT kept only as an extra arm (`plan=mcts`, depth ≤ 4, min-max normalised UCB, c = 1). The tree only *proposes* a line; root values come from the paired re-evaluation |
+| i.i.d. sampling of top-8 belief cells | wastes budget | **enumerated** top-4 cells per hidden ghost, best 4 joint placements, weights = belief mass |
+| per-step ghost mixture (0.7 chase / 0.2 intercept / 0.1 random), unaware ghosts stay 70 % | the ghost makes ~0.7 steps of progress per ply, too slow, so the mean stays optimistic; our own pool infers our position | **one type per ghost per scenario**, deterministic: chase 0.5, intercept 0.3, camp 0.2. Visible ghosts are aware; hidden ones until we come within `plan_r` or eat food in the simulation |
+| ε = 0.1 random rollout moves | 92 % of 24-move rollouts contain a random move; near ghosts that is a death the real agent would not choose (timidity) | **ε = 0**, deterministic greedy-in-model; threat distance 4 = greedy's; target committed, re-picked every 4 moves; rollout ends at banking |
+| death checks unspecified along open-loop paths | alive / dead is not deterministic along a path | a simulation ends at the first death; backup only through the nodes it reached |
+| root decision by visits; `mcts_override` as a separate arm | — | **override-by-margin for every MC arm**: greedy's move unless the best is > `mc_margin` = 0.3 better in the same paired evaluation |
+| race leaf with τ = 1, offset 0.5, D_leaf = 1.5 | m = 0 is death, not P = 0.62; parameters must be fitted; one D | **not built yet** (needs a collection that logs the margin m); reserve arm |
+| tabular leaf on (carried, ghost, home) | omits side (a ghost across the border is harmless) and scared | **5-D table** (+ side, + nearest ghost scared ≥ distance + 1), 1,372 cells, shrunk to (carried, ghost, side). Held-out R² 0.453 vs net 0.464 on the same rows |
+| speed estimate 0.3–0.6 ms per iteration | 2–3× optimistic; 30-food scans per step | target commitment, flat lists, no copies per step: **fmc p99 14 ms, mcts p99 59 ms** under full load (E-033) |
+| global `random` unconstrained | a rollout drawing from the global RNG would consume the engine's sonar-noise stream; the lint does not catch it | **no random numbers at all**; the lint now warns on `random.<draw>(` |
+
+Screen and pre-stated reading: E-033.
+
+---
+
+# Draft 1 (history)
+
 
 ## 1. Why (what the deep-learning result taught us)
 

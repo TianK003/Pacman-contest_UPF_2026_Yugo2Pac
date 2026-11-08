@@ -26,11 +26,9 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 - **`my_team.py` = `teams/greedy_v4.py`** (promoted 03:40, commit e95a786; docs in `docs/picks/greedy_v4.md`):
   lab5_smart + IW(1) attacker planner in danger (ghost ≤ 7) with the learned leaf value (`LEAF_NET`, fast code `netf`).
   V1 (validation 221–260): +0.95 [+0.78, +1.13] vs greedy_v3, +0.58 [+0.42, +0.74] vs lab5_smart.
-- Pending: **V2** (`n1_v2`, E-032): `lab7_netf_dplan` (greedy_v4 + defender planner) vs greedy_v4 on validation 261–300,
-  1,520 games. If it passes the accept rule: create `teams/greedy_v5.py` = greedy_lab_v7 with lab7_netf_dplan options as
-  defaults (plan=danger, plan_v=2, plan_nodes=2000, plan_budget=0.3, plan_leaf=netf, dplan=1), identity check vs
-  lab7_netf_dplan, copy to my_team.py, picks page, CLAUDE.md line, agents lineage. Analyse with
-  `venv\Scripts\python.exe eval\evaluate.py summary --run n1_v2 --compare lab7_netf_dplan greedy_v4`.
+- **V2 done (04:50): `lab7_netf_dplan` (greedy_v4 + defender planner) REJECTED** — pool Δ vs greedy_v4 −0.03
+  [−0.11, +0.05] on validation 261–300 (h2h 1.69, max move 0.443 s). greedy_v4 stays. Validation seeds exhausted (1–300);
+  a fresh validation list = user decision. The pre-built greedy_v5.py was deleted (never benchmarked).
 
 ## Results tonight (paired PPG Δ; tuning seeds unless marked)
 | run | what | result |
@@ -47,17 +45,14 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
 ## RUNNING NOW (check with `wc -l eval/results/<run>.jsonl`)
-- `n1_v2` (E-032, 4 jobs, `&`): 1,520 games, ETA ≈ 05:10. `teams/greedy_v5.py` is PRE-BUILT (= greedy_v4 + dplan=1,
-  lint OK, not yet identity-checked or promoted). If V2 passes: identity greedy_v5 vs lab7_netf_dplan (clock off:
-  `--blueOpts plan_budget=9` on 3 seeds as in E-033), copy to my_team.py, picks page, CLAUDE.md, agents lineage, push.
+- `n1_v2` DONE (see above).
 - `n1_x2` STOPPED 04:25 (full_net never played; other arms complete, logged in E-031).
 - `n1_modes` DONE, E-029 closed (no mode helps).
 - `n1_x4a` (E-033 part A, 3 jobs, harness task): greedy_v4, lab8_table, lab8_fmc (2,320 games; order: greedy_v4 first).
 - `n1_x4b` (E-033 part B, resumed 04:27 with 5 jobs, harness task): lab8_lin, lab8_fmc_table, lab8_mcts (2,400 games).
-- **TODO when V2 finishes: E-033 part C** (`n1_x4c`, 3–4 jobs):
+- **`n1_x4c` (E-033 part C, started 04:51, 4 jobs, harness task)**: lab9_v4_check, lab9_fmc_net (1,600 games):
   `venv\Scripts\python.exe eval\evaluate.py play --candidate lab9_v4_check lab9_fmc_net --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --seeds tuning --n-seeds 40 --seed-offset 520 --run n1_x4c --jobs 4`
-- Analysis: `cat eval/results/n1_x4a.jsonl eval/results/n1_x4b.jsonl eval/results/n1_x4c.jsonl > eval/results/n1_x4.jsonl`,
-  then `summary --run n1_x4 --compare <arm> greedy_v4` per arm. Pre-stated reading in E-033. Winners → confirm on tuning
+- Analysis: `summary --run n1_x4a n1_x4b n1_x4c --compare <arm> greedy_v4` per arm (summary takes several runs). Pre-stated reading in E-033. Winners → confirm on tuning
   seeds 561–600.
 
 ## Files made tonight

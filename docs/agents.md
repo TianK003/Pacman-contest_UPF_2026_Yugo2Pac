@@ -173,7 +173,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab7_hunt` | planner-free scared-ghost chasing | −0.23 [−0.37, −0.11] | rejected |
 | `lab7_dplan` | IW(1) defender planner only | X1b +0.19 [+0.03, +0.35] | combined in `lab7_net_dplan` |
 | `lab7_power` | SM-3 power play | X1b −0.23 [−0.32, −0.15] | rejected |
-| `lab7_net_dplan` | learned-leaf attacker planner + defender planner | X2 (tuning 441–480) +0.60 [+0.43, +0.77] (lab7_danger_net +0.50 on the same games) | E-031 C2 candidate |
+| `lab7_net_dplan` / `lab7_netf_dplan` | learned-leaf attacker planner + defender planner (netf = identical fast leaf) | X2 (tuning 441–480) +0.60 [+0.43, +0.77] vs lab5_smart (lab7_danger_net +0.50 on the same games); **V2 (validation 261–300): −0.03 [−0.11, +0.05] vs greedy_v4**, head-to-head 1.69, max move 0.443 s | **rejected** (E-032): pool gain not above 0 |
 | `lab7_g_net` | ghost-bucket atoms + net | X2 +0.47 | no gain over the net alone |
 | `lab7_net2`, `lab7_net3` | second RL-loop iteration nets (on lab6_off + planner games / planner games only) | X3 (tuning 481–520, complete) −0.04 [−0.12, +0.04] / −0.15 [−0.28, −0.03] vs lab7_danger_netf | not adopted (the first net stays) |
 | `lab7_danger_piw`, `_m1m2`, `_both`, `lab7_danger_dplan` | p-IW, two ghost models, two placements, planner + dplan (hand leaf) | not played (X1b stopped) | — |

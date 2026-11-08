@@ -1382,11 +1382,24 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - `lab7_danger_netf` (fast leaf code) = `lab7_danger_net`: 24/24 identical games (`n1_identity_netf`), planner time p50 47 → 21 ms, p99 178 → 116 ms.
 
 ## E-032 — Promote the learned-leaf planner to `my_team.py` (greedy_v4); V2: defender planner on top (2026-11-08)
-- **Status**: promotion done; V2 running.
+- **Status**: done. Promotion done; **V2: `lab7_netf_dplan` rejected, greedy_v4 stays** (04:50).
 - **Decision** (user, 2026-11-08 03:35, after the V1 report): promote `lab7_danger_net` "for now"; then compare it with the defender-planner version if V2 confirms it.
 - **File** `teams/greedy_v4.py` = `teams/greedy_lab_v7.py` with the `lab7_danger_netf` options as defaults (plan=danger, plan_v=2, plan_nodes=2000, plan_budget=0.3, plan_leaf=netf); no other change. Lint OK. **Identity** (`n1_identity_v4`): greedy_v4 = lab7_danger_net on 18/18 X2 games; `lab7_netf_dplan` = `lab7_net_dplan` on 18/18 X2 games. `my_team.py` = copy of greedy_v4 (commit below); smoke vs baseline both colours: wins, 0 warnings.
 - **Release gate items still open** (evaluation.md §2): Linux / Python 3.8 timing under load (WSL run planned), one locked test-seed run with the held-out teams (user decision).
 - **V2** (`n1_v2`, pre-registered before the run): `lab7_netf_dplan` vs the new incumbent greedy_v4 on **validation seeds 261–300** (the last 40 unused validation seeds), both against the 8 pool members + lab5_smart, plus their head-to-head. Decision: the accept rule of evaluation.md §2 with greedy_v4 as incumbent. If it passes, `teams/greedy_v5.py` (= lab7_netf_dplan as defaults) replaces greedy_v4 in `my_team.py` (user's instruction). After V2 the validation list is used up (seeds 1–300): a fresh validation list needs the user's approval.
+- **V2 result** [verified, `n1_v2`, 1,520 games, validation seeds 261–300]:
+
+  | criterion | result | needed |
+  |---|---|---|
+  | gates | 0 crashes, 0 time warnings, 0 violations; max move 0.443 s (greedy_v4 0.283 s), p95 0.182 s (0.134 s) | 0 / 0 / 0 ✓ |
+  | paired Δ vs greedy_v4 over pool + lab5_smart (720 games) | **−0.03 [−0.11, +0.05]** | CI > 0 ✗ |
+  | per opponent | camper −0.17 [−0.40, −0.01], choke −0.15, greedy −0.11, greedy_v3 +0.15, feature +0.09, others ±0.07 | no regression beyond 0.5 ✓ |
+  | head-to-head vs greedy_v4 (80 games) | **1.69** (greedy_v4 1.01) | ≥ 1.5 ✓ |
+
+  Team totals per game (lab7_netf_dplan / greedy_v4): returned 16.8 / 16.7, conceded 8.2 / 8.9, kills 0.63 / 0.85, standoff moves 177 / 215, 28-food finishes 16 / 10 of 800.
+- **Decision** (pre-registered rule): **rejected**: the pool gain is not above 0, so greedy_v4 stays in `my_team.py`; the pre-built `teams/greedy_v5.py` was deleted unbenchmarked, so the name stays free for the next real promotion.
+- **Reading**: [verified on these games] the defender planner concedes a little less (8.2 vs 8.9 per game) and clearly wins the head-to-head against greedy_v4's planner attacker (1.69), but it does not convert into points against the pool. On X2's tuning seeds it was +0.10 [+0.03, +0.17] (E-031): a tuning-seed gain that did not survive fresh seeds. [untested] It may only help against planner attackers like ours; whether tournament opponents are like that is unknown.
+- **Validation seeds are now exhausted** (1–300 used). Any further accept decision needs a fresh validation list (user decision).
 
 ## E-033 — Non-deep-learning search: Monte-Carlo planners and lookup-table leaves (2026-11-08)
 - **Status**: pre-registered 04:10, screen running.

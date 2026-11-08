@@ -44,16 +44,17 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | value nets | 12-16-1 tanh, held-out R²: v1 0.464, v2 0.588, v2o 0.552 | |
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
-## RUNNING NOW (check with `wc -l eval/results/<run>.jsonl`)
-- `n1_v2` DONE (see above).
-- `n1_x2` STOPPED 04:25 (full_net never played; other arms complete, logged in E-031).
-- `n1_modes` DONE, E-029 closed (no mode helps).
-- `n1_x4a` (E-033 part A, 3 jobs, harness task): greedy_v4, lab8_table, lab8_fmc (2,320 games; order: greedy_v4 first).
-- `n1_x4b` (E-033 part B, resumed 04:27 with 5 jobs, harness task): lab8_lin, lab8_fmc_table, lab8_mcts (2,400 games).
-- **`n1_x4c` (E-033 part C, started 04:51, 4 jobs, harness task)**: lab9_v4_check, lab9_fmc_net (1,600 games):
-  `venv\Scripts\python.exe eval\evaluate.py play --candidate lab9_v4_check lab9_fmc_net --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --seeds tuning --n-seeds 40 --seed-offset 520 --run n1_x4c --jobs 4`
-- Analysis: `summary --run n1_x4a n1_x4b n1_x4c --compare <arm> greedy_v4` per arm (summary takes several runs). Pre-stated reading in E-033. Winners → confirm on tuning
-  seeds 561–600.
+## RUNNING NOW (05:25)
+- E-033 screen (tuning 521–560, vs pool + lab5_smart + greedy_v4, paired with greedy_v4 from part A):
+  - part A `n1_x4a` (greedy_v4, lab8_table, lab8_fmc; 3 jobs) — table done: **−0.33 [−0.46, −0.21]**; fmc running.
+  - part B `n1_x4b` DONE: lab8_lin **−0.11 [−0.24, +0.02]**, lab8_mcts −0.52, lab8_fmc_table −0.72 (MC arms timid).
+  - part C `n1_x4c` (lab9_v4_check, lab9_fmc_net; 4 jobs).
+  - part D `n1_x4d` (lab10_quad = IW + quadratic ridge leaf, R² 0.461; 5 jobs; post-hoc follow-up).
+  - Analysis: `venv\Scripts\python.exe eval\evaluate.py summary --run n1_x4a n1_x4b n1_x4c n1_x4d --compare <arm> greedy_v4`.
+- Then: if an arm matches/beats greedy_v4 → confirm on tuning 561–600 (reserved). Otherwise diagnostics: greedy_v4 and
+  greedy_v3 vs double_attack turtle camper2 baseline_plus field rusher_camper greedy_deadend friend_andy friend_aljaz_1..5
+  (tuning 501–510; diagnostics only, never decisions).
+- DONE tonight: V2 (dplan rejected), X2, X3, modes (E-029 closed), Linux timing of greedy_v4 (0 warnings, max 0.283 s).
 
 ## Files made tonight
 - `teams/greedy_lab_v6.py`, `teams/greedy_lab_v7.py` (FROZEN), **`teams/greedy_lab_v8.py`** (lab: v7 + plan_leaf=table|lin,

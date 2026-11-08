@@ -1403,7 +1403,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Linux timing of greedy_v4 (release-gate item, 05:10)** [verified]: WSL Ubuntu 24.04, CPython 3.8.20, `~/pacman_wsl` mirror re-synced (`my_team.py` byte-identical to `teams/greedy_v4.py`); `submission` vs greedy_v3, choke, exploit_v2, lab5_smart on tuning seeds 516–520 (reused: a timing check tunes nothing), both colours, `-q -c` (real SIGALRM limits), 2 WSL workers **while the Windows side ran 12 game workers** (CPU saturated). Result: 40 games, 35-5-0, **0 crashes, 0 time warnings, max move 0.283 s, p95 0.191 s** (run `wsl_v4_loaded`, kept in the WSL mirror). The remaining release-gate item is the locked test-seed run with the held-out teams (user decision).
 
 ## E-033 — Non-deep-learning search: Monte-Carlo planners and lookup-table leaves (2026-11-08)
-- **Status**: pre-registered 04:10, screen running.
+- **Status**: parts A–D done (05:45): no non-DL arm beats greedy_v4; quadratic leaf ≈ net; Monte-Carlo search loses. Part E (equivalence on 561–600) running.
 - **Why** (user, 03:35): after the learned-leaf result, try simpler non-deep-learning methods "e.g. using MCTS or similar to combine it with existing knowledge"; design first, have an advisor critique it, then build.
 - **Design**: `docs/research/mcts_design.md`. Draft 1 (03:45) was critiqued by an advisor agent (Fable, xhigh effort), with these main points:
   1. UCT with 150 iterations is noise-dominated: SE 0.3–0.8 per root child against decision gaps of 0.3–1.0.
@@ -1457,4 +1457,24 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | `lab8_fmc_table` | −0.72 [−0.91, −0.53] | 1.73 | 9.0 | 0.48 | 288 |
 
   The Monte-Carlo arms die rarely but score little: under the scenario ghosts (aware chasers and interceptors) crossing looks dangerous, so the override keeps the attacker at the border (timidity, T-56-like). Final table / fmc / part C / part D results below when complete.
+- **Results, parts A–D (complete, 05:45)** [verified; tuning seeds 521–560; each arm 800 games, paired with greedy_v4 over 720 games vs the pool + lab5_smart; 0 crashes, 0 time warnings, 0 violations in every arm]:
+
+  | arm | what | Δ vs greedy_v4 [95% CI] | PPG | h2h vs greedy_v4 | returned / g | deaths / g | food lost / g | max move s |
+  |---|---|---|---|---|---|---|---|---|
+  | `greedy_v4` | IW + learned net leaf (incumbent) | 0 | 2.47 | – | 15.8 | 0.42 | 1.2 | 0.31 |
+  | `lab10_quad` (part D, post-hoc) | IW + quadratic ridge leaf (non-DL, R² 0.461) | **−0.05 [−0.15, +0.05]** | 2.43 | 1.40 | 16.2 | 0.38 | 1.0 | 0.29 |
+  | `lab8_lin` | IW + linear leaf (R² 0.209) | −0.11 [−0.24, +0.02] | 2.36 | 1.32 | 14.7 | 0.62 | 1.7 | 0.31 |
+  | `lab8_table` | IW + lookup-table leaf (R² 0.453) | −0.33 [−0.46, −0.21] | – | – | 13.8 | 0.67 | 3.3 | – |
+  | `lab9_v4_check` | greedy_v4 + flat-MC re-check | −0.43 [−0.61, −0.24] | 2.01 | – | 11.0 | 0.40 | 1.0 | 0.23 |
+  | `lab8_mcts` | flat MC + open-loop UCT | −0.52 [−0.70, −0.33] | 1.94 | 0.74 | 11.1 | 0.40 | 1.0 | 0.11 |
+  | `lab8_fmc` | flat paired MC, hand cutoff | −0.67 [−0.87, −0.47] | – | – | 9.6 | 0.52 | 1.3 | – |
+  | `lab8_fmc_table` | flat MC, table cutoff | −0.72 [−0.91, −0.53] | 1.73 | 0.53 | 9.0 | 0.48 | 1.1 | 0.07 |
+  | `lab9_fmc_net` | flat MC, net cutoff | −0.72 [−0.93, −0.52] | 1.75 | – | 8.9 | 0.50 | 1.1 | 0.09 |
+
+  (– = not printed in the summary row used; returned/deaths/lost are team totals per game.)
+- **Reading** [verified on these games]:
+  - **No non-DL arm beats greedy_v4**, and by the pre-stated rule none "matches" it (all point estimates < 0). No confirmation was triggered.
+  - **Monte-Carlo search loses clearly (−0.43 … −0.72), in every form**: flat, with UCT, with any cutoff (hand, table, net), and even as a re-check on top of greedy_v4. The paired scenarios remove sampling noise, so this is model error: under aware chasing / intercepting scenario ghosts crossing looks dangerous and the override keeps the attacker home. These arms die rarely (0.40–0.52) but return 9–11 food per game instead of 16 (new trap T-60).
+  - **The leaf matters through its smoothness, not its R²**: table (R² 0.453) −0.33 with 3.3 dropped food per game; linear (R² 0.209) −0.11; quadratic (R² 0.461) −0.05 ≈ net. A max-backup search exploits the jumps and noisy cells of a piecewise-constant leaf (new trap T-59). The learned net can be matched by a degree-2 polynomial fitted by ridge regression on the same data: no neural network is needed for this gain [parts D + E; part E running].
+  - Ingredient order vs lab5_smart (E-030 scale: greedy_v4 ≈ lab5_smart + 0.5): hand leaf ≈ +0.06 < table ≈ +0.2 < lin ≈ +0.4 < quad ≈ net ≈ +0.5; MC arms ≈ −0.2 … 0. The outcome-trained leaf is the ingredient; a smooth model class is required to use it.
 - **Part E (pre-registered 05:40, before part D's head-to-head games were complete)**: an **equivalence measurement, not a promotion decision**. By the rule above, lab10_quad does not "match" (pool Δ −0.05 [−0.15, +0.05] over 720 games: the point estimate is below 0), so no confirmation is triggered. Because it is the only non-DL arm close to greedy_v4, `lab10_quad` and `greedy_v4` play the reserved tuning seeds 561–600 against the same opponents (run `n1_x4e`). Reported: the pooled Δ over parts D + E (1,440 paired games) and its CI. Reading: if the pooled CI lies within ±0.10, the quadratic leaf is practically equivalent to the net; if it excludes 0 from below, the net is better.

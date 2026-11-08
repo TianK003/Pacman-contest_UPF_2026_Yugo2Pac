@@ -34,7 +34,7 @@ A method is *how* the agent decides: rules, search, learning. The heuristics in 
 | M-13 | Expert iteration / distilling search into a fast policy | fast policy layer | high | medium | [untested] here | stretch, after M-05/M-06 exist |
 | M-14 | Potential field / influence map | attacker policy | low | medium | none found | experiment (E-008) |
 | M-15 | Width-based planning (IW(1), p-IW, novelty-pruned best-first) over our own forward model | attacker lookahead near ghosts | medium | medium | Ms Pac-Man (Atari) only; no CTF report | **adopted** with a learned leaf (greedy_v4, E-031/E-032) |
-| M-17 | Monte-Carlo search (flat paired MC over enumerated ghost scenarios; open-loop UCT) + non-DL leaves (lookup table, linear) | attacker lookahead near ghosts | medium | low | noise vs budget in CPython; ghost model guessed | experiment (E-033) |
+| M-17 | Monte-Carlo search (flat paired MC over enumerated ghost scenarios; open-loop UCT) + non-DL leaves (lookup table, linear) | attacker lookahead near ghosts | medium | low | noise vs budget in CPython; ghost model guessed | MC rejected; quadratic leaf ≈ net (E-033) |
 | M-16 | Map-mode portfolio + selector (algorithm selection from map features) | strategy choice at startup | low | low | per-map labels noisy (research re-analysis of E-025) | experiment (E-029) |
 
 Team-level options that rely on shared memory (Q4) are proposed in [proposals.md](proposals.md):
@@ -194,7 +194,7 @@ With shared memory the team is one player (a multiagent POMDP), so decentralised
 - **What**: (a) flat paired Monte Carlo: every legal root move simulated against the same enumerated, weighted ghost scenarios (belief cells × ghost types chase / intercept / camp) with deterministic greedy-in-model rollouts (common random numbers without random numbers); (b) open-loop UCT over the next 4 moves, the tree's line re-evaluated on all scenarios; (c) the IW planner with a 5-D lookup-table leaf or a linear leaf instead of the net.
 - **Why**: the user asked for simpler, non-deep-learning ways to combine search with existing knowledge (2026-11-08). The design was critiqued by an advisor before coding (`docs/research/mcts_design.md`, draft 2).
 - **Evidence so far**: the lookup table predicts the 30-move outcome almost as well as the net (held-out R² 0.453 vs 0.464, same rows; linear 0.209) [verified, `eval/rl/fit_leaves.py`]. Planner call times fmc p99 14 ms, mcts 59 ms, IW + table 35 ms under full load [verified, E-033]. Playing strength: screen running (E-033).
-- **Status**: implemented in `teams/greedy_lab_v8.py`; screened in E-033.
+- **Status**: **Monte-Carlo search rejected** [verified, E-033]: flat paired MC, UCT, and MC re-checks lose 0.43–0.72 PPG to greedy_v4 (timid under the scenario ghost model). **Non-DL leaves**: the quadratic ridge leaf matches the net within noise (−0.05 [−0.15, +0.05]); the lookup table loses (−0.33) despite equal R² because the search exploits it; linear −0.11.
 
 ### M-16: Map-mode portfolio and selector [E-029]
 - **What**: a portfolio of agent configurations ("modes": food-region focus top/bottom/majority, deep/shallow, cluster, far-from-ghosts, double-attack formations) and a selector from startup map features (algorithm selection, Rice 1976; SATzilla-style per-mode regression).

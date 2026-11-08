@@ -168,7 +168,7 @@ Gaps the search could not fill (unknown, not guessed):
 | MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built; **rejected** (E-029: no mode > 0, no selector beats "no mode") |
 | MM-2 | Linear food-choice policy (`focus=linear`, `fw_*` weights) tuned by CMA-ES | built (lab6/lab7); CMA-ES tuning not run (the planner track won the CPU) |
 | JX-1 | Junction-graph macro-IW (longer horizon), novelty over tactical features, offline privileged-teacher distillation (docs/research/width_planning.md §7.e) | idea |
-| MC-1 | Non-deep-learning search (methods.md M-17): flat paired Monte Carlo over enumerated ghost scenarios, open-loop UCT, lookup-table / linear leaves | built (lab8, lab9); screen E-033 |
+| MC-1 | Non-deep-learning search (methods.md M-17): flat paired Monte Carlo over enumerated ghost scenarios, open-loop UCT, lookup-table / linear leaves | built; MC search **rejected** (−0.43 … −0.72); quadratic leaf ≈ net (E-033) |
 | RL-T | Leaf target horizon: the leaf nets / table predict food banked − dropped within 30 moves, which undervalues safely carried food that `open_goal` banks later (table: carrying 5, ghost far, 6 from home → only +1.5). Try H = 60 or "until banked or dead" as the target | idea (2026-11-08); X3 warns that better prediction alone did not help |
 | MC-2 | Race-analysis leaf with fitted escape probability (logistic fit of "dropped food within 30 moves" on the escape margin) | idea (needs a collection that logs the margin); advisor: modest |
 

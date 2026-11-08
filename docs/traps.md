@@ -264,3 +264,13 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: sight is shared (T-23): our attacker sees every enemy within 5 of *either* of us. A defender that stands at the border across from the enemy guard shows that guard to our attacker. greedy's race-safe attacker then treats the guard as blocking and waits.
 - **What happened**: the first shadowing defender followed the enemy "nearest our side", usually their border guard, and turned a 22–0 win over baseline_team into a 0–0 standoff (E-019 smoke). The tracker switch of E-007 made the attacker timid the same way, through extra (remembered) ghosts.
 - **Prevention**: when a change gives the attacker more ghost sightings, re-check the attacker's standoff and Pacman-move counts. The defender should follow the enemy that has actually come over, not their guard.
+
+**T-59: A search exploits the errors of its leaf; a good R² is not enough** [hit E-030, E-033]
+- **Why**: a planner that backs up the best node (IW, max over continuations) seeks out the states its evaluation overrates. A piecewise-constant leaf (lookup table) has jumps at bucket edges and noisy sparse cells; the search walks to them.
+- **What happened**: in E-033 the 5-D lookup-table leaf predicted the 30-move outcome as well as the net (held-out R² 0.453 vs 0.464) but played −0.33 vs greedy_v4, with 0.67 deaths and 3.3 dropped food per game (net: 0.42 / 1.2). The linear leaf (R² 0.21, smooth) lost only −0.11 and a smooth quadratic leaf with the net's R² (0.461) −0.05. The hand-made leaf of E-030 was the same story: optimism over a deterministic model.
+- **Prevention**: judge a leaf by play, not by R². Prefer smooth function classes (polynomial, small MLP) for leaves under max-backup search; if a table is used, interpolate or smooth it.
+
+**T-60: Pessimistic opponent scenarios make a Monte-Carlo planner timid**
+- **Why**: averaging over scenarios where every ghost is aware and chases or cuts us off makes any crossing look dangerous, so a margin-based override keeps choosing to wait at the border.
+- **What happened**: E-033's flat paired Monte Carlo and UCT arms died rarely (0.40–0.52 per game) but returned only 8.9–11.1 food per game (greedy_v4 15.8) and lost 0.43–0.72 PPG to greedy_v4, even as a re-check on top of greedy_v4.
+- **Prevention**: calibrate a ghost model against real ghost behaviour (e.g. fit type weights from replays) before trusting expectations under it; watch returns and standoff moves, not only deaths.

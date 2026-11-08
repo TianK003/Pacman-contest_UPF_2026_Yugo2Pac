@@ -184,11 +184,19 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 |---|---|---|---|
 | `lab8_off` | none | 18/18 identical to lab7_off / lab6_off | **identity** |
 | `lab8_v4` | greedy_v4's options | 17/18 identical to greedy_v4; the 18th differs only because the 0.3 s planner clock fired under load (identical with the clock off) | **identity** |
-| `lab8_table` | IW planner, 5-D lookup-table leaf (R² 0.453) | screen running (E-033) | — |
-| `lab8_lin` | IW planner, linear leaf (R² 0.209) | screen running | — |
-| `lab8_fmc` | flat paired MC, 12 scenarios, H = 20, hand cutoff, margin 0.3 | screen running | — |
-| `lab8_fmc_table` | flat paired MC, H = 12, table cutoff | screen running | — |
-| `lab8_mcts` | fmc + open-loop UCT (depth 4, 150 iterations) | screen running | — |
+| `lab8_table` | IW planner, 5-D lookup-table leaf (R² 0.453) | E-033: −0.33 [−0.46, −0.21] vs greedy_v4; deaths 0.67, dropped food 3.3 / game | rejected (search exploits the table, T-59) |
+| `lab8_lin` | IW planner, linear leaf (R² 0.209) | −0.11 [−0.24, +0.02] | rejected (not better) |
+| `lab8_fmc` | flat paired MC, 12 scenarios, H = 20, hand cutoff, margin 0.3 | −0.67 [−0.87, −0.47]; returned 9.6 / game | rejected (timid, T-60) |
+| `lab8_fmc_table` | flat paired MC, H = 12, table cutoff | −0.72 [−0.91, −0.53] | rejected |
+| `lab8_mcts` | fmc + open-loop UCT (depth 4, 150 iterations) | −0.52 [−0.70, −0.33] | rejected |
+
+### `teams/greedy_lab_v9.py` / `teams/greedy_lab_v10.py`: reserve arms (E-033 parts C, D)
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab9_v4_check` | greedy_v4 + flat paired MC re-check of the chosen move (margin 0.3) | −0.43 [−0.61, −0.24] vs greedy_v4 | rejected |
+| `lab9_fmc_net` | flat MC, H = 12, learned-net cutoff | −0.72 [−0.93, −0.52] | rejected |
+| `lab10_quad` | IW planner + quadratic ridge leaf (non-DL, 91 terms, R² 0.461) | −0.05 [−0.15, +0.05] vs greedy_v4 (720 games), h2h 1.40; deaths 0.38, returned 16.2 | **≈ greedy_v4** (equivalence check on 561–600: part E) |
 
 ## Opponents we did not write
 

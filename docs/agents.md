@@ -196,7 +196,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 |---|---|---|---|
 | `lab9_v4_check` | greedy_v4 + flat paired MC re-check of the chosen move (margin 0.3) | −0.43 [−0.61, −0.24] vs greedy_v4 | rejected |
 | `lab9_fmc_net` | flat MC, H = 12, learned-net cutoff | −0.72 [−0.93, −0.52] | rejected |
-| `lab10_quad` | IW planner + quadratic ridge leaf (non-DL, 91 terms, R² 0.461) | −0.05 [−0.15, +0.05] vs greedy_v4 (720 games), h2h 1.40; deaths 0.38, returned 16.2 | **≈ greedy_v4** (equivalence check on 561–600: part E) |
+| `lab10_quad` | IW planner + quadratic ridge leaf (non-DL, 91 terms, R² 0.461) | −0.05 [−0.15, +0.05] vs greedy_v4 (720 games), h2h 1.40; deaths 0.38, returned 16.2 | **≈ greedy_v4**: part E (561–600) +0.00 [−0.08, +0.08]; pooled −0.02 [−0.09, +0.04] over 1,440 games; h2h 1.51. Equal, not better: not promoted; fallback if a neural net is ever unwelcome |
 
 ## Opponents we did not write
 

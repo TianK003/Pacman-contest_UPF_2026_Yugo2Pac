@@ -223,5 +223,6 @@
   "lab8_fmc_table": {"path": "teams/greedy_lab_v8.py", "ours": true, "frozen": true, "opts": {"plan": "fmc", "mc_h": "12", "mc_leaf": "table"}, "notes": "flat paired MC, H=12, table cutoff (E-033)"},
   "lab8_mcts": {"path": "teams/greedy_lab_v8.py", "ours": true, "frozen": true, "opts": {"plan": "mcts"}, "notes": "fmc + open-loop UCT over 4 moves, 150 iterations, tree line re-evaluated (E-033)"},
   "lab9_v4_check": {"path": "teams/greedy_lab_v9.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "netf", "mc_check": "1"}, "notes": "greedy_v4 + flat paired MC re-check of the chosen move (margin 0.3) (E-033 part C)"},
-  "lab9_fmc_net": {"path": "teams/greedy_lab_v9.py", "ours": true, "frozen": true, "opts": {"plan": "fmc", "mc_h": "12", "mc_leaf": "net"}, "notes": "flat paired MC, H=12, learned-net cutoff (E-033 part C)"}
+  "lab9_fmc_net": {"path": "teams/greedy_lab_v9.py", "ours": true, "frozen": true, "opts": {"plan": "fmc", "mc_h": "12", "mc_leaf": "net"}, "notes": "flat paired MC, H=12, learned-net cutoff (E-033 part C)"},
+  "lab10_quad": {"path": "teams/greedy_lab_v10.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "quad"}, "notes": "IW planner, quadratic ridge leaf (non-DL, R2 0.461) (E-033 part D)"}
 }

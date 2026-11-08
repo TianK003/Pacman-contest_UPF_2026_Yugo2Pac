@@ -1247,7 +1247,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Dependencies**: training only, in a separate `venv_rl/` (gitignored): torch 2.4.1+cpu, numpy 1.24.4, cma 3.3.0 (listed in `eval/rl/requirements-train.txt`). Nothing new is needed at runtime: every team file stays stdlib-only (rule R5), learned weights ship as Python constants.
 
 ## E-028 — Width-based planner for the attacker (IW(1) / p-IW / best-first over our own model) (2026-11-07/08)
-- **Status**: running.
+- **Status**: done (screen stopped early; conclusions in E-030).
 - **Question**: does a width-based lookahead (IW(1), Lipovetzky & Geffner 2012; with a simulator and rewards as in Lipovetzky, Ramirez & Geffner 2015) over our own forward model of the attacker's world raise points over lab5_smart (= `lab6_off`)?
 - **Planner** (`WidthPlanner` in `teams/greedy_lab_v6.py`): state = (cell, carried, food mask, capsule mask, modelled ghost cells, their scared timers); we move, then every modelled enemy ghost moves once (M1: chase when within `plan_r`, else hold; scared: flee; optional M2: walk to the enemy cell across our nearest home-border cell); death = terminal. Rewards: eat +a, bank +(1−a) per food, death −(a·carried + D), scared ghost +1, capsule +0.3; leaf value = carried·(1−a)·γ^dist_home (or a learned net). Atoms: `pos`, `pos_carry` (cell, carry bucket), `pos_food`, `pos_carry_g` (+ ghost-distance bucket). Hidden ghosts sit at their belief's most likely cell (flags give their side). Root action of the best node is played (or, in `override`, only if it beats greedy's action by `plan_margin`). Standalone speed: ≤ 22 ms per call at horizon 40 [verified, scratch benchmark].
 - **Modes**: `full` (planner decides whenever its best value > `plan_min`), `danger` (only while a non-scared modelled ghost is within `plan_trigger` = 7), `food` (only instead of the food-target choice), `override` (greedy decides, planner overrides by margin).
@@ -1272,7 +1272,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Advisor review** (a separate agent, read-only, 2026-11-08 00:05) raised: (1) the code under test was still changing → v6 frozen, new options only in `teams/greedy_lab_v7.py`; (2) a clock-limited search is load-dependent → node cap `plan_nodes`; (3) the gain may be "hunt scared ghosts" rather than lookahead (kills 0.8 → 2.1) → ablations without kill / capsule rewards and a planner-free `hunt_scared` rule; (4) `danger` mode overrides greedy's safety rules (likely source of the extra deaths) → `shield` (veto only) and `override`; (5) winner's curse → confirm on fresh seeds; (6) the real bar is lab5_smart → it joins the opponents; (7) the pool has no double attacker → specialist diagnostic.
 
 ## E-030 — Planner confirmation and ablations on fresh tuning seeds (X1) (2026-11-08)
-- **Status**: running.
+- **Status**: done. C1 = `lab7_danger_net`.
 - **File**: `teams/greedy_lab_v7.py` = v6 + default-off options (`plan_nodes`, `plan_kill`, `plan_cap`, `plan_hidden` near/both, `plan='shield'`, `hunt_scared`, `formation='power'`) + the trained leaf net (`LEAF_NET`, used only with `plan_leaf=net`). Identity (`n1_identity7`): `lab7_off` = `lab6_off` 18/18, `lab7_danger` (node cap 2000, clock 0.3 s) = `lab6_p2_danger` 18/18.
 - **Leaf value net** (`eval/rl/train_value.py`, data `d1_lab6off`: 450 games of lab6_off against the pool + double_attack on tuning seeds 1–25, 128,242 attacker states): target = food banked minus food dropped by dying over the next 30 own moves; 12 features computable inside the planner; 12-16-1 tanh MLP; held-out games (random 20% of game-sized chunks): **R² 0.46** (linear 0.21). A first split by row order put mostly double_attack games in the test set (R² < 0, distribution shift) and was replaced.
 - **Run** `n1_x1`: tuning seeds 401–440 (`--seed-offset 400`, 40 seeds, unused tonight), both colours, against the 8 pool members **and lab5_smart** (720 games per arm). Arms: `lab5_smart` (control), `lab7_danger` (W), `lab7_override`, `lab7_danger_g`, `lab7_danger_nokill`, `lab7_danger_nocap`, `lab7_danger_d8`, `lab7_danger_near`, `lab7_hunt` (no planner), `lab7_shield`, `lab7_danger_net`.
@@ -1289,6 +1289,33 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Value-net capacity check**: 12-32-1 reaches held-out R² 0.471 vs 0.464 for 12-16-1, so the smaller (faster) net is kept.
 
 
+- **Results** (`n1_x1`, complete: 11 arms × 640 pool games + 80 head-to-head games against lab5_smart; X1b partial: `lab7_dplan` and `lab7_power` complete, the other X1b arms were stopped at 02:00 to free the CPU). Gates: 0 crashes, 0 time warnings, 0 violations in all arms; max move 0.31 s (`lab7_danger_net`, p95 0.21 s) under 14–21 parallel workers.
+
+  | arm | Δ vs lab5_smart (pool, 640 games) [95% CI] | PPG (720 games) | h2h vs lab5_smart | deaths / game | food returned / game |
+  |---|---|---|---|---|---|
+  | `lab7_danger_net` | **+0.57 [+0.37, +0.76]** (every opponent +0.46 … +0.79, all CIs > 0) | 2.60 | **2.31** | **0.40** | **15.8** |
+  | `lab7_danger_g` | +0.24 [+0.02, +0.44] | 2.25 | 1.86 | 1.16 | 12.6 |
+  | `lab7_dplan` (X1b) | +0.19 [+0.03, +0.35] | 2.16 | 1.43 | – | – |
+  | `lab7_override` | +0.12 [−0.09, +0.31] | 2.13 | 1.71 | – | – |
+  | `lab7_danger` | +0.06 [−0.14, +0.24] | 2.07 | 1.64 | 1.31 | 11.4 |
+  | `lab7_danger_d8` | +0.06 (game-for-game identical to `lab7_danger`) | 2.07 | 1.64 | 1.31 | 11.4 |
+  | `lab7_danger_nokill` | +0.04 [−0.15, +0.23] | 2.06 | 1.65 | – | – |
+  | `lab7_danger_near` | +0.03 [−0.16, +0.21] | 2.05 | 1.66 | 1.34 | 11.5 |
+  | `lab7_danger_nocap` | −0.00 [−0.21, +0.20] | 2.01 | 1.64 | – | – |
+  | `lab7_shield` | +0.00 [+0.00, +0.00] (never fires: identical to lab5_smart) | 1.97 | 1.24 | – | – |
+  | `lab7_hunt` | −0.23 [−0.37, −0.11] | 1.76 | 1.18 | – | – |
+  | `lab7_power` (X1b) | −0.23 [−0.32, −0.15] | 1.80 | 1.46 | – | – |
+  | `lab5_smart` (control) | 0 | 1.51 (incl. the strong new arms as opponents) | – | 0.92 | 9.0 |
+
+- **Reading**:
+  - [verified on these games] **The learned leaf value is what makes the planner work.** With the hand-made leaf, the planner dies more than lab5_smart (1.31 vs 0.92 per game) and drops 7.8 carried food per game; with the net, deaths fall to 0.40 and dropped food to 1.2, and returns rise to 15.8. The net was trained on lab6_off games from tuning seeds 1–25 (no map overlap with X1's seeds 401–440).
+  - **Why the hand-made planner was optimistic**: a root action's value is the best node in its subtree (max backup over a deterministic model), so a death branch only matters when every continuation dies. `plan_death` 3 vs 8 changed **no decision** (identical games), and `shield` (veto when greedy's move is predicted deadly) never fired. The learned value instead prices the danger of a state from real outcomes.
+  - **Not kill-farming**: removing the scared-ghost reward (+0.04) or both kill and capsule rewards (0.00) costs little against the plain planner (+0.06), and the planner-free hunting rule loses (−0.23).
+  - **Richer novelty helps**: ghost-distance-bucket atoms (+0.24 vs +0.06) let the search revisit a cell at a different distance from the ghosts.
+  - **The defender planner** helps on its own (+0.19) and is orthogonal to the attacker planner (X2 tests the combination).
+  - **Power play loses** (−0.23): the defender leaves while the scared window lasts and the enemies' second agent scores.
+- **C1** (pre-registered rule) = **`lab7_danger_net`** (largest Δ, all opponents > −0.3) → V1 validation and the X2 / X3 follow-ups (E-031).
+
 ## E-031 — Learned-leaf planner: validation (V1) and combinations (X2) (2026-11-08)
 - **Status**: running. Written at 02:00, after X1's interim table (lab7_danger_net +0.57 [+0.38, +0.75] on 605 of 720 games; lab7_dplan +0.19 [+0.03, +0.35] in X1b) and before the runs below.
 - **C1** (E-030 rule: largest Δ, Δ > 0) = `lab7_danger_net`, pending the per-opponent check (no pool opponent below −0.3) on the complete arm.
@@ -1296,3 +1323,5 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **X2** (`n1_x2`, screen): tuning seeds 441–480 (unused), arms `lab5_smart`, `lab7_danger_net` (second confirmation), `lab7_net_dplan`, `lab7_g_net`, `lab7_g_net_dplan`, `lab7_full_net`, against the pool + lab5_smart.
 - **Pre-registered rule for C2**: the X2 arm with the largest Δ vs lab5_smart; it goes to the second validation block (seeds 261–300) if Δ(C2 − lab7_danger_net) on X2 > 0 and Δ(C2 − lab5_smart) has its CI lower bound > 0; otherwise seeds 261–300 confirm C1 (accept-rule clause 5).
 - **RL loop** (approximate policy iteration): collect on-policy data from `lab7_danger_net` games (tuning seeds 26–50), retrain the leaf net (`v2`), embed as a second constant, screen against `lab7_danger_net`.
+- **RL loop, iteration 2** (written before X3): data `d2_net` = 450 games of `lab7_danger_net` (pool + double_attack, tuning seeds 26–50; 123,096 states; it scored 2.55 PPG there vs lab6_off's 2.11 in `d1`). Nets: `v2` on d1 + d2 (held-out R² 0.588, linear 0.344) → `LEAF_NET2` / `plan_leaf=net2f`; `v2o` on d2 only (R² 0.552) → `LEAF_NET3` / `net3f`. **X3** (`n1_x3`): `lab7_danger_netf`, `lab7_net2`, `lab7_net3` against the 8 pool members on tuning seeds 481–520 (unused), 640 games each. Rule: the better of net2/net3 replaces net in the candidate if its paired Δ vs lab7_danger_netf > 0.
+- `lab7_danger_netf` (fast leaf code) = `lab7_danger_net`: 24/24 identical games (`n1_identity_netf`), planner time p50 47 → 21 ms, p99 178 → 116 ms.

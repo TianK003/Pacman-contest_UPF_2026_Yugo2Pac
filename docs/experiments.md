@@ -1323,5 +1323,37 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **X2** (`n1_x2`, screen): tuning seeds 441–480 (unused), arms `lab5_smart`, `lab7_danger_net` (second confirmation), `lab7_net_dplan`, `lab7_g_net`, `lab7_g_net_dplan`, `lab7_full_net`, against the pool + lab5_smart.
 - **Pre-registered rule for C2**: the X2 arm with the largest Δ vs lab5_smart; it goes to the second validation block (seeds 261–300) if Δ(C2 − lab7_danger_net) on X2 > 0 and Δ(C2 − lab5_smart) has its CI lower bound > 0; otherwise seeds 261–300 confirm C1 (accept-rule clause 5).
 - **RL loop** (approximate policy iteration): collect on-policy data from `lab7_danger_net` games (tuning seeds 26–50), retrain the leaf net (`v2`), embed as a second constant, screen against `lab7_danger_net`.
+- **V1 result** (`n1_v1`, validation seeds 221–260, 1,920 games; finished 02:53):
+
+  | opponent | `lab7_danger_net` PPG | greedy_v3 PPG | Δ vs greedy_v3 [95% CI] | lab5_smart PPG | Δ vs lab5_smart [95% CI] |
+  |---|---|---|---|---|---|
+  | camper | 2.69 | 2.17 | +0.51 [+0.23, +0.82] | 2.36 | +0.33 [+0.04, +0.66] |
+  | choke | 2.42 | 1.20 | +1.23 [+0.90, +1.50] | 1.69 | +0.74 [+0.38, +1.07] |
+  | exploit_v2 | 2.45 | 1.51 | +0.94 [+0.50, +1.38] | 1.85 | +0.60 [+0.26, +0.94] |
+  | feature | 2.55 | 1.74 | +0.81 [+0.47, +1.18] | 2.05 | +0.50 [+0.20, +0.82] |
+  | greedy | 2.60 | 1.99 | +0.61 [+0.34, +0.89] | 2.17 | +0.42 [+0.07, +0.78] |
+  | greedy_v2 | 2.50 | 1.25 | +1.25 [+0.89, +1.61] | 1.60 | +0.90 [+0.54, +1.24] |
+  | greedy_v3 | 2.56 | – | (h2h) | 2.01 | +0.55 [+0.24, +0.88] |
+  | lab5_smart | 2.31 | 0.89 | +1.43 [+0.93, +1.90] | – | (h2h) |
+  | rusher | 2.65 | 1.81 | +0.84 [+0.50, +1.20] | 2.08 | +0.57 [+0.24, +0.94] |
+  | **pool (640 paired games)** | | | **+0.95 [+0.78, +1.13]** | | **+0.58 [+0.42, +0.74]** |
+
+  | team totals per game (720 games each) | returned | conceded | deaths | kills | food lost | max carried | 28-finish us / them |
+  |---|---|---|---|---|---|---|---|
+  | lab5_smart | 11.5 | 9.3 | 1.00 | 0.52 | 2.6 | 8.1 | 7 / 5 |
+  | `lab7_danger_net` | **17.3** | **8.6** | **0.36** | 0.79 | **0.9** | 10.9 | **25 / 3** |
+
+  **Accept rule** (evaluation.md §2) against the incumbent greedy_v3:
+
+  | condition | result | pass |
+  |---|---|---|
+  | 1. gates | lint OK; 0 crashes, 0 warnings, 0 violations, 0 moves over 0.5 s in 720 games; max move 0.319 s, p95 0.178 s (≈ 12 parallel workers) | ✓ |
+  | 2. pool Δ > 0, CI lower bound > 0, validation seeds, ≥ 40 seed-pairs per opponent | **+0.95 [+0.78, +1.13]**, 40 seed-pairs each | ✓ |
+  | 3. no opponent with CI upper ≤ −0.5; past versions not worse by > 0.5 | worst camper +0.51 [+0.23, +0.82]; greedy +0.61, greedy_v2 +1.25 | ✓ |
+  | 4. head-to-head vs greedy_v3 ≥ 1.5 | **2.56** (80 games) | ✓ |
+  | 5. confirmation on seeds not used for selection | selection used tuning seeds 401–440 (E-030); validation 221–260 unused | ✓ |
+
+  The same rule against lab5_smart (the better, unpromoted agent) also passes: +0.58 [+0.42, +0.74], every opponent's CI above 0, head-to-head 2.31.
+- **Conclusion (V1)**: [verified on validation seeds 221–260] **`lab7_danger_net` passes the accept rule** against greedy_v3 and against lab5_smart. `lab7_danger_netf` (faster code, 24/24 identical games) is the version to ship if promoted. **Not done (release gate, user decision)**: Linux timing under load (WSL run planned tonight as a diagnostic), one locked test-seed run with the held-out teams, promotion to `my_team.py`.
 - **RL loop, iteration 2** (written before X3): data `d2_net` = 450 games of `lab7_danger_net` (pool + double_attack, tuning seeds 26–50; 123,096 states; it scored 2.55 PPG there vs lab6_off's 2.11 in `d1`). Nets: `v2` on d1 + d2 (held-out R² 0.588, linear 0.344) → `LEAF_NET2` / `plan_leaf=net2f`; `v2o` on d2 only (R² 0.552) → `LEAF_NET3` / `net3f`. **X3** (`n1_x3`): `lab7_danger_netf`, `lab7_net2`, `lab7_net3` against the 8 pool members on tuning seeds 481–520 (unused), 640 games each. Rule: the better of net2/net3 replaces net in the candidate if its paired Δ vs lab7_danger_netf > 0.
 - `lab7_danger_netf` (fast leaf code) = `lab7_danger_net`: 24/24 identical games (`n1_identity_netf`), planner time p50 47 → 21 ms, p99 178 → 116 ms.

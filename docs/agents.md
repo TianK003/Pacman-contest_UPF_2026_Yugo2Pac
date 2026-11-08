@@ -198,6 +198,14 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab9_fmc_net` | flat MC, H = 12, learned-net cutoff | −0.72 [−0.93, −0.52] | rejected |
 | `lab10_quad` | IW planner + quadratic ridge leaf (non-DL, 91 terms, R² 0.461) | −0.05 [−0.15, +0.05] vs greedy_v4 (720 games), h2h 1.40; deaths 0.38, returned 16.2 | **≈ greedy_v4**: part E (561–600) +0.00 [−0.08, +0.08]; pooled −0.02 [−0.09, +0.04] over 1,440 games; h2h 1.51. Equal, not better: not promoted; fallback if a neural net is ever unwelcome |
 
+### Parameter / target checks around greedy_v4 (E-034; tuning 321–360, paired with greedy_v4)
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab7_netf_t5`, `lab7_netf_t9` | planner trigger 5 / 9 (greedy_v4: 7) | −0.04 [−0.11, +0.03] / −0.00 [−0.06, +0.06] | flat: keep 7 |
+| `lab11_net60` (`teams/greedy_lab_v11.py`) | leaf net trained on a 60-move target (R² 0.402) | −0.03 [−0.14, +0.08] | rejected (RL-T closed) |
+| `lab7_netf_full`, `lab7_netf_h40` | planner on every attacker move / horizon 40 | running (E-034 part B) | — |
+
 ## Opponents we did not write
 
 | name | what it is | use |

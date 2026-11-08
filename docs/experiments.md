@@ -1495,3 +1495,26 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Screen** (`n1_x5`): `lab11_net60`, `lab7_netf_t5`, `lab7_netf_t9`, each paired with greedy_v4. Unused-tonight tuning seeds 321–360, both colours, vs the 8 pool members + lab5_smart + greedy_v4.
 - **Pre-stated reading**: as E-033 (match: Δ ≥ 0 with CI lower bound > −0.15; beat: CI > 0). A beating arm would need a fresh validation list (validation exhausted; user decision) before any promotion. No promotion tonight.
 - **Build (06:05)**: `d3_h60` reproduced d1's games exactly (450 games, 128,242 rows, PPG 2.11: deterministic agents), only the labels differ. `net60` held-out R² **0.402** (linear 0.301; the 30-move net had 0.464, the longer horizon is harder to predict). `teams/greedy_lab_v11.py` = v10 + `plan_leaf=net60f`; identity with greedy_v4's options = greedy_v4 (2/2, clock off); net60 planner p99 108 ms, max 114 ms under load. Runs started: `n1_x5a` (greedy_v4, t5, t9; 7 jobs) and `n1_x5b` (lab11_net60; 3 jobs).
+
+## E-035 — Diagnostic: greedy_v4 vs greedy_v3 against opponents outside the reference pool (2026-11-08)
+- **Status**: done (06:40). **Diagnostic only, never a decision input** (friend teams: user rule; specialists are not in the pool).
+- **Setup** (`n1_diag_v4`): greedy_v4 and greedy_v3 against double_attack, turtle, camper2, baseline_plus, field, rusher_camper, greedy_deadend, friend_andy, friend_aljaz_1..5; tuning seeds 501–510, both colours; 520 games; 0 crashes / warnings / violations; greedy_v4 max move 0.176 s.
+- **Result** [verified]: greedy_v4 − greedy_v3 = **+0.77 [+0.57, +0.98]** (260 paired games); PPG 2.57 vs 1.80; win rate 84 % vs 56 %.
+
+  | opponent | greedy_v4 | greedy_v3 | paired diff [95% CI] |
+  |---|---|---|---|
+  | baseline_plus | 2.80 | 2.70 | +0.10 [+0.00, +0.30] |
+  | camper2 | 2.60 | 2.50 | +0.10 [−0.20, +0.40] |
+  | double_attack | 2.85 | 2.20 | +0.65 [+0.20, +1.15] |
+  | field | 3.00 | 1.65 | +1.35 [+0.60, +2.05] |
+  | friend_aljaz_1 | 1.65 | 0.80 | +0.85 [+0.00, +1.70] |
+  | friend_aljaz_2 | 2.35 | 1.35 | +1.00 [+0.20, +1.80] |
+  | friend_aljaz_3 | 2.70 | 1.35 | +1.35 [+0.60, +2.10] |
+  | friend_aljaz_4 | 1.85 | 1.05 | +0.80 [−0.10, +1.65] |
+  | friend_aljaz_5 | 2.15 | 0.85 | +1.30 [+0.40, +2.20] |
+  | friend_andy | 2.75 | 1.95 | +0.80 [+0.05, +1.65] |
+  | greedy_deadend | 2.90 | 2.00 | +0.90 [+0.40, +1.40] |
+  | rusher_camper | 2.85 | 2.10 | +0.75 [+0.10, +1.50] |
+  | turtle | 3.00 | 2.90 | +0.10 [+0.00, +0.30] |
+
+- **Reading**: the gain over greedy_v3 is larger outside the pool (+0.77) than inside it (+0.95 on validation 221–260, E-031, same scale), and no opponent goes negative. The planner-with-learned-leaf gain is not specific to our pool. The strongest outside teams remain friend_aljaz_1 and _4 (greedy_v4 1.65 / 1.85 PPG). The release gate (locked test seeds + held-out teams) is still the user's decision.

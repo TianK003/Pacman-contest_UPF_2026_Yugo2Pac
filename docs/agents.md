@@ -221,6 +221,20 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 |---|---|---|---|---|
 | `greedy_v5` | greedy_v4 with `plan='override'` as default (= `lab7_netf_override`, identity 8/8) | E-034 (as lab7_netf_override), E-038 (V3) | tuning 321–400: +0.06 [+0.00, +0.12]; **validation2 1–80: −0.05 [−0.15, +0.05]** vs greedy_v4, h2h 1.51 | **rejected** (V3); kept as a league opponent ≈ greedy_v4 strength |
 
+### `teams/greedy_lab_v12.py` / `teams/greedy_lab_v13.py`: proposals from the external review (E-039)
+
+v12 = v11 + default-off options `assist`, `def_scared`, `late_tie`, `plan_blocked`, `ov_guard`, `ov_asym` (header; review in `docs/research/review_v4_v5.md`). v13 = v12 with `def_scared` split into 'posture' | 'cap'. Every arm = greedy_v4 + one switch, screened on tuning 101–140 (`n2_s1`) against greedy_v4, the top 3 (greedy_v5, lab7_netf_dplan, lab10_quad) and the 7 other pool members, paired with greedy_v4.
+
+| name | what it is | tested in | result (Δ vs greedy_v4, 800 paired) | verdict |
+|---|---|---|---|---|
+| `lab12_assist` | attacker, as a non-scared ghost on our side, intercepts a visible invader within 6 | E-039 screen | +0.00 [−0.07, +0.08]; conceded −0.46 but returned −0.33 per game | promising by the letter of the rule (+1 point) → in the stage-2 combo |
+| `lab12_defsc` | scared-defender posture + capsule guard | E-039 screen | **+0.07 [−0.02, +0.15]**; top 3 +0.24 [+0.03, +0.46], pool −0.01 | promising; split in `n2_s2` (option C) |
+| `lab12_latetie` | bank late when tied and carrying | E-039 screen | −0.01 [−0.03, +0.00] (changes ≈ 1 % of games) | not promising |
+| `lab12_pblock` | standoff breaker allowed to act while the danger planner is on | E-039 screen | +0.00 [−0.10, +0.10]; standoff moves +28, food lost −0.17 | promising by the letter of the rule (+1 point) → in the stage-2 combo |
+| `lab12_m1m2` | planner ghost models chase + intercept, 1,200 nodes | E-039 screen | +0.03 [−0.05, +0.11], even across opponents | promising → in the stage-2 combo |
+| `lab12_v5fix` | override mode + all-die guard + margin 0.1 when greedy's root value < 0 | E-039 screen | 0.00 [−0.09, +0.09] | not promising; split in `n2_s2` (option C) |
+| `lab12_v5guard`, `lab12_v5asym`, `lab13_defsc_posture`, `lab13_defsc_cap` | the option C split parts | E-039 `n2_s2` | running | — |
+
 ## Opponents we did not write
 
 | name | what it is | use |

@@ -1650,7 +1650,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Reading**: the tuning-seed edge (+0.06 [+0.00, +0.12] over 1,440 games, E-034) did not replicate on fresh seeds; it is the second time tonight that a small tuning gain vanished on validation (the defender planner: +0.10 on tuning, −0.03 on V2). Override mode dies a little less and drops less food but concedes a little more and finishes fewer games by returning 28; overall it is equal to danger mode within ±0.15. [untested] Selecting the best of several E-034 arms on the same tuning seeds inflated its estimate (winner's curse, evaluation.md G3).
 
 ## E-039 — Improvements from the external review of greedy_v4 / greedy_v5 (2026-11-08)
-- **Status**: running (screen pre-registered before any game was played).
+- **Status**: screen done (`n2_s1`); option C splits running (`n2_s2`). Screen pre-registered before any game was played.
 - **Why** (user, 2026-11-08): have an external reviewer (Fable 5.1, maximum effort) inspect greedy_v4 and greedy_v5, propose at least two improvements to each, then think them through, implement them and test the new agents against greedy_v4 and our top 3 agents. Review: `docs/research/review_v4_v5.md` (read-only reviewer; tuning-seed data only, no test seeds, no held-out teams, no running validation).
 - **Base**: greedy_v4 (V3 rejected greedy_v5 while the review ran, E-038), so the v4 proposals are arms on greedy_v4 and the v5 proposals one arm on override mode.
 - **What was chosen and why** (from the review's 9 proposals plus two of ours):
@@ -1673,3 +1673,59 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - Expected ranges given to the user beforehand (PPG Δ vs greedy_v4, [untested] estimates): assist +0.03 (−0.05 … +0.10), def_scared 0.00 (−0.06 … +0.05), late_tie +0.01 (0 … +0.02), plan_blocked +0.01 (−0.05 … +0.05), m1m2 −0.03 (−0.10 … +0.03), v5fix 0.00 (−0.07 … +0.05). Detection limit of the screen: CI half-width ≈ 0.08–0.10 per arm (800 paired games), so effects of +0.01 … +0.03 cannot be told from 0 here.
   - Run `n2_s2`: the split arms against the same 11 opponents on the same seeds (tuning 101–140, both colours), paired with greedy_v4's games in `n2_s1` (880 games per arm).
   - **Stage 2 with option C**: a split part replaces its bundle in the stage-2 rule; it is promising by the same rule (Δ > 0, no opponent below −0.3). If a bundle was not split, the bundle itself counts. Then stage 2 as above.
+- **Screen result** [verified, `n2_s1`, 6,080 games, 5,839 s with 8 workers, `my_team.py` e95a786, framework 54cd83c]. Gates for every arm: lint OK, 0 crashes, 0 time warnings, 0 sentinel violations; max move ≤ 0.317 s (greedy_v4's own max 0.317 s).
+
+  | arm | Δ vs greedy_v4, 10 opponents (800 paired) | exact | worst opponent | h2h vs greedy_v4 (80) | max move s | expected beforehand | promising (rule) |
+  |---|---|---|---|---|---|---|---|
+  | assist | +0.00 [−0.07, +0.08] | +0.0013 | lab10_quad −0.16 | 1.41 | 0.276 | +0.03 (−0.05 … +0.10) | yes, by the letter (+1 point in 800 games) |
+  | def_scared | **+0.07 [−0.02, +0.15]** | +0.0663 | greedy_v2 −0.10 | 1.51 | 0.262 | 0.00 (−0.06 … +0.05) | yes (above the expected range) |
+  | late_tie | −0.01 [−0.03, +0.00] | −0.0125 | lab10_quad −0.06 | 1.35 | 0.317 | +0.01 (0 … +0.02) | no |
+  | plan_blocked | +0.00 [−0.10, +0.10] | +0.0013 | camper −0.18 | 1.39 | 0.150 | +0.01 (−0.05 … +0.05) | yes, by the letter (+1 point in 800 games) |
+  | m1m2 | +0.03 [−0.05, +0.11] | +0.0300 | feature −0.03 | 1.34 | 0.268 | −0.03 (−0.10 … +0.03) | yes |
+  | v5fix | +0.00 [−0.09, +0.09] | 0.0000 | camper −0.13 | 1.36 | 0.231 | 0.00 (−0.07 … +0.05) | no (Δ not > 0) |
+
+  Per opponent (paired Δ vs greedy_v4, 80 games each; CI half-width ≈ 0.15–0.30):
+
+  | opponent | assist | def_scared | late_tie | plan_blocked | m1m2 | v5fix |
+  |---|---|---|---|---|---|---|
+  | greedy_v5 | −0.03 | +0.25 | −0.04 | −0.12 | +0.04 | −0.11 |
+  | lab7_netf_dplan | +0.06 | +0.23 | 0.00 | +0.11 | −0.01 | +0.10 |
+  | lab10_quad | −0.16 | +0.24 | −0.06 | +0.14 | +0.06 | +0.07 |
+  | greedy_v3 | +0.14 | +0.09 | 0.00 | +0.16 | +0.01 | +0.12 |
+  | greedy_v2 | −0.03 | −0.10 | −0.03 | +0.04 | 0.00 | −0.03 |
+  | feature | +0.04 | −0.07 | 0.00 | −0.11 | −0.03 | −0.04 |
+  | camper | −0.10 | −0.05 | 0.00 | −0.17 | +0.14 | −0.12 |
+  | choke | 0.00 | −0.09 | −0.03 | +0.03 | +0.01 | 0.00 |
+  | exploit_v2 | +0.07 | +0.05 | +0.03 | −0.10 | +0.01 | 0.00 |
+  | lab5_smart | +0.01 | +0.12 | 0.00 | +0.05 | +0.06 | 0.00 |
+
+  Split by opponent group (post-hoc, not part of the rule; `summary --agents`):
+
+  | arm | 7 pool members (560 paired) | top 3 (greedy_v5, lab7_netf_dplan, lab10_quad; 240 paired) |
+  |---|---|---|
+  | assist | +0.02 [−0.07, +0.11] | −0.04 [−0.16, +0.09] |
+  | def_scared | −0.01 [−0.09, +0.06] | **+0.24 [+0.03, +0.46]** |
+  | late_tie | −0.00 [−0.02, +0.01] | −0.03 [−0.07, +0.00] |
+  | plan_blocked | −0.02 [−0.14, +0.10] | +0.04 [−0.11, +0.20] |
+  | m1m2 | +0.03 [−0.05, +0.12] | +0.03 [−0.11, +0.18] |
+  | v5fix | −0.01 [−0.10, +0.09] | +0.02 [−0.15, +0.20] |
+
+  Diagnostics (team totals per game over the same 800 games; greedy_v4 on those games: returned 15.81, conceded 10.08, deaths 0.42, kills 0.68, food lost 1.45, standoff moves 217):
+
+  | arm | returned | conceded | deaths | kills | food lost | standoff moves |
+  |---|---|---|---|---|---|---|
+  | assist | 15.48 | **9.62** | 0.41 | 0.77 | 1.39 | 225 |
+  | def_scared | 15.92 | 9.83 | 0.38 | 0.73 | 1.41 | 234 |
+  | late_tie | 15.77 | 10.08 | 0.42 | 0.68 | 1.47 | 217 |
+  | plan_blocked | 15.89 | 10.17 | 0.39 | 0.69 | 1.28 | 245 |
+  | m1m2 | 15.98 | 10.14 | 0.39 | 0.71 | 1.33 | 210 |
+  | v5fix | 15.70 | 9.98 | 0.44 | 0.70 | 1.38 | 239 |
+- **Reading**:
+  - `def_scared` is the only arm with a visible effect, and it comes from the three strong opponents (+0.24 [+0.03, +0.46] over 240 games), which raid with capsules; against the 7 pool members it is −0.01. [untested] It is also the best of six arms on the same seeds (winner's curse, evaluation.md G3), so its true effect is likely smaller.
+  - `assist` does what it was built for (conceded −0.46 per game, kills +0.09) but costs as much on attack (returned −0.33): zero net.
+  - `plan_blocked` lets the breaker act (standoff moves +28, food lost −0.17) with no net effect; `late_tie` changes ≈ 1 % of games, net −0.01; `m1m2` is a small, even +0.03 everywhere.
+- **Decisions under the rule**:
+  - Promising: `assist`, `def_scared`, `plan_blocked`, `m1m2`. `assist` and `plan_blocked` qualify by +1 point in 800 games each; they stay in by the letter of the pre-registered rule (no change after seeing the data).
+  - Not promising: `late_tie`, `v5fix`.
+  - Option C: both conditions hold (`v5fix` 0.00 ≥ −0.07, `def_scared` +0.07 ≥ −0.06, gates 0 / 0 / 0), so `n2_s2` runs all four split arms (3,520 games).
+  - [untested] Consequence for stage 2: criterion 2 counts the 7 pool members only, where `def_scared` is ≈ 0; its gain is against the top 3, which are reported but not counted.

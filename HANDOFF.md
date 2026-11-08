@@ -44,21 +44,19 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | value nets | 12-16-1 tanh, held-out R²: v1 0.464, v2 0.588, v2o 0.552 | |
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
-## RUNNING NOW (05:25)
-- E-033 screen (tuning 521–560, vs pool + lab5_smart + greedy_v4, paired with greedy_v4 from part A):
-  - part A `n1_x4a` (greedy_v4, lab8_table, lab8_fmc; 3 jobs) — table done: **−0.33 [−0.46, −0.21]**; fmc running.
-  - part B `n1_x4b` DONE: lab8_lin **−0.11 [−0.24, +0.02]**, lab8_mcts −0.52, lab8_fmc_table −0.72 (MC arms timid).
-  - part C `n1_x4c` (lab9_v4_check, lab9_fmc_net; 4 jobs).
-  - part D `n1_x4d` (lab10_quad = IW + quadratic ridge leaf, R² 0.461; 5 jobs; post-hoc follow-up).
-  - Analysis: `venv\Scripts\python.exe eval\evaluate.py summary --run n1_x4a n1_x4b n1_x4c n1_x4d --compare <arm> greedy_v4`.
-- Then: if an arm matches/beats greedy_v4 → confirm on tuning 561–600 (reserved). Otherwise diagnostics: greedy_v4 and
-  greedy_v3 vs double_attack turtle camper2 baseline_plus field rusher_camper greedy_deadend friend_andy friend_aljaz_1..5
-  (tuning 501–510; diagnostics only, never decisions).
-- DONE tonight: V2 (dplan rejected), X2, X3, modes (E-029 closed), Linux timing of greedy_v4 (0 warnings, max 0.283 s).
+## RUNNING NOW (06:10)
+- `n1_diag_v4` (3 jobs): greedy_v4 & greedy_v3 vs specialists + friend teams, tuning 501–510 (diagnostics only).
+- E-034 (tuning 321–360, vs pool + lab5_smart + greedy_v4):
+  - `n1_x5a` (7 jobs): greedy_v4, lab7_netf_t5, lab7_netf_t9 (planner trigger 5 / 9).
+  - `n1_x5b` (3 jobs): lab11_net60 (leaf net trained on a 60-move target; R² 0.402).
+  - Analysis: `summary --run n1_x5a n1_x5b --compare <arm> greedy_v4`. Reading as E-033; no promotion tonight
+    (validation exhausted).
+- DONE: E-033 complete — MC search loses (−0.43…−0.72), table leaf −0.33 (exploited, T-59), linear −0.11,
+  **quadratic ridge leaf ≈ net (pooled −0.02 [−0.09, +0.04], 1,440 games)**. V2 rejected dplan. Linux timing OK.
 
 ## Files made tonight
-- `teams/greedy_lab_v6.py`, `teams/greedy_lab_v7.py` (FROZEN), **`teams/greedy_lab_v8.py`** (lab: v7 + plan_leaf=table|lin,
-  plan=fmc|mcts, mc_* options; no RNG), `teams/greedy_v4.py` (= submission).
+- `teams/greedy_lab_v6.py` … `v10.py` (FROZEN), **`teams/greedy_lab_v11.py`** (lab). v8: plan_leaf=table|lin, plan=fmc|mcts;
+  v9: mc_check, mc_leaf=net; v10: plan_leaf=quad; v11: plan_leaf=net60f. `teams/greedy_v4.py` (= submission).
 - `eval/rl/`: game_pool.py, cmaes_tune.py (not run), map_features.py, mode_table.py, log_team.py + collect.py, train_value.py,
   embed_net.py, fit_leaves.py (non-DL leaves), leaf_net_v*.py, leaf_nondl_v*.py.
 - `eval/league_add.py`; `eval/check_rules.py` warns on global-RNG draws.

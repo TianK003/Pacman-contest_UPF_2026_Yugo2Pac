@@ -206,7 +206,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab11_net60` (`teams/greedy_lab_v11.py`) | leaf net trained on a 60-move target (R² 0.402) | −0.03 [−0.14, +0.08] | rejected (RL-T closed) |
 | `lab7_netf_full` | planner decides on every attacker move | −0.38 [−0.56, −0.20]; returned 12.8 / game | rejected: plan only near ghosts |
 | `lab7_netf_h40` | planner horizon 40 (greedy_v4: 30) | −0.03 [−0.09, +0.04] | flat: keep 30 |
-| `lab7_netf_override` | greedy decides; the net-leaf planner overrides near ghosts by margin 0.3 | +0.03 [−0.05, +0.12] (matches); replication on 361–400 running (E-034 part D) | candidate for a fresh validation list at most |
+| `lab7_netf_override` | greedy decides; the net-leaf planner overrides near ghosts by margin 0.3 | +0.03 [−0.05, +0.12] on 321–360; **+0.09 [+0.02, +0.17] on 361–400; pooled +0.06 [+0.00, +0.12]** over 1,440 games, h2h 1.57 | **next validation candidate** (needs a fresh validation list: user decision) |
 | `lab7_netf_min03` | plan_min 0.3 (greedy_v4: 0.05) | +0.01 [−0.05, +0.07] (matches) | flat: keep 0.05 |
 
 ## Opponents we did not write

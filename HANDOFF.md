@@ -44,15 +44,15 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | value nets | 12-16-1 tanh, held-out R²: v1 0.464, v2 0.588, v2o 0.552 | |
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
-## RUNNING NOW (07:25)
-- `n1_x5d` (E-034 part C, 11 jobs): lab7_netf_override, lab7_netf_min03 on tuning 321–360 (paired with n1_x5a's greedy_v4).
-  Analysis: `summary --run n1_x5a n1_x5d --compare <arm> greedy_v4`.
-- DONE tonight (all logged): E-028…E-035. Submission = greedy_v4. Nothing tonight beat it:
-  V2 dplan −0.03; E-033 MC −0.43…−0.72, table −0.33, lin −0.11, quad ≈ net (pooled −0.02 [−0.09, +0.04]);
-  E-034 trigger 5/9 −0.04/−0.00, net60 −0.03, full −0.38, h40 −0.03. E-035 diagnostic: +0.77 over greedy_v3 vs 13
-  outside opponents. Linux timing OK.
-- Open user decisions: release gate for greedy_v4 (locked test seeds + held-out teams); a fresh validation seed list
-  (validation 1–300 is used up); whether to add greedy_v4 / lab5_smart to the reference pool.
+## STATE AT 08:00 (nothing running)
+- Submission = greedy_v4 (promoted 03:40). Nothing tonight beat it on a decision basis.
+- **One candidate for the next validation round**: `lab7_netf_override` (greedy decides; the net-leaf IW planner
+  overrides near ghosts by margin 0.3): pooled +0.06 [+0.00, +0.12] over 1,440 tuning games (seeds 321–400), h2h 1.57.
+  Needs a fresh validation seed list (user decision) and then the accept rule; then `teams/greedy_v5.py` = v7 + plan=override
+  + greedy_v4's other options.
+- E-033: quad (non-DL) leaf ≈ net; MC search loses; table exploited. E-034: settings flat; full mode −0.38.
+- E-035 diagnostic: greedy_v4 +0.77 over greedy_v3 vs 13 outside opponents. Linux timing OK (max 0.283 s under load).
+- Open user decisions: release gate for greedy_v4; fresh validation list; reference-pool update (greedy_v4, lab5_smart).
 
 ## Files made tonight
 - `teams/greedy_lab_v6.py` … `v10.py` (FROZEN), **`teams/greedy_lab_v11.py`** (lab). v8: plan_leaf=table|lin, plan=fmc|mcts;

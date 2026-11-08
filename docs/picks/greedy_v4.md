@@ -62,7 +62,7 @@ Unchanged from lab5_smart: intercepts visible invaders, goes to eaten food, shad
 ## Known blind spots
 
 - **Generalisation is measured only against our own pool** (all 8 members are our designs, and the net was trained against them). Held-out teams and the locked test seeds have not been used (release gate, user decision).
-- **Timing**: planner time p99 ≈ 0.12 s, max ≈ 0.13 s with the fast code on this laptop under load. A slower cluster would hit the 0.3 s safety clock more often: still safe, but then decisions depend on load. Linux timing not yet re-checked (E-016 recipe).
+- **Timing**: planner time p99 ≈ 0.12 s, max ≈ 0.13 s with the fast code on this laptop under load. A slower cluster would hit the 0.3 s safety clock more often: still safe, but then decisions depend on load. Linux / Python 3.8 with real time limits, CPU saturated: 40 games, 0 warnings, max move 0.283 s (E-032).
 - **Ghost model**: chase-within-6 or hold. An opponent that intercepts from far away is modelled only through the learned leaf.
 - **Double attackers** (both enemies on our side) are not in the pool; the planner is attacker-only.
 - `trace_game.py` mislabels planner moves as greedy rules.

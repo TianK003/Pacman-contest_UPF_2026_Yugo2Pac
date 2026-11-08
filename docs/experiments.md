@@ -1400,6 +1400,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Decision** (pre-registered rule): **rejected**: the pool gain is not above 0, so greedy_v4 stays in `my_team.py`; the pre-built `teams/greedy_v5.py` was deleted unbenchmarked, so the name stays free for the next real promotion.
 - **Reading**: [verified on these games] the defender planner concedes a little less (8.2 vs 8.9 per game) and clearly wins the head-to-head against greedy_v4's planner attacker (1.69), but it does not convert into points against the pool. On X2's tuning seeds it was +0.10 [+0.03, +0.17] (E-031): a tuning-seed gain that did not survive fresh seeds. [untested] It may only help against planner attackers like ours; whether tournament opponents are like that is unknown.
 - **Validation seeds are now exhausted** (1–300 used). Any further accept decision needs a fresh validation list (user decision).
+- **Linux timing of greedy_v4 (release-gate item, 05:10)** [verified]: WSL Ubuntu 24.04, CPython 3.8.20, `~/pacman_wsl` mirror re-synced (`my_team.py` byte-identical to `teams/greedy_v4.py`); `submission` vs greedy_v3, choke, exploit_v2, lab5_smart on tuning seeds 516–520 (reused: a timing check tunes nothing), both colours, `-q -c` (real SIGALRM limits), 2 WSL workers **while the Windows side ran 12 game workers** (CPU saturated). Result: 40 games, 35-5-0, **0 crashes, 0 time warnings, max move 0.283 s, p95 0.191 s** (run `wsl_v4_loaded`, kept in the WSL mirror). The remaining release-gate item is the locked test-seed run with the held-out teams (user decision).
 
 ## E-033 — Non-deep-learning search: Monte-Carlo planners and lookup-table leaves (2026-11-08)
 - **Status**: pre-registered 04:10, screen running.
@@ -1447,3 +1448,12 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - Gates as always: 0 crashes / warnings / violations.
 - **Part C** (`n1_x4c`, added 04:51 after V2 finished, same seeds/opponents, paired with part A's greedy_v4 games): `lab9_v4_check` (greedy_v4 + flat paired MC re-check of the chosen move, margin 0.3) and `lab9_fmc_net` (flat MC, H = 12, learned-net cutoff). `teams/greedy_lab_v9.py` = v8 + `mc_check`, `mc_leaf=net`; identity with greedy_v4's options = greedy_v4 and v9 defaults = v8 defaults (3/3 games each, planner clock off).
 - **Part D** (`n1_x4d`, added 05:05; **a follow-up chosen after seeing interim results**, so it is weaker evidence than parts A–C): the final `lab8_lin` (−0.11 [−0.24, +0.02], R² 0.209) played much better than the partial `lab8_table` (−0.37 at 305 games, R² 0.453). Hypothesis [untested]: a max-backup search exploits the errors of a piecewise-constant leaf (it seeks out overestimated cells), so smoothness matters more than R². Test: `lab10_quad` = IW planner with a **smooth non-DL leaf as accurate as the net**: a quadratic ridge regression on the net's 12 features (91 terms, λ = 30 picked on the held-out split, R² 0.461 vs net 0.464; `eval/rl/leaf_quad_v1.py`). `teams/greedy_lab_v10.py` = v9 + `plan_leaf=quad`; the per-cell decomposition equals the direct formula (max error 9e-15 over 1,000 random vectors); identity with greedy_v4's options = greedy_v4 (2/2, clock off); planner p99 97 ms under load. Reading: if quad ≈ greedy_v4 (matches by the rule above), the learned net can be replaced by a polynomial, and leaf smoothness is the property that matters.
+- **Interim (05:05; part B complete)** [verified, `n1_x4a` + `n1_x4b`, pairs over 720 games vs greedy_v4]:
+
+  | arm | Δ vs greedy_v4 [95% CI] | PPG | returned / game | deaths / game | standoff moves / game |
+  |---|---|---|---|---|---|
+  | `lab8_lin` | −0.11 [−0.24, +0.02] | 2.36 | 14.7 | 0.62 | 276 |
+  | `lab8_mcts` | −0.52 [−0.70, −0.33] | 1.94 | 11.1 | 0.40 | 263 |
+  | `lab8_fmc_table` | −0.72 [−0.91, −0.53] | 1.73 | 9.0 | 0.48 | 288 |
+
+  The Monte-Carlo arms die rarely but score little: under the scenario ghosts (aware chasers and interceptors) crossing looks dangerous, so the override keeps the attacker at the border (timidity, T-56-like). Final table / fmc / part C / part D results below when complete.

@@ -1271,6 +1271,34 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - Not played: `lab6_p2_danger_g`, `lab6_p2_full_g`, `lab6_p2_best_g`, `lab6_plan_danger` (v1 control).
 - **Advisor review** (a separate agent, read-only, 2026-11-08 00:05) raised: (1) the code under test was still changing → v6 frozen, new options only in `teams/greedy_lab_v7.py`; (2) a clock-limited search is load-dependent → node cap `plan_nodes`; (3) the gain may be "hunt scared ghosts" rather than lookahead (kills 0.8 → 2.1) → ablations without kill / capsule rewards and a planner-free `hunt_scared` rule; (4) `danger` mode overrides greedy's safety rules (likely source of the extra deaths) → `shield` (veto only) and `override`; (5) winner's curse → confirm on fresh seeds; (6) the real bar is lab5_smart → it joins the opponents; (7) the pool has no double attacker → specialist diagnostic.
 
+## E-029 — Map modes: food-region / sensory focus and formations, mode × map table, selector (2026-11-07/08)
+- **Status**: done (2026-11-08 04:20). Conclusion: no mode and no selector helps.
+- **Question** (user request): do per-map "modes" help, e.g. a map whose enemy food sits mostly in the top half → an attacker that prefers top food (`greedy_top_left`)? Is there a mode that helps on average, and can a selector predict per map which mode to play from map features computed at startup?
+- **Modes** (`teams/greedy_lab_v6.py`, `focus` adds `focus_w`·penalty ∈ [0, 1] to the maze distance of each race-safe food, `focus_w` = 3 steps): `top` / `bottom` (own frame: blue's y flipped, so a map gives both colours the same view [verified]), `majority` (the half holding more enemy food: the user's hypothesis as a fixed rule), `deep` / `shallow` (distance from the border), `cluster` (food with many food within 3 steps), `far` (food far from the enemy ghosts' belief cells; sensory, not map-based); formations `lead0` / `lead5` (the home defender attacks too while our score ≤ 0 / ≤ 5).
+- **Table** (`n1_modes`): 9 modes × tuning seeds 261–320 (60 maps) × 8 pool members × 2 colours = 8,640 games, paired per (opponent, seed, colour) with lab5_smart from `n1_base` (mode `none`).
+- **Map features** (`eval/rl/feat_tuning_260_60.json`): food_y, food_top, food_ystd, food_depth, food_deadend, food_cluster, border_n, cap_n, cap_y, cap_depth, cells, my_food_depth.
+- **Pre-registered analysis** (`eval/rl/mode_table.py`): (1) mean paired gain per mode with a CI over maps; (2) 10-fold cross-validation over maps of four selection policies: best constant mode, per-map oracle (noise-inflated upper bound), per-mode ridge regression on the features (play the argmax prediction if > 0), per-mode single-feature threshold rule. A selector counts as useful only if its cross-validated gain beats the best constant mode with a CI above 0. A constant mode with a positive CI goes to validation like any other candidate.
+- **Results** [verified, `n1_modes` complete: 8,640 games, 16 games per (mode, map); `eval/rl/mode_table.py`]. Mean paired gain vs lab5_smart, 95% CI over the 60 maps:
+
+  | mode | gain [95% CI] | maps better / worse |
+  |---|---|---|
+  | focus top | −0.066 [−0.153, +0.022] | 17 / 21 |
+  | focus bottom | −0.033 [−0.121, +0.054] | 20 / 22 |
+  | focus majority (the user's hypothesis as a fixed rule) | −0.040 [−0.144, +0.065] | 20 / 25 |
+  | focus deep | −0.011 [−0.125, +0.103] | 20 / 19 |
+  | focus shallow | −0.030 [−0.086, +0.026] | 17 / 16 |
+  | focus cluster | −0.056 [−0.147, +0.035] | 18 / 25 |
+  | focus far (from the ghosts' belief) | −0.023 [−0.103, +0.058] | 24 / 22 |
+  | formation lead0 (both attack while score ≤ 0) | **−0.756 [−0.963, −0.550]** | 10 / 48 |
+  | formation lead5 (both attack while score ≤ 5) | **−1.051 [−1.236, −0.866]** | 3 / 56 |
+
+  Cross-validated selection policies (10 folds over maps), gain over lab5_smart: best constant mode −0.045 [−0.111, +0.021]; per-map oracle +0.277 [+0.183, +0.371] (noise-inflated upper bound: it picks the luckiest mode per map); ridge −0.014 [−0.115, +0.088]; single-feature stump +0.041 [−0.047, +0.128]. No map feature correlates with any focus mode's gain beyond |r| = 0.46 (cluster mode vs food_cluster, r = −0.46, 60 maps).
+- **Reading**: [verified on tuning seeds 261–320]
+  - **No food-region mode helps on average**, and the user's "top-left-heavy map → greedy_top_left" idea (focus majority) is −0.04. The nearest race-safe food is already close to the best target; a region preference only adds detours.
+  - **No selector beats the best constant**, which is "no mode": the per-map labels are mostly noise (oracle +0.28 vs cross-validated ≤ +0.04), as the research re-analysis of E-025 predicted.
+  - **Double attack while behind loses badly** (−0.76 / −1.05): the empty home lets the enemy raider score freely. It agrees with lab7_power (−0.23, E-030) and the endgame rule only doubling up in the last 40 moves.
+  - The map-mode track (proposals MM-1) is closed. The linear food policy (MM-2, CMA-ES) was not run: the planner track used the CPU.
+
 ## E-030 — Planner confirmation and ablations on fresh tuning seeds (X1) (2026-11-08)
 - **Status**: done. C1 = `lab7_danger_net`.
 - **File**: `teams/greedy_lab_v7.py` = v6 + default-off options (`plan_nodes`, `plan_kill`, `plan_cap`, `plan_hidden` near/both, `plan='shield'`, `hunt_scared`, `formation='power'`) + the trained leaf net (`LEAF_NET`, used only with `plan_leaf=net`). Identity (`n1_identity7`): `lab7_off` = `lab6_off` 18/18, `lab7_danger` (node cap 2000, clock 0.3 s) = `lab6_p2_danger` 18/18.
@@ -1278,13 +1306,6 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Run** `n1_x1`: tuning seeds 401–440 (`--seed-offset 400`, 40 seeds, unused tonight), both colours, against the 8 pool members **and lab5_smart** (720 games per arm). Arms: `lab5_smart` (control), `lab7_danger` (W), `lab7_override`, `lab7_danger_g`, `lab7_danger_nokill`, `lab7_danger_nocap`, `lab7_danger_d8`, `lab7_danger_near`, `lab7_hunt` (no planner), `lab7_shield`, `lab7_danger_net`.
 - **Pre-registered rule** (written before the run): C1 = the arm with the largest paired Δ vs lab5_smart over the 8 pool opponents, provided Δ > 0 and no pool opponent's Δ < −0.3; ties within 0.05 go to the simpler arm (hunt > shield > danger > override > danger_g; hand leaf > net). The ablations attribute the gain: if `nokill`/`nocap` lose most of W's gain and `lab7_hunt` matches W, the gain is scared-ghost hunting, not lookahead. If every arm is ≤ 0: fallback = CMA-ES on the linear food policy (`focus=linear`). C1 then gets the CMA-ES planner tuning (E-031) and the validation run.
 
-## E-029 — Map modes: food-region / sensory focus and formations, mode × map table, selector (2026-11-07/08)
-- **Status**: running.
-- **Question** (user request): do per-map "modes" help, e.g. a map whose enemy food sits mostly in the top half → an attacker that prefers top food (`greedy_top_left`)? Is there a mode that helps on average, and can a selector predict per map which mode to play from map features computed at startup?
-- **Modes** (`teams/greedy_lab_v6.py`, `focus` adds `focus_w`·penalty ∈ [0, 1] to the maze distance of each race-safe food, `focus_w` = 3 steps): `top` / `bottom` (own frame: blue's y flipped, so a map gives both colours the same view [verified]), `majority` (the half holding more enemy food: the user's hypothesis as a fixed rule), `deep` / `shallow` (distance from the border), `cluster` (food with many food within 3 steps), `far` (food far from the enemy ghosts' belief cells; sensory, not map-based); formations `lead0` / `lead5` (the home defender attacks too while our score ≤ 0 / ≤ 5).
-- **Table** (`n1_modes`): 9 modes × tuning seeds 261–320 (60 maps) × 8 pool members × 2 colours = 8,640 games, paired per (opponent, seed, colour) with lab5_smart from `n1_base` (mode `none`).
-- **Map features** (`eval/rl/feat_tuning_260_60.json`): food_y, food_top, food_ystd, food_depth, food_deadend, food_cluster, border_n, cap_n, cap_y, cap_depth, cells, my_food_depth.
-- **Pre-registered analysis** (`eval/rl/mode_table.py`): (1) mean paired gain per mode with a CI over maps; (2) 10-fold cross-validation over maps of four selection policies: best constant mode, per-map oracle (noise-inflated upper bound), per-mode ridge regression on the features (play the argmax prediction if > 0), per-mode single-feature threshold rule. A selector counts as useful only if its cross-validated gain beats the best constant mode with a CI above 0. A constant mode with a positive CI goes to validation like any other candidate.
 - **X1b** (`n1_x1b`, same seeds and opponents, paired with X1's lab5_smart games; 2 workers, added 00:25, before any X1 result was looked at): `lab7_dplan` (defender planner only: IW(1) over (defender cell, invader cell) atoms against a modelled invader that forages and flees home; overrides the rule defender by margin 0.3; in 3 smoke games it fired 21 times and overrode 8 times, max 64 ms), `lab7_power` (SM-3 power play), `lab7_danger_dplan`, `lab7_danger_piw`, `lab7_danger_m1m2`, `lab7_danger_both`. Same rule as X1; X1b arms compete for C1 only if X1b finishes before the CMA-ES run starts, otherwise they are reported as a secondary screen.
 - **Value-net capacity check**: 12-32-1 reaches held-out R² 0.471 vs 0.464 for 12-16-1, so the smaller (faster) net is kept.
 

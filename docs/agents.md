@@ -154,7 +154,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab6_p2_danger` | planner v2, only while a modelled ghost is within 7 | **+0.09 [−0.04, +0.23]** (640 games); choke −0.15, feature −0.12; more returns and kills, more deaths | carried to E-030 as `lab7_danger` |
 | `lab6_p2_override` | planner v2 overrides greedy by margin 0.3 | +0.13 [−0.06, +0.32] (300 of 640 games; run stopped early) | carried to E-030 as `lab7_override` |
 | `lab6_p2_danger_g`, `_full_g`, `_best_g` | ghost-bucket atoms; full control; best-first | not played (screen stopped early for the fresh-seed confirmation) | `_danger_g` carried to E-030 |
-| `lab6_focus_*` (top, bottom, majority, deep, shallow, cluster, far), `lab6_form_lead0/5` | map / sensory food-choice modes; double attack while not leading | E-029 (mode table) | see E-029 |
+| `lab6_focus_*` (top, bottom, majority, deep, shallow, cluster, far), `lab6_form_lead0/5` | map / sensory food-choice modes; double attack while not leading | E-029 (60 maps, 8,640 games): every focus mode −0.07 … −0.01 vs lab5_smart (all CIs include 0); lead0 −0.76, lead5 −1.05; cross-validated selectors ≤ +0.04 [−0.05, +0.13] | **rejected**: no mode and no per-map selector helps |
 
 ### `teams/greedy_lab_v7.py`: v6 + node cap, ablations, shield, hunt, power play, learned leaf value (E-030–)
 
@@ -175,8 +175,20 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab7_power` | SM-3 power play | X1b −0.23 [−0.32, −0.15] | rejected |
 | `lab7_net_dplan` | learned-leaf attacker planner + defender planner | X2 (tuning 441–480) +0.60 [+0.43, +0.77] (lab7_danger_net +0.50 on the same games) | E-031 C2 candidate |
 | `lab7_g_net` | ghost-bucket atoms + net | X2 +0.47 | no gain over the net alone |
-| `lab7_net2`, `lab7_net3` | second RL-loop iteration nets (on lab6_off + planner games / planner games only) | X3 (tuning 481–520) −0.04 [−0.12, +0.04] / −0.09 vs lab7_danger_netf | not adopted (the first net stays) |
+| `lab7_net2`, `lab7_net3` | second RL-loop iteration nets (on lab6_off + planner games / planner games only) | X3 (tuning 481–520, complete) −0.04 [−0.12, +0.04] / −0.15 [−0.28, −0.03] vs lab7_danger_netf | not adopted (the first net stays) |
 | `lab7_danger_piw`, `_m1m2`, `_both`, `lab7_danger_dplan` | p-IW, two ghost models, two placements, planner + dplan (hand leaf) | not played (X1b stopped) | — |
+
+### `teams/greedy_lab_v8.py`: v7 + non-deep-learning search (E-033; frozen once the screen started)
+
+| name | switch(es) | key result | verdict |
+|---|---|---|---|
+| `lab8_off` | none | 18/18 identical to lab7_off / lab6_off | **identity** |
+| `lab8_v4` | greedy_v4's options | 17/18 identical to greedy_v4; the 18th differs only because the 0.3 s planner clock fired under load (identical with the clock off) | **identity** |
+| `lab8_table` | IW planner, 5-D lookup-table leaf (R² 0.453) | screen running (E-033) | — |
+| `lab8_lin` | IW planner, linear leaf (R² 0.209) | screen running | — |
+| `lab8_fmc` | flat paired MC, 12 scenarios, H = 20, hand cutoff, margin 0.3 | screen running | — |
+| `lab8_fmc_table` | flat paired MC, H = 12, table cutoff | screen running | — |
+| `lab8_mcts` | fmc + open-loop UCT (depth 4, 150 iterations) | screen running | — |
 
 ## Opponents we did not write
 

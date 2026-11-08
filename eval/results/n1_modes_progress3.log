@@ -1,0 +1,386 @@
+3172 games to play (72 pairs x 60 seeds x 2 colours, 5468 already scored) with 3 workers -> C:\Users\Tian\Desktop\Pacman-contest_UPF_2026\eval\results\n1_modes.jsonl
+  10/3172 games, 17 s elapsed, ~5446 s left
+  20/3172 games, 32 s elapsed, ~5004 s left
+  30/3172 games, 46 s elapsed, ~4783 s left
+  40/3172 games, 61 s elapsed, ~4777 s left
+  50/3172 games, 74 s elapsed, ~4628 s left
+  60/3172 games, 85 s elapsed, ~4414 s left
+  70/3172 games, 98 s elapsed, ~4342 s left
+  80/3172 games, 110 s elapsed, ~4244 s left
+  90/3172 games, 122 s elapsed, ~4193 s left
+  100/3172 games, 135 s elapsed, ~4155 s left
+  110/3172 games, 148 s elapsed, ~4109 s left
+  120/3172 games, 159 s elapsed, ~4054 s left
+  130/3172 games, 173 s elapsed, ~4041 s left
+  140/3172 games, 185 s elapsed, ~4013 s left
+  150/3172 games, 199 s elapsed, ~3999 s left
+  160/3172 games, 209 s elapsed, ~3943 s left
+  170/3172 games, 222 s elapsed, ~3925 s left
+  180/3172 games, 234 s elapsed, ~3886 s left
+  190/3172 games, 246 s elapsed, ~3859 s left
+  200/3172 games, 258 s elapsed, ~3841 s left
+  210/3172 games, 272 s elapsed, ~3831 s left
+  220/3172 games, 283 s elapsed, ~3798 s left
+  230/3172 games, 296 s elapsed, ~3785 s left
+  240/3172 games, 308 s elapsed, ~3764 s left
+  250/3172 games, 320 s elapsed, ~3737 s left
+  260/3172 games, 332 s elapsed, ~3720 s left
+  270/3172 games, 345 s elapsed, ~3712 s left
+  280/3172 games, 358 s elapsed, ~3695 s left
+  290/3172 games, 372 s elapsed, ~3693 s left
+  300/3172 games, 385 s elapsed, ~3681 s left
+  310/3172 games, 398 s elapsed, ~3672 s left
+  320/3172 games, 412 s elapsed, ~3672 s left
+  330/3172 games, 424 s elapsed, ~3652 s left
+  340/3172 games, 437 s elapsed, ~3639 s left
+  350/3172 games, 449 s elapsed, ~3624 s left
+  360/3172 games, 462 s elapsed, ~3612 s left
+  370/3172 games, 474 s elapsed, ~3589 s left
+  380/3172 games, 487 s elapsed, ~3581 s left
+  390/3172 games, 502 s elapsed, ~3579 s left
+  400/3172 games, 514 s elapsed, ~3563 s left
+  410/3172 games, 527 s elapsed, ~3552 s left
+  420/3172 games, 541 s elapsed, ~3545 s left
+  430/3172 games, 553 s elapsed, ~3528 s left
+  440/3172 games, 567 s elapsed, ~3522 s left
+  450/3172 games, 579 s elapsed, ~3505 s left
+  460/3172 games, 593 s elapsed, ~3497 s left
+  470/3172 games, 605 s elapsed, ~3479 s left
+  480/3172 games, 618 s elapsed, ~3469 s left
+  490/3172 games, 631 s elapsed, ~3456 s left
+  500/3172 games, 644 s elapsed, ~3442 s left
+  510/3172 games, 657 s elapsed, ~3429 s left
+  520/3172 games, 670 s elapsed, ~3416 s left
+  530/3172 games, 682 s elapsed, ~3400 s left
+  540/3172 games, 696 s elapsed, ~3390 s left
+  550/3172 games, 708 s elapsed, ~3375 s left
+  560/3172 games, 722 s elapsed, ~3366 s left
+  570/3172 games, 734 s elapsed, ~3352 s left
+  580/3172 games, 747 s elapsed, ~3338 s left
+  590/3172 games, 760 s elapsed, ~3326 s left
+  600/3172 games, 773 s elapsed, ~3315 s left
+  610/3172 games, 785 s elapsed, ~3298 s left
+  620/3172 games, 799 s elapsed, ~3290 s left
+  630/3172 games, 812 s elapsed, ~3275 s left
+  640/3172 games, 825 s elapsed, ~3264 s left
+  650/3172 games, 838 s elapsed, ~3252 s left
+  660/3172 games, 850 s elapsed, ~3236 s left
+  670/3172 games, 863 s elapsed, ~3225 s left
+  680/3172 games, 876 s elapsed, ~3211 s left
+  690/3172 games, 888 s elapsed, ~3195 s left
+  700/3172 games, 901 s elapsed, ~3183 s left
+  710/3172 games, 915 s elapsed, ~3173 s left
+  720/3172 games, 928 s elapsed, ~3161 s left
+  730/3172 games, 941 s elapsed, ~3149 s left
+  740/3172 games, 954 s elapsed, ~3136 s left
+  750/3172 games, 966 s elapsed, ~3121 s left
+  760/3172 games, 979 s elapsed, ~3108 s left
+  770/3172 games, 993 s elapsed, ~3098 s left
+  780/3172 games, 1005 s elapsed, ~3081 s left
+  790/3172 games, 1018 s elapsed, ~3070 s left
+  800/3172 games, 1032 s elapsed, ~3059 s left
+  810/3172 games, 1044 s elapsed, ~3044 s left
+  820/3172 games, 1057 s elapsed, ~3031 s left
+  830/3172 games, 1071 s elapsed, ~3021 s left
+  840/3172 games, 1084 s elapsed, ~3009 s left
+  850/3172 games, 1096 s elapsed, ~2995 s left
+  860/3172 games, 1111 s elapsed, ~2986 s left
+  870/3172 games, 1123 s elapsed, ~2973 s left
+  880/3172 games, 1135 s elapsed, ~2957 s left
+  890/3172 games, 1148 s elapsed, ~2944 s left
+  900/3172 games, 1162 s elapsed, ~2933 s left
+  910/3172 games, 1174 s elapsed, ~2919 s left
+  920/3172 games, 1187 s elapsed, ~2906 s left
+  930/3172 games, 1200 s elapsed, ~2892 s left
+  940/3172 games, 1213 s elapsed, ~2881 s left
+  950/3172 games, 1226 s elapsed, ~2868 s left
+  960/3172 games, 1239 s elapsed, ~2855 s left
+  970/3172 games, 1253 s elapsed, ~2844 s left
+  980/3172 games, 1265 s elapsed, ~2830 s left
+  990/3172 games, 1279 s elapsed, ~2818 s left
+  1000/3172 games, 1293 s elapsed, ~2808 s left
+  1010/3172 games, 1306 s elapsed, ~2796 s left
+  1020/3172 games, 1319 s elapsed, ~2783 s left
+  1030/3172 games, 1332 s elapsed, ~2770 s left
+  1040/3172 games, 1345 s elapsed, ~2757 s left
+  1050/3172 games, 1358 s elapsed, ~2744 s left
+  1060/3172 games, 1373 s elapsed, ~2735 s left
+  1070/3172 games, 1387 s elapsed, ~2724 s left
+  1080/3172 games, 1398 s elapsed, ~2708 s left
+  1090/3172 games, 1412 s elapsed, ~2696 s left
+  1100/3172 games, 1425 s elapsed, ~2685 s left
+  1110/3172 games, 1437 s elapsed, ~2670 s left
+  1120/3172 games, 1451 s elapsed, ~2658 s left
+  1130/3172 games, 1466 s elapsed, ~2649 s left
+  1140/3172 games, 1478 s elapsed, ~2635 s left
+  1150/3172 games, 1491 s elapsed, ~2622 s left
+  1160/3172 games, 1504 s elapsed, ~2609 s left
+  1170/3172 games, 1517 s elapsed, ~2595 s left
+  1180/3172 games, 1529 s elapsed, ~2581 s left
+  1190/3172 games, 1542 s elapsed, ~2568 s left
+  1200/3172 games, 1556 s elapsed, ~2558 s left
+  1210/3172 games, 1569 s elapsed, ~2544 s left
+  1220/3172 games, 1581 s elapsed, ~2529 s left
+  1230/3172 games, 1594 s elapsed, ~2516 s left
+  1240/3172 games, 1607 s elapsed, ~2504 s left
+  1250/3172 games, 1620 s elapsed, ~2491 s left
+  1260/3172 games, 1632 s elapsed, ~2477 s left
+  1270/3172 games, 1646 s elapsed, ~2465 s left
+  1280/3172 games, 1660 s elapsed, ~2453 s left
+  1290/3172 games, 1671 s elapsed, ~2439 s left
+  1300/3172 games, 1684 s elapsed, ~2425 s left
+  1310/3172 games, 1697 s elapsed, ~2412 s left
+  1320/3172 games, 1711 s elapsed, ~2400 s left
+  1330/3172 games, 1726 s elapsed, ~2390 s left
+  1340/3172 games, 1740 s elapsed, ~2378 s left
+  1350/3172 games, 1752 s elapsed, ~2364 s left
+  1360/3172 games, 1764 s elapsed, ~2351 s left
+  1370/3172 games, 1779 s elapsed, ~2339 s left
+  1380/3172 games, 1790 s elapsed, ~2325 s left
+  1390/3172 games, 1802 s elapsed, ~2310 s left
+  1400/3172 games, 1813 s elapsed, ~2295 s left
+  1410/3172 games, 1825 s elapsed, ~2280 s left
+  1420/3172 games, 1835 s elapsed, ~2264 s left
+  1430/3172 games, 1852 s elapsed, ~2256 s left
+  1440/3172 games, 1867 s elapsed, ~2245 s left
+  1450/3172 games, 1880 s elapsed, ~2233 s left
+  1460/3172 games, 1892 s elapsed, ~2219 s left
+  1470/3172 games, 1907 s elapsed, ~2208 s left
+  1480/3172 games, 1918 s elapsed, ~2192 s left
+  1490/3172 games, 1929 s elapsed, ~2178 s left
+  1500/3172 games, 1940 s elapsed, ~2162 s left
+  1510/3172 games, 1951 s elapsed, ~2148 s left
+  1520/3172 games, 1963 s elapsed, ~2133 s left
+  1530/3172 games, 1973 s elapsed, ~2118 s left
+  1540/3172 games, 1984 s elapsed, ~2102 s left
+  1550/3172 games, 1994 s elapsed, ~2087 s left
+  1560/3172 games, 2009 s elapsed, ~2076 s left
+  1570/3172 games, 2023 s elapsed, ~2064 s left
+  1580/3172 games, 2037 s elapsed, ~2053 s left
+  1590/3172 games, 2050 s elapsed, ~2040 s left
+  1600/3172 games, 2064 s elapsed, ~2028 s left
+  1610/3172 games, 2079 s elapsed, ~2017 s left
+  1620/3172 games, 2092 s elapsed, ~2005 s left
+  1630/3172 games, 2111 s elapsed, ~1997 s left
+  1640/3172 games, 2129 s elapsed, ~1989 s left
+  1650/3172 games, 2151 s elapsed, ~1984 s left
+  1660/3172 games, 2178 s elapsed, ~1984 s left
+  1670/3172 games, 2200 s elapsed, ~1979 s left
+  1680/3172 games, 2218 s elapsed, ~1970 s left
+  1690/3172 games, 2235 s elapsed, ~1960 s left
+  1700/3172 games, 2254 s elapsed, ~1951 s left
+  1710/3172 games, 2270 s elapsed, ~1941 s left
+  1720/3172 games, 2287 s elapsed, ~1931 s left
+  1730/3172 games, 2306 s elapsed, ~1922 s left
+  1740/3172 games, 2321 s elapsed, ~1910 s left
+  1750/3172 games, 2336 s elapsed, ~1898 s left
+  1760/3172 games, 2355 s elapsed, ~1889 s left
+  1770/3172 games, 2373 s elapsed, ~1880 s left
+  1780/3172 games, 2392 s elapsed, ~1871 s left
+  1790/3172 games, 2413 s elapsed, ~1863 s left
+  1800/3172 games, 2429 s elapsed, ~1852 s left
+  1810/3172 games, 2445 s elapsed, ~1840 s left
+  1820/3172 games, 2464 s elapsed, ~1831 s left
+  1830/3172 games, 2482 s elapsed, ~1820 s left
+  1840/3172 games, 2498 s elapsed, ~1809 s left
+  1850/3172 games, 2517 s elapsed, ~1798 s left
+  1860/3172 games, 2531 s elapsed, ~1785 s left
+  1870/3172 games, 2546 s elapsed, ~1772 s left
+  1880/3172 games, 2560 s elapsed, ~1760 s left
+  1890/3172 games, 2573 s elapsed, ~1745 s left
+  1900/3172 games, 2588 s elapsed, ~1733 s left
+  1910/3172 games, 2602 s elapsed, ~1719 s left
+  1920/3172 games, 2616 s elapsed, ~1706 s left
+  1930/3172 games, 2630 s elapsed, ~1693 s left
+  1940/3172 games, 2650 s elapsed, ~1683 s left
+  1950/3172 games, 2667 s elapsed, ~1671 s left
+  1960/3172 games, 2684 s elapsed, ~1660 s left
+  1970/3172 games, 2702 s elapsed, ~1649 s left
+  1980/3172 games, 2718 s elapsed, ~1636 s left
+  1990/3172 games, 2741 s elapsed, ~1628 s left
+  2000/3172 games, 2762 s elapsed, ~1618 s left
+  2010/3172 games, 2782 s elapsed, ~1608 s left
+  2020/3172 games, 2799 s elapsed, ~1596 s left
+  2030/3172 games, 2818 s elapsed, ~1585 s left
+  2040/3172 games, 2833 s elapsed, ~1572 s left
+  2050/3172 games, 2852 s elapsed, ~1561 s left
+  2060/3172 games, 2868 s elapsed, ~1548 s left
+  2070/3172 games, 2892 s elapsed, ~1540 s left
+  2080/3172 games, 2914 s elapsed, ~1530 s left
+  2090/3172 games, 2939 s elapsed, ~1522 s left
+  2100/3172 games, 2962 s elapsed, ~1512 s left
+  2110/3172 games, 2994 s elapsed, ~1507 s left
+  2120/3172 games, 3018 s elapsed, ~1497 s left
+  2130/3172 games, 3049 s elapsed, ~1491 s left
+  2140/3172 games, 3077 s elapsed, ~1484 s left
+  2150/3172 games, 3101 s elapsed, ~1474 s left
+  2160/3172 games, 3137 s elapsed, ~1470 s left
+  2170/3172 games, 3159 s elapsed, ~1458 s left
+  2180/3172 games, 3178 s elapsed, ~1446 s left
+  2190/3172 games, 3198 s elapsed, ~1434 s left
+  2200/3172 games, 3221 s elapsed, ~1423 s left
+  2210/3172 games, 3242 s elapsed, ~1411 s left
+  2220/3172 games, 3262 s elapsed, ~1399 s left
+  2230/3172 games, 3283 s elapsed, ~1387 s left
+  2240/3172 games, 3304 s elapsed, ~1375 s left
+  2250/3172 games, 3325 s elapsed, ~1363 s left
+  2260/3172 games, 3340 s elapsed, ~1348 s left
+  2270/3172 games, 3358 s elapsed, ~1334 s left
+  2280/3172 games, 3379 s elapsed, ~1322 s left
+  2290/3172 games, 3399 s elapsed, ~1309 s left
+  2300/3172 games, 3418 s elapsed, ~1296 s left
+  2310/3172 games, 3437 s elapsed, ~1283 s left
+  2320/3172 games, 3456 s elapsed, ~1269 s left
+  2330/3172 games, 3473 s elapsed, ~1255 s left
+  2340/3172 games, 3494 s elapsed, ~1242 s left
+  2350/3172 games, 3511 s elapsed, ~1228 s left
+  2360/3172 games, 3525 s elapsed, ~1213 s left
+  2370/3172 games, 3539 s elapsed, ~1197 s left
+  2380/3172 games, 3553 s elapsed, ~1182 s left
+  2390/3172 games, 3567 s elapsed, ~1167 s left
+  2400/3172 games, 3579 s elapsed, ~1151 s left
+  2410/3172 games, 3592 s elapsed, ~1136 s left
+  2420/3172 games, 3606 s elapsed, ~1121 s left
+  2430/3172 games, 3618 s elapsed, ~1105 s left
+  2440/3172 games, 3631 s elapsed, ~1089 s left
+  2450/3172 games, 3645 s elapsed, ~1074 s left
+  2460/3172 games, 3657 s elapsed, ~1058 s left
+  2470/3172 games, 3670 s elapsed, ~1043 s left
+  2480/3172 games, 3683 s elapsed, ~1028 s left
+  2490/3172 games, 3697 s elapsed, ~1013 s left
+  2500/3172 games, 3713 s elapsed, ~998 s left
+  2510/3172 games, 3725 s elapsed, ~982 s left
+  2520/3172 games, 3742 s elapsed, ~968 s left
+  2530/3172 games, 3760 s elapsed, ~954 s left
+  2540/3172 games, 3773 s elapsed, ~939 s left
+  2550/3172 games, 3787 s elapsed, ~924 s left
+  2560/3172 games, 3801 s elapsed, ~909 s left
+  2570/3172 games, 3814 s elapsed, ~893 s left
+  2580/3172 games, 3827 s elapsed, ~878 s left
+  2590/3172 games, 3841 s elapsed, ~863 s left
+  2600/3172 games, 3855 s elapsed, ~848 s left
+  2610/3172 games, 3867 s elapsed, ~833 s left
+  2620/3172 games, 3881 s elapsed, ~818 s left
+  2630/3172 games, 3895 s elapsed, ~803 s left
+  2640/3172 games, 3908 s elapsed, ~788 s left
+  2650/3172 games, 3922 s elapsed, ~773 s left
+  2660/3172 games, 3936 s elapsed, ~758 s left
+  2670/3172 games, 3952 s elapsed, ~743 s left
+  2680/3172 games, 3966 s elapsed, ~728 s left
+  2690/3172 games, 3983 s elapsed, ~714 s left
+  2700/3172 games, 3996 s elapsed, ~699 s left
+  2710/3172 games, 4014 s elapsed, ~684 s left
+  2720/3172 games, 4030 s elapsed, ~670 s left
+  2730/3172 games, 4044 s elapsed, ~655 s left
+  2740/3172 games, 4058 s elapsed, ~640 s left
+  2750/3172 games, 4074 s elapsed, ~625 s left
+  2760/3172 games, 4092 s elapsed, ~611 s left
+  2770/3172 games, 4107 s elapsed, ~596 s left
+  2780/3172 games, 4127 s elapsed, ~582 s left
+  2790/3172 games, 4147 s elapsed, ~568 s left
+  2800/3172 games, 4172 s elapsed, ~554 s left
+  2810/3172 games, 4194 s elapsed, ~540 s left
+  2820/3172 games, 4210 s elapsed, ~525 s left
+  2830/3172 games, 4225 s elapsed, ~511 s left
+  2840/3172 games, 4243 s elapsed, ~496 s left
+  2850/3172 games, 4266 s elapsed, ~482 s left
+  2860/3172 games, 4288 s elapsed, ~468 s left
+  2870/3172 games, 4305 s elapsed, ~453 s left
+  2880/3172 games, 4322 s elapsed, ~438 s left
+  2890/3172 games, 4340 s elapsed, ~423 s left
+  2900/3172 games, 4355 s elapsed, ~409 s left
+  2910/3172 games, 4371 s elapsed, ~394 s left
+  2920/3172 games, 4384 s elapsed, ~378 s left
+  2930/3172 games, 4401 s elapsed, ~363 s left
+  2940/3172 games, 4414 s elapsed, ~348 s left
+  2950/3172 games, 4430 s elapsed, ~333 s left
+  2960/3172 games, 4448 s elapsed, ~319 s left
+  2970/3172 games, 4466 s elapsed, ~304 s left
+  2980/3172 games, 4488 s elapsed, ~289 s left
+  2990/3172 games, 4506 s elapsed, ~274 s left
+  3000/3172 games, 4526 s elapsed, ~259 s left
+  3010/3172 games, 4545 s elapsed, ~245 s left
+  3020/3172 games, 4563 s elapsed, ~230 s left
+  3030/3172 games, 4583 s elapsed, ~215 s left
+  3040/3172 games, 4600 s elapsed, ~200 s left
+  3050/3172 games, 4620 s elapsed, ~185 s left
+  3060/3172 games, 4638 s elapsed, ~170 s left
+  3070/3172 games, 4657 s elapsed, ~155 s left
+  3080/3172 games, 4681 s elapsed, ~140 s left
+  3090/3172 games, 4701 s elapsed, ~125 s left
+  3100/3172 games, 4718 s elapsed, ~110 s left
+  3110/3172 games, 4737 s elapsed, ~94 s left
+  3120/3172 games, 4755 s elapsed, ~79 s left
+  3130/3172 games, 4777 s elapsed, ~64 s left
+  3140/3172 games, 4797 s elapsed, ~49 s left
+  3150/3172 games, 4812 s elapsed, ~34 s left
+  3160/3172 games, 4833 s elapsed, ~18 s left
+  3170/3172 games, 4850 s elapsed, ~3 s left
+  3172/3172 games, 4853 s elapsed, ~0 s left
+### Summary: 8640 games, 17 agents, 60 seeds
+
+| agent | games | W-T-L | PPG [95% CI] | win % [exact 95% CI] | avg margin | crash/forfeit | time warnings | max move s | p95 move s | over budget | violations |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| camper | 1080 | 242-116-722 | 0.78 [0.62, 0.93] | 22 [20, 25] | -3.9 | 0 | 0 | 0.271 | 0.003 | 0 | - |
+| choke | 1080 | 282-107-691 | 0.88 [0.72, 1.04] | 26 [24, 29] | -2.2 | 0 | 0 | 0.208 | 0.005 | 0 | - |
+| exploit_v2 | 1080 | 347-102-631 | 1.06 [0.87, 1.26] | 32 [29, 35] | -1.7 | 0 | 0 | 0.344 | 0.003 | 0 | - |
+| feature | 1080 | 325-57-698 | 0.96 [0.76, 1.15] | 30 [27, 33] | -2.1 | 0 | 0 | 0.101 | 0.003 | 0 | - |
+| greedy | 1080 | 197-123-760 | 0.66 [0.55, 0.78] | 18 [16, 21] | -4.1 | 0 | 0 | 0.360 | 0.003 | 0 | - |
+| greedy_v2 | 1080 | 335-139-606 | 1.06 [0.91, 1.22] | 31 [28, 34] | -1.4 | 0 | 0 | 0.274 | 0.002 | 0 | - |
+| greedy_v3 | 1080 | 359-204-517 | 1.19 [1.06, 1.33] | 33 [30, 36] | -0.4 | 0 | 0 | 0.321 | 0.009 | 0 | - |
+| lab6_focus_bottom | 960 | 641-132-187 | 2.14 [2.02, 2.25] | 67 [64, 70] | +3.8 | 0 | 0 | 0.470 | 0.017 | 0 | - |
+| lab6_focus_cluster | 960 | 635-128-197 | 2.12 [2.00, 2.23] | 66 [63, 69] | +3.7 | 0 | 0 | 0.107 | 0.004 | 0 | - |
+| lab6_focus_deep | 960 | 650-126-184 | 2.16 [2.05, 2.27] | 68 [65, 71] | +3.9 | 0 | 0 | 0.072 | 0.006 | 0 | - |
+| lab6_focus_far | 960 | 646-127-187 | 2.15 [2.05, 2.25] | 67 [64, 70] | +4.0 | 0 | 0 | 0.098 | 0.003 | 0 | - |
+| lab6_focus_majority | 960 | 641-126-193 | 2.13 [2.02, 2.25] | 67 [64, 70] | +3.9 | 0 | 0 | 0.230 | 0.013 | 0 | - |
+| lab6_focus_shallow | 960 | 642-132-186 | 2.14 [2.02, 2.26] | 67 [64, 70] | +3.7 | 0 | 0 | 0.093 | 0.004 | 0 | - |
+| lab6_focus_top | 960 | 628-140-192 | 2.11 [1.98, 2.24] | 65 [62, 68] | +3.5 | 0 | 0 | 0.363 | 0.016 | 0 | - |
+| lab6_form_lead0 | 960 | 445-26-489 | 1.42 [1.22, 1.62] | 46 [43, 50] | -2.5 | 0 | 0 | 0.168 | 0.007 | 0 | - |
+| lab6_form_lead5 | 960 | 348-34-578 | 1.12 [0.95, 1.31] | 36 [33, 39] | -3.7 | 0 | 0 | 0.261 | 0.013 | 0 | - |
+| rusher | 1080 | 306-123-651 | 0.96 [0.80, 1.13] | 28 [26, 31] | -2.4 | 0 | 0 | 0.154 | 0.003 | 0 | - |
+
+PPG CIs: seed-clustered percentile bootstrap. They are too narrow near PPG 0 or 3 (E-004: ~73% coverage at a 97% win rate), so trust the exact win-rate CI there.
+
+Head-to-head PPG (row agent vs column opponent; 3 = always wins):
+
+| | camper | choke | exploit_v2 | feature | greedy | greedy_v2 | greedy_v3 | lab6_focus_bottom | lab6_focus_cluster | lab6_focus_deep | lab6_focus_far | lab6_focus_majority | lab6_focus_shallow | lab6_focus_top | lab6_form_lead0 | lab6_form_lead5 | rusher |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| camper | - | - | - | - | - | - | - | 0.53 | 0.49 | 0.49 | 0.60 | 0.57 | 0.57 | 0.54 | 1.43 | 1.79 | - |
+| choke | - | - | - | - | - | - | - | 0.69 | 0.69 | 0.66 | 0.72 | 0.72 | 0.61 | 0.72 | 1.34 | 1.79 | - |
+| exploit_v2 | - | - | - | - | - | - | - | 0.88 | 0.97 | 0.93 | 0.85 | 0.66 | 0.89 | 0.78 | 1.67 | 1.89 | - |
+| feature | - | - | - | - | - | - | - | 0.72 | 0.75 | 0.79 | 0.72 | 0.79 | 0.68 | 0.64 | 1.70 | 1.81 | - |
+| greedy | - | - | - | - | - | - | - | 0.33 | 0.40 | 0.38 | 0.33 | 0.42 | 0.46 | 0.55 | 1.36 | 1.73 | - |
+| greedy_v2 | - | - | - | - | - | - | - | 0.90 | 0.91 | 0.81 | 0.78 | 0.97 | 0.85 | 0.91 | 1.61 | 1.80 | - |
+| greedy_v3 | - | - | - | - | - | - | - | 1.11 | 1.04 | 0.96 | 1.02 | 1.00 | 0.92 | 0.91 | 1.74 | 1.98 | - |
+| lab6_focus_bottom | 2.35 | 2.17 | 2.01 | 2.24 | 2.55 | 1.93 | 1.66 | - | - | - | - | - | - | - | - | - | 2.23 |
+| lab6_focus_cluster | 2.37 | 2.22 | 1.88 | 2.20 | 2.48 | 1.96 | 1.74 | - | - | - | - | - | - | - | - | - | 2.11 |
+| lab6_focus_deep | 2.39 | 2.21 | 1.98 | 2.17 | 2.50 | 2.03 | 1.78 | - | - | - | - | - | - | - | - | - | 2.24 |
+| lab6_focus_far | 2.27 | 2.17 | 2.05 | 2.23 | 2.53 | 2.06 | 1.73 | - | - | - | - | - | - | - | - | - | 2.17 |
+| lab6_focus_majority | 2.32 | 2.17 | 2.23 | 2.17 | 2.44 | 1.87 | 1.77 | - | - | - | - | - | - | - | - | - | 2.11 |
+| lab6_focus_shallow | 2.30 | 2.26 | 2.02 | 2.27 | 2.41 | 1.98 | 1.84 | - | - | - | - | - | - | - | - | - | 2.08 |
+| lab6_focus_top | 2.32 | 2.15 | 2.08 | 2.27 | 2.33 | 1.93 | 1.86 | - | - | - | - | - | - | - | - | - | 1.93 |
+| lab6_form_lead0 | 1.53 | 1.64 | 1.32 | 1.25 | 1.58 | 1.38 | 1.24 | - | - | - | - | - | - | - | - | - | 1.39 |
+| lab6_form_lead5 | 1.17 | 1.19 | 1.07 | 1.13 | 1.21 | 1.18 | 1.00 | - | - | - | - | - | - | - | - | - | 1.04 |
+| rusher | - | - | - | - | - | - | - | 0.62 | 0.73 | 0.64 | 0.70 | 0.76 | 0.78 | 0.91 | 1.59 | 1.94 | - |
+
+Diagnostics (team totals per game; kills = opponent deaths):
+
+| agent | games | returned | conceded | deaths | kills | food lost | Pacman moves | standoff moves | max carried | 28-finish us / them |
+|---|---|---|---|---|---|---|---|---|---|---|
+| camper | 1080 | 8.2 | 12.0 | 0.80 | 1.13 | 1.6 | 90 | 280 | 4.3 | 21 / 36 |
+| choke | 1080 | 11.2 | 13.3 | 1.00 | 1.13 | 2.6 | 112 | 153 | 6.9 | 72 / 35 |
+| exploit_v2 | 1080 | 10.6 | 12.3 | 0.34 | 1.04 | 0.7 | 113 | 225 | 6.9 | 57 / 34 |
+| feature | 1080 | 10.5 | 12.6 | 0.34 | 1.53 | 0.6 | 117 | 224 | 6.7 | 45 / 27 |
+| greedy | 1080 | 8.2 | 12.3 | 0.80 | 1.38 | 1.6 | 87 | 279 | 4.3 | 18 / 40 |
+| greedy_v2 | 1080 | 11.1 | 12.6 | 0.93 | 1.32 | 2.5 | 110 | 196 | 6.9 | 60 / 35 |
+| greedy_v3 | 1080 | 10.5 | 10.9 | 0.91 | 1.15 | 2.5 | 106 | 211 | 6.7 | 64 / 29 |
+| lab6_focus_bottom | 960 | 10.9 | 7.1 | 1.21 | 0.78 | 3.4 | 113 | 246 | 8.3 | 1 / 2 |
+| lab6_focus_cluster | 960 | 10.7 | 7.0 | 1.20 | 0.81 | 3.4 | 112 | 247 | 8.1 | 0 / 1 |
+| lab6_focus_deep | 960 | 11.1 | 7.2 | 1.22 | 0.81 | 3.4 | 113 | 245 | 8.6 | 1 / 1 |
+| lab6_focus_far | 960 | 11.1 | 7.2 | 1.18 | 0.78 | 3.3 | 113 | 247 | 8.4 | 5 / 1 |
+| lab6_focus_majority | 960 | 11.1 | 7.2 | 1.19 | 0.79 | 3.3 | 112 | 247 | 8.3 | 3 / 1 |
+| lab6_focus_shallow | 960 | 10.8 | 7.1 | 1.18 | 0.79 | 3.3 | 110 | 249 | 8.3 | 2 / 1 |
+| lab6_focus_top | 960 | 10.8 | 7.3 | 1.19 | 0.83 | 3.3 | 114 | 244 | 8.3 | 4 / 3 |
+| lab6_form_lead0 | 960 | 16.2 | 18.7 | 1.68 | 0.50 | 4.5 | 205 | 127 | 9.6 | 90 / 168 |
+| lab6_form_lead5 | 960 | 17.4 | 21.2 | 1.80 | 0.33 | 5.0 | 229 | 103 | 10.0 | 156 / 214 |
+| rusher | 1080 | 9.7 | 12.1 | 0.59 | 1.88 | 1.6 | 112 | 256 | 6.6 | 55 / 26 |

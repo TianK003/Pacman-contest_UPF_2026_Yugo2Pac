@@ -163,9 +163,11 @@ Gaps the search could not fill (unknown, not guessed):
 |---|---|---|
 | WP-1 | Width-based lookahead (IW(1) / p-IW / novelty best-first) for the attacker near ghosts, over our own forward model (methods.md M-15) | built (`plan*` in lab6/lab7); screened E-028, confirmed/ablated E-030 |
 | WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7); E-030 |
-| WP-3 | Learned leaf value for the planner (greedy policy's Monte-Carlo value, 12-16-1 MLP) — "greedy + RL" | built (lab7 `plan_leaf=net`); E-030 |
+| WP-3 | Learned leaf value for the planner (greedy policy's Monte-Carlo value, 12-16-1 MLP) — "greedy + RL" | built; **adopted** in greedy_v4 (E-030/E-031/E-032); second RL iteration did not help (X3) |
 | WP-4 | Planner-free scared-ghost hunting (`hunt_scared`), to tell lookahead from kill-farming | built (lab7); E-030 |
-| MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built (lab6 `focus`, `select_focus`); mode table E-029 |
-| MM-2 | Linear food-choice policy (`focus=linear`, `fw_*` weights) tuned by CMA-ES | built (lab6/lab7); tuning queued (fallback of E-031) |
+| MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built; **rejected** (E-029: no mode > 0, no selector beats "no mode") |
+| MM-2 | Linear food-choice policy (`focus=linear`, `fw_*` weights) tuned by CMA-ES | built (lab6/lab7); CMA-ES tuning not run (the planner track won the CPU) |
 | JX-1 | Junction-graph macro-IW (longer horizon), novelty over tactical features, offline privileged-teacher distillation (docs/research/width_planning.md §7.e) | idea |
+| MC-1 | Non-deep-learning search (methods.md M-17): flat paired Monte Carlo over enumerated ghost scenarios, open-loop UCT, lookup-table / linear leaves | built (lab8, lab9); screen E-033 |
+| MC-2 | Race-analysis leaf with fitted escape probability (logistic fit of "dropped food within 30 moves" on the escape margin) | idea (needs a collection that logs the margin); advisor: modest |
 

@@ -47,15 +47,18 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
 ## RUNNING NOW (check with `wc -l eval/results/<run>.jsonl`)
-- `n1_v2` (E-032, 4 jobs, `&`): 1,520 games, ETA ≈ 05:05.
-- `n1_x2` (5 jobs, `&`): 4,240 games, ETA ≈ 04:40. Then: `summary --run n1_x2 --compare lab7_g_net_dplan lab5_smart` etc.
-- `n1_modes` (3 jobs): 8,640 games, nearly done. Then run mode_table (command in E-029) and close E-029.
-- **`n1_x4a` (E-033 part A, 3 jobs, harness task)**: greedy_v4, lab8_table, lab8_fmc on tuning 521–560 vs pool +
-  lab5_smart + greedy_v4; 2,320 games.
-- **TODO when X2 finishes: start E-033 part B** (`n1_x4b`):
-  `venv\Scripts\python.exe eval\evaluate.py play --candidate lab8_lin lab8_fmc_table lab8_mcts --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --seeds tuning --n-seeds 40 --seed-offset 520 --run n1_x4b --jobs 5`
-  Then merge: `cat eval/results/n1_x4a.jsonl eval/results/n1_x4b.jsonl > eval/results/n1_x4.jsonl` and
-  `summary --run n1_x4 --compare <arm> greedy_v4` for each arm. Pre-stated reading in E-033.
+- `n1_v2` (E-032, 4 jobs, `&`): 1,520 games, ETA ≈ 05:10. `teams/greedy_v5.py` is PRE-BUILT (= greedy_v4 + dplan=1,
+  lint OK, not yet identity-checked or promoted). If V2 passes: identity greedy_v5 vs lab7_netf_dplan (clock off:
+  `--blueOpts plan_budget=9` on 3 seeds as in E-033), copy to my_team.py, picks page, CLAUDE.md, agents lineage, push.
+- `n1_x2` STOPPED 04:25 (full_net never played; other arms complete, logged in E-031).
+- `n1_modes` DONE, E-029 closed (no mode helps).
+- `n1_x4a` (E-033 part A, 3 jobs, harness task): greedy_v4, lab8_table, lab8_fmc (2,320 games; order: greedy_v4 first).
+- `n1_x4b` (E-033 part B, resumed 04:27 with 5 jobs, harness task): lab8_lin, lab8_fmc_table, lab8_mcts (2,400 games).
+- **TODO when V2 finishes: E-033 part C** (`n1_x4c`, 3–4 jobs):
+  `venv\Scripts\python.exe eval\evaluate.py play --candidate lab9_v4_check lab9_fmc_net --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --seeds tuning --n-seeds 40 --seed-offset 520 --run n1_x4c --jobs 4`
+- Analysis: `cat eval/results/n1_x4a.jsonl eval/results/n1_x4b.jsonl eval/results/n1_x4c.jsonl > eval/results/n1_x4.jsonl`,
+  then `summary --run n1_x4 --compare <arm> greedy_v4` per arm. Pre-stated reading in E-033. Winners → confirm on tuning
+  seeds 561–600.
 
 ## Files made tonight
 - `teams/greedy_lab_v6.py`, `teams/greedy_lab_v7.py` (FROZEN), **`teams/greedy_lab_v8.py`** (lab: v7 + plan_leaf=table|lin,

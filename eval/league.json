@@ -226,5 +226,6 @@
   "lab9_fmc_net": {"path": "teams/greedy_lab_v9.py", "ours": true, "frozen": true, "opts": {"plan": "fmc", "mc_h": "12", "mc_leaf": "net"}, "notes": "flat paired MC, H=12, learned-net cutoff (E-033 part C)"},
   "lab10_quad": {"path": "teams/greedy_lab_v10.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "quad"}, "notes": "IW planner, quadratic ridge leaf (non-DL, R2 0.461) (E-033 part D)"},
   "lab7_netf_t5": {"path": "teams/greedy_lab_v7.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "netf", "plan_trigger": "5"}, "notes": "greedy_v4 options with planner trigger 5 (E-034)"},
-  "lab7_netf_t9": {"path": "teams/greedy_lab_v7.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "netf", "plan_trigger": "9"}, "notes": "greedy_v4 options with planner trigger 9 (E-034)"}
+  "lab7_netf_t9": {"path": "teams/greedy_lab_v7.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "netf", "plan_trigger": "9"}, "notes": "greedy_v4 options with planner trigger 9 (E-034)"},
+  "lab11_net60": {"path": "teams/greedy_lab_v11.py", "ours": true, "frozen": true, "opts": {"plan": "danger", "plan_v": "2", "plan_nodes": "2000", "plan_budget": "0.3", "plan_leaf": "net60f"}, "notes": "greedy_v4 with the 60-move-target leaf net (E-034)"}
 }

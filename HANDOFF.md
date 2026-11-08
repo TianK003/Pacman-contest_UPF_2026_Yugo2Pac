@@ -44,15 +44,15 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | value nets | 12-16-1 tanh, held-out R²: v1 0.464, v2 0.588, v2o 0.552 | |
 | **non-DL leaves** | 5-D lookup table R² 0.453 (≈ net 0.464), linear 0.209 | `eval/rl/fit_leaves.py` |
 
-## RUNNING NOW (06:10)
-- `n1_diag_v4` (3 jobs): greedy_v4 & greedy_v3 vs specialists + friend teams, tuning 501–510 (diagnostics only).
-- E-034 (tuning 321–360, vs pool + lab5_smart + greedy_v4):
-  - `n1_x5a` (7 jobs): greedy_v4, lab7_netf_t5, lab7_netf_t9 (planner trigger 5 / 9).
-  - `n1_x5b` (3 jobs): lab11_net60 (leaf net trained on a 60-move target; R² 0.402).
-  - Analysis: `summary --run n1_x5a n1_x5b --compare <arm> greedy_v4`. Reading as E-033; no promotion tonight
-    (validation exhausted).
-- DONE: E-033 complete — MC search loses (−0.43…−0.72), table leaf −0.33 (exploited, T-59), linear −0.11,
-  **quadratic ridge leaf ≈ net (pooled −0.02 [−0.09, +0.04], 1,440 games)**. V2 rejected dplan. Linux timing OK.
+## RUNNING NOW (07:25)
+- `n1_x5d` (E-034 part C, 11 jobs): lab7_netf_override, lab7_netf_min03 on tuning 321–360 (paired with n1_x5a's greedy_v4).
+  Analysis: `summary --run n1_x5a n1_x5d --compare <arm> greedy_v4`.
+- DONE tonight (all logged): E-028…E-035. Submission = greedy_v4. Nothing tonight beat it:
+  V2 dplan −0.03; E-033 MC −0.43…−0.72, table −0.33, lin −0.11, quad ≈ net (pooled −0.02 [−0.09, +0.04]);
+  E-034 trigger 5/9 −0.04/−0.00, net60 −0.03, full −0.38, h40 −0.03. E-035 diagnostic: +0.77 over greedy_v3 vs 13
+  outside opponents. Linux timing OK.
+- Open user decisions: release gate for greedy_v4 (locked test seeds + held-out teams); a fresh validation seed list
+  (validation 1–300 is used up); whether to add greedy_v4 / lab5_smart to the reference pool.
 
 ## Files made tonight
 - `teams/greedy_lab_v6.py` … `v10.py` (FROZEN), **`teams/greedy_lab_v11.py`** (lab). v8: plan_leaf=table|lin, plan=fmc|mcts;

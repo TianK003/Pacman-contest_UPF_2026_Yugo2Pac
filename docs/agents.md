@@ -204,7 +204,9 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 |---|---|---|---|
 | `lab7_netf_t5`, `lab7_netf_t9` | planner trigger 5 / 9 (greedy_v4: 7) | −0.04 [−0.11, +0.03] / −0.00 [−0.06, +0.06] | flat: keep 7 |
 | `lab11_net60` (`teams/greedy_lab_v11.py`) | leaf net trained on a 60-move target (R² 0.402) | −0.03 [−0.14, +0.08] | rejected (RL-T closed) |
-| `lab7_netf_full`, `lab7_netf_h40` | planner on every attacker move / horizon 40 | running (E-034 part B) | — |
+| `lab7_netf_full` | planner decides on every attacker move | −0.38 [−0.56, −0.20]; returned 12.8 / game | rejected: plan only near ghosts |
+| `lab7_netf_h40` | planner horizon 40 (greedy_v4: 30) | −0.03 [−0.09, +0.04] | flat: keep 30 |
+| `lab7_netf_override`, `lab7_netf_min03` | greedy decides, net planner overrides by 0.3 / plan_min 0.3 | running (E-034 part C) | — |
 
 ## Opponents we did not write
 

@@ -1461,17 +1461,17 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 
   | arm | what | Δ vs greedy_v4 [95% CI] | PPG | h2h vs greedy_v4 | returned / g | deaths / g | food lost / g | max move s |
   |---|---|---|---|---|---|---|---|---|
-  | `greedy_v4` | IW + learned net leaf (incumbent) | 0 | 2.47 | – | 15.8 | 0.42 | 1.2 | 0.31 |
+  | `greedy_v4` | IW + learned net leaf (incumbent) | 0 | 2.46 | – | 15.8 | 0.42 | 1.2 | 0.33 |
   | `lab10_quad` (part D, post-hoc) | IW + quadratic ridge leaf (non-DL, R² 0.461) | **−0.05 [−0.15, +0.05]** | 2.43 | 1.40 | 16.2 | 0.38 | 1.0 | 0.29 |
   | `lab8_lin` | IW + linear leaf (R² 0.209) | −0.11 [−0.24, +0.02] | 2.36 | 1.32 | 14.7 | 0.62 | 1.7 | 0.31 |
-  | `lab8_table` | IW + lookup-table leaf (R² 0.453) | −0.33 [−0.46, −0.21] | – | – | 13.8 | 0.67 | 3.3 | – |
-  | `lab9_v4_check` | greedy_v4 + flat-MC re-check | −0.43 [−0.61, −0.24] | 2.01 | – | 11.0 | 0.40 | 1.0 | 0.23 |
+  | `lab8_table` | IW + lookup-table leaf (R² 0.453) | −0.33 [−0.46, −0.21] | 2.16 | 1.23 | 13.8 | 0.67 | 3.3 | 0.09 |
+  | `lab9_v4_check` | greedy_v4 + flat-MC re-check | −0.43 [−0.61, −0.24] | 2.01 | 0.69 | 11.0 | 0.40 | 1.0 | 0.23 |
   | `lab8_mcts` | flat MC + open-loop UCT | −0.52 [−0.70, −0.33] | 1.94 | 0.74 | 11.1 | 0.40 | 1.0 | 0.11 |
-  | `lab8_fmc` | flat paired MC, hand cutoff | −0.67 [−0.87, −0.47] | – | – | 9.6 | 0.52 | 1.3 | – |
+  | `lab8_fmc` | flat paired MC, hand cutoff | −0.67 [−0.87, −0.47] | 1.80 | 0.74 | 9.6 | 0.52 | 1.3 | 0.10 |
   | `lab8_fmc_table` | flat MC, table cutoff | −0.72 [−0.91, −0.53] | 1.73 | 0.53 | 9.0 | 0.48 | 1.1 | 0.07 |
-  | `lab9_fmc_net` | flat MC, net cutoff | −0.72 [−0.93, −0.52] | 1.75 | – | 8.9 | 0.50 | 1.1 | 0.09 |
+  | `lab9_fmc_net` | flat MC, net cutoff | −0.72 [−0.93, −0.52] | 1.75 | 0.66 | 8.9 | 0.50 | 1.1 | 0.09 |
 
-  (– = not printed in the summary row used; returned/deaths/lost are team totals per game.)
+  (h2h = points per game against greedy_v4 in their 80 direct games; returned / deaths / lost = team totals per game.)
 - **Reading** [verified on these games]:
   - **No non-DL arm beats greedy_v4**, and by the pre-stated rule none "matches" it (all point estimates < 0). No confirmation was triggered.
   - **Monte-Carlo search loses clearly (−0.43 … −0.72), in every form**: flat, with UCT, with any cutoff (hand, table, net), and even as a re-check on top of greedy_v4. The paired scenarios remove sampling noise, so this is model error: under aware chasing / intercepting scenario ghosts crossing looks dangerous and the override keeps the attacker home. These arms die rarely (0.40–0.52) but return 9–11 food per game instead of 16 (new trap T-60).

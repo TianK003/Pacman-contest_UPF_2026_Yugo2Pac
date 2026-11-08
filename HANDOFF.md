@@ -2,7 +2,7 @@
 
 **Read this first** if you are an agent continuing this work (after a context compaction or in a new session).
 Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest entries at the bottom of `docs/experiments.md`
-(E-027 … E-039). **Afternoon session 2026-11-08 (see "Afternoon" below): E-039 screen `n2_s1` may be running.**
+(E-027 … E-039). **Afternoon session 2026-11-08 (see "Afternoon" below): E-039 screen `n2_s1` done; option C splits `n2_s2` may be running.**
 
 ## The user's requests (overnight)
 1. (23:20) **Width-based planning** (IW / BFWS / novelty + heuristics; extra deps allowed if documented) and **RL-based
@@ -86,3 +86,8 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
   validation2 81–160 vs pool + top 3 under the accept rule → only if it passes: `teams/greedy_v6.py` → `my_team.py`.
 - Analyse with: `venv\Scripts\python.exe eval\evaluate.py summary --run n2_s1 --compare <arm> greedy_v4`.
 - **Option C (user, queued)**: after `n2_s1`, split `lab12_v5fix` → `lab12_v5guard`, `lab12_v5asym` if its Δ ≥ −0.07, and `lab12_defsc` → `lab13_defsc_posture`, `lab13_defsc_cap` if its Δ ≥ −0.06 (gates 0/0/0); run `n2_s2` vs the same 11 opponents on tuning 101–140, paired with n2_s1's greedy_v4 games; then stage 2 (E-039 amendment).
+- **Screen done** (E-039): Δ vs greedy_v4 — def_scared +0.07 (top 3 +0.24, pool −0.01), m1m2 +0.03, assist +0.00 (+1 pt), plan_blocked +0.00 (+1 pt),
+  late_tie −0.01, v5fix 0.00. Promising by the rule: assist, def_scared, plan_blocked, m1m2. Both option C conditions held → `n2_s2` started
+  (`lab12_v5guard lab12_v5asym lab13_defsc_posture lab13_defsc_cap`, 3,520 games). Analyse with `summary --run n2_s1 n2_s2 --compare <arm> greedy_v4`
+  and scratchpad-style exact deltas; then build `lab13_combo` = B with plan_nodes 1200, plan_models m1m2, assist 1, plan_blocked 1, def_scared = the
+  promising parts; smoke on tuning 141–143; stage 2 on validation2 81–160 (`--seeds validation2 --seed-offset 80 --n-seeds 80`).

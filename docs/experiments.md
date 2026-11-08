@@ -1518,3 +1518,13 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | turtle | 3.00 | 2.90 | +0.10 [+0.00, +0.30] |
 
 - **Reading**: the gain over greedy_v3 is larger outside the pool (+0.77) than inside it (+0.95 on validation 221–260, E-031, same scale), and no opponent goes negative. The planner-with-learned-leaf gain is not specific to our pool. The strongest outside teams remain friend_aljaz_1 and _4 (greedy_v4 1.65 / 1.85 PPG). The release gate (locked test seeds + held-out teams) is still the user's decision.
+- **Results** [verified, `n1_x5a` + `n1_x5b`, tuning seeds 321–360, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]:
+
+  | arm | Δ vs greedy_v4 [95% CI] | PPG | max move s |
+  |---|---|---|---|
+  | `lab7_netf_t5` (trigger 5) | −0.04 [−0.11, +0.03] | 2.41 | 0.23 |
+  | `lab7_netf_t9` (trigger 9) | −0.00 [−0.06, +0.06] | 2.44 | 0.31 |
+  | `lab11_net60` (60-move leaf target, R² 0.402) | −0.03 [−0.14, +0.08] | 2.43 | 0.24 |
+
+  Reading: greedy_v4 sits on a flat optimum in these directions. The 60-move target changes the style a little (33 of 800 games ended by returning 28 food) but not the points: as in X3, changing what the leaf predicts does not improve play. RL-T closed.
+- **Part B** (`n1_x5c`, pre-registered 06:52, same seeds and opponents, paired with n1_x5a's greedy_v4 games): `lab7_netf_full` (the planner decides on every attacker move, not only near ghosts; the never-played X2 arm `full_net` with the fast leaf) and `lab7_netf_h40` (planner horizon 40 instead of 30). Same reading; no promotion tonight.

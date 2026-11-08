@@ -1558,4 +1558,35 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   2. `greedy_v4` and `lab5_smart` join the reference pool, which now has **10 members**: greedy_v4 (incumbent), greedy_v3, greedy_v2, greedy, feature, camper, rusher, choke, exploit_v2, lab5_smart. No member was dropped.
 - **Changes**: `_reference_pool` and its doc string in `eval/league.json` (and the `submission` notes, which still said greedy_v3); evaluation.md §5; CLAUDE.md; agents.md verdicts (greedy_v3 → past version, lab5_smart → pool, new greedy_v4 row).
 - **Consequences**: the accept rule's pool Δ is now over the 9 members other than the incumbent (the incumbent's games are the head-to-head). Pool numbers before this date used the 8-member pool (with lab5_smart and greedy_v4 as extra opponents in E-030 … E-035), so compare them only within one experiment. A candidate run plays 10 instead of 8 opponents (+25 % games).
-- **Still open** (user decisions): the release gate for greedy_v4 (locked test seeds + held-out teams; Linux timing done in E-032), and a fresh validation seed list (needed for any further accept decision, e.g. `lab7_netf_override`, E-034).
+- **Second round of decisions** (user, same morning): (3) run the release gate now (E-037); (4) draw a fresh validation list now; (5) drop greedy (v1) and rusher from the pool, plus any other member the analysis finds unnecessary (permission given for this once).
+- **Pool trim** [verified analysis of the overnight runs; scratch script `pool_signal.py`]: per-opponent paired Δ of every arm against its reference in X1 (12 arms vs lab5_smart), X2 (4), E-033 (8 vs greedy_v4) and E-034 (7 vs greedy_v4):
+
+  | member | between-arm signal sd (mean of 4 groups) | corr with rest-of-pool Δ | reference arm PPG against it | decision |
+  |---|---|---|---|---|
+  | lab5_smart | 0.21 (2 groups) | +0.91 | 2.20 | keep (closest rule-based relative) |
+  | greedy_v2 | 0.17 | +0.95 | 2.35 | keep (past version, most signal) |
+  | greedy_v3 | 0.16 | +0.82 | 2.21 | keep (previous incumbent) |
+  | feature | 0.16 | +0.77 | 2.57 | keep (only simple patrol-defender team left; punishes timid candidates) |
+  | greedy (v1) | 0.15 | +0.78 | 2.56 | **drop** (user; saturated, oldest) |
+  | rusher | 0.13 | +0.84 | 2.48 | **drop** (user) |
+  | exploit_v2 | 0.12 | +0.75 | 2.40 | keep (shadow defender) |
+  | choke | 0.10 | +0.86 | 2.41 | keep (cut-cell defender) |
+  | camper | 0.09 | +0.86 | 2.46 | keep (border camper) |
+
+  Every member tracks the rest of the pool closely (corr 0.75–0.95), so two fewer members lose little signal. The low-signal members (camper, choke) are kept for their style: style diversity matters more than signal for generalisation to unknown tournament teams, and all pool teams are our own. New pool (**8**): greedy_v4, greedy_v3, greedy_v2, feature, camper, choke, exploit_v2, lab5_smart.
+- **Fresh validation list**: see the entry for `eval/seeds/validation2.txt` in evaluation.md §4 (below).
+- **Still open**: none of the earlier decisions; the release gate is E-037.
+
+## E-037 — Release gate for `greedy_v4` on the locked test seeds (2026-11-08)
+- **Status**: running (pre-registered before any test-seed game was played).
+- **Why**: user decision (2026-11-08, E-036): run the release gate of evaluation.md §2 for greedy_v4, which is in `my_team.py` (promoted E-032, confirmed by the user) and will play the tournament test run on 2026-11-23.
+- **Already satisfied**: accepted under the rule (V1, E-031); ≥ 200 games with 0 crashes / violations (V1: 720); Linux / Python 3.8 timing under load (E-032: 40 games, 0 warnings, max move 0.283 s).
+- **Setup**: `my_team.py` is byte-identical to `teams/greedy_v4.py` [verified, `cmp`], so the league entry `greedy_v4` stands for the submission. greedy_v4 and the previous incumbent greedy_v3 each play the non-mirror members of the new 8-member pool (greedy_v2, feature, camper, choke, exploit_v2, lab5_smart) and the two held-out teams (heldout_a, heldout_b), plus greedy_v4 vs greedy_v3, on **all 100 locked test seeds**, both colours: 17 pairs × 200 = 3,400 games, run `test2`, `--jobs 8`, `-q -c`, `--delay-step 0`. Repo commit at pre-registration in the commit message; framework `54cd83c`; Windows 11, Python 3.8.10.
+- **Test-seed use 2 of 3** (evaluation.md §4). Held-out teams: totals per team only; their code and replays are not read (T-53).
+- **Pre-registered rule** (as E-021). The release gate **passes** if and only if all hold:
+  1. **Gates**: 0 crashes / forfeits, 0 engine time warnings, 0 sentinel violations in every greedy_v4 game; max move ≤ 0.5 s.
+  2. **Pool**: paired Δ PPG (greedy_v4 − greedy_v3) over the 6 non-mirror pool members has a 95% CI lower bound > 0.
+  3. **No regression**: for every opponent (pool and held-out) the paired Δ has a CI upper bound > −0.5.
+  4. **Held-out**: the paired Δ over the two held-out teams has a CI upper bound > 0 (no significant regression against blind-written teams).
+  5. **Head-to-head**: PPG(greedy_v4 vs greedy_v3) ≥ 1.5.
+- **Action**: pass → greedy_v4 is the confirmed release candidate for the 2026-11-23 test run. Fail → greedy_v4 stays in `my_team.py` for now (the user confirmed it) and the failed criterion goes to the user, whose call a fallback to greedy_v3 would be. Also reported: the generalisation gap R (evaluation.md §4: mean PPG over the 6 pool members vs over the 2 held-out teams) for both agents, compared with E-021 (greedy_v3 R ≈ 29 %).

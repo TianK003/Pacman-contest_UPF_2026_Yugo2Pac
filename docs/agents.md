@@ -33,7 +33,7 @@ Each version that has been in `my_team.py` has a behaviour page in [picks/](pick
 
 | name | what it is | tested in | key result | verdict |
 |---|---|---|---|---|
-| `greedy` | `GreedyAttacker` (nearest food it reaches before any visible ghost; home at 5 carried, when threatened, out of time) + `PatrolDefender` (chases visible invaders, goes to eaten food, patrols 3 border cells near our food) | E-002, E-005, E-006, E-017 | best of the v1 league (2.23 PPG, 40/40 vs baseline); loses 0–0 standoffs to guards and scoring races to double attackers (E-005) | **past version**, pool |
+| `greedy` | `GreedyAttacker` (nearest food it reaches before any visible ghost; home at 5 carried, when threatened, out of time) + `PatrolDefender` (chases visible invaders, goes to eaten food, patrols 3 border cells near our food) | E-002, E-005, E-006, E-017 | best of the v1 league (2.23 PPG, 40/40 vs baseline); loses 0–0 standoffs to guards and scoring races to double attackers (E-005) | **past version**, league (left the pool 2026-11-08, E-036) |
 | `greedy_deadend` | greedy with `DeadEndAttacker`: enters a dead end only if it can get back to the exit before a visible ghost (H-M02 leaf version) | E-002 | Δ −0.01 [−0.10, +0.07] vs greedy | **rejected**. The generalised version (`lab2_exit`) halves deaths but gains no points (E-018) |
 | `double_attack` | 2 × `GreedyAttacker`, no defence | E-002, E-006, E-014 | 1.29 PPG in E-002; wins scoring races against greedy | **league** (specialist) |
 | `turtle` | 2 × `PatrolDefender`, never attacks | E-002, E-005 | 0.38 PPG; produces 0–0 standoffs | **league** (specialist) |
@@ -44,7 +44,7 @@ Each version that has been in `my_team.py` has a behaviour page in [picks/](pick
 |---|---|---|---|---|
 | `camper` | greedy attacker + `BorderCamper` (stands on our border cell nearest where the enemy would cross, seen or last seen within 40 plies) | E-006, E-014, E-017 | 1.83 PPG in E-006, beat greedy head-to-head; greedy_v2's hardest old opponent (1.51) | **pool** |
 | `camper2` | 2 × `BorderCamper` | E-006 | 0.73 PPG; 0–0 standoffs | **league** |
-| `rusher` | `CapsuleRusher` (capsule first, return at 12, hunts scared ghosts) + `PatrolDefender` | E-006, E-014, E-017 | 1.79 PPG in E-006, beat greedy head-to-head | **pool** |
+| `rusher` | `CapsuleRusher` (capsule first, return at 12, hunts scared ghosts) + `PatrolDefender` | E-006, E-014, E-017 | 1.79 PPG in E-006, beat greedy head-to-head | league (left the pool 2026-11-08, E-036) |
 | `baseline_plus` | baseline-style reflex team, return at 5, ghost avoidance | E-006 | 0.95 PPG | **league** |
 | `rusher_camper` | `CapsuleRusher` + `BorderCamper` (both parts had beaten greedy) | E-007 | Δ +0.00 [−0.26, +0.33] vs greedy | **rejected** (strength is not additive) |
 

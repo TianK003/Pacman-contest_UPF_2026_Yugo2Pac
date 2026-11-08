@@ -20,8 +20,8 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
 - Runtime stdlib only; learned weights as constants. Training venv `venv_rl/` (torch 2.4.1 cpu, numpy, cma;
   `eval/rl/requirements-train.txt`).
 - Seeds: **validation 1–300 all used** (last: V2, 261–300) → a fresh validation list needs the user's approval.
-  Tuning seeds used overnight: 1–50 (training data), 261–600 (screens); test seeds locked (1 of 3 uses spent, E-021).
-- Release gate (locked test seeds + held-out teams; Linux timing is done) = user decision; not done for greedy_v4.
+  Tuning seeds used overnight: 1–50 (training data), 261–600 (screens); test seeds locked (2 of 3 uses spent: E-021, E-037). Validation now uses `eval/seeds/validation2.txt`.
+- Release gate for greedy_v4: **passed** (E-037, 2026-11-08).
 
 ## State of the submission
 - **`my_team.py` = `teams/greedy_v4.py`** (promoted 03:40, commit e95a786; docs in `docs/picks/greedy_v4.md`):
@@ -46,14 +46,17 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
 | E-034 (321–400) | vs greedy_v4: trigger 5/9 −0.04/−0.00, horizon 40 −0.03, plan_min 0.3 +0.01, 60-move target −0.03, full −0.38, **override +0.06 [+0.00, +0.12]** (1,440 games, worst opponent −0.06) | flat optimum; override = candidate |
 | E-035 (501–510, diagnostic) | greedy_v4 − greedy_v3 vs 13 outside opponents | +0.77 [+0.57, +0.98], none negative |
 
-## User decisions (morning, E-036)
-- **Done**: greedy_v4 confirmed as `my_team.py`; `greedy_v4` and `lab5_smart` added to the reference pool (now 10 members,
-  `_reference_pool` in `eval/league.json`; candidate command in CLAUDE.md / evaluation.md §5).
-- **Still open**:
-  1. **Release gate for greedy_v4**: one locked test-seed run (2nd of 3 allowed uses) + held-out teams (`heldout_a`, `heldout_b`).
-  2. **Fresh validation seed list** (new generator seed). Then validate `lab7_netf_override` by the accept rule; if it
-     passes, build `teams/greedy_v5.py` = `teams/greedy_lab_v7.py` with plan=override + greedy_v4's other options.
-     Power note: a true +0.06 has roughly a 30 % chance of clearing CI > 0 on 40 seeds and about 50 % on 80 seeds.
+## User decisions (morning, E-036) — all carried out
+- greedy_v4 confirmed as `my_team.py`.
+- Reference pool now **8 members**: greedy_v4 (incumbent), greedy_v3, greedy_v2, feature, camper, choke, exploit_v2,
+  lab5_smart (greedy_v4 / lab5_smart added; greedy v1 / rusher dropped; analysis in E-036). Command in CLAUDE.md.
+- **Fresh validation list** `eval/seeds/validation2.txt` (300 seeds, `random.Random(20261108)`, 0 overlaps; `--seeds validation2`;
+  unused so far). Next candidate for it: `lab7_netf_override` (if it passes, `teams/greedy_v5.py` = `teams/greedy_lab_v7.py` with
+  plan=override + greedy_v4's other options). Power note: a true +0.06 clears CI > 0 with ≈ 30 % chance on 40 seeds, ≈ 50 % on 80.
+- **Release gate E-037** (pre-registered, commit 24c61aa): greedy_v4 vs greedy_v3 on all 100 locked test seeds against the
+  6 non-mirror pool members + heldout_a / heldout_b + h2h (3,400 games, run `test2`; test-seed use 2 of 3).
+  **PASSED**: pool +0.83 [+0.73, +0.94], held-out +1.02 [+0.85, +1.20], h2h 2.38, 0 / 0 / 0, max move 0.310 s.
+  greedy_v4 is the release candidate for the 2026-11-23 test run. One test-seed use left.
 - The submission has no global-RNG lint warnings, so that policy point needs no decision.
 
 ## Files made overnight

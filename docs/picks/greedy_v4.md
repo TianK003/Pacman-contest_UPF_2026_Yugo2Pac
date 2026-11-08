@@ -43,6 +43,7 @@ Unchanged from lab5_smart: intercepts visible invaders, goes to eaten food, shad
 
 ## Evidence
 
+- **Release gate** (E-037, locked test seeds, 3,400 games): passed. Paired vs greedy_v3: pool **+0.83 [+0.73, +0.94]**, held-out **+1.02 [+0.85, +1.20]**, every opponent's CI above 0 (worst camper +0.55), head-to-head 2.38; 0 crashes / warnings / violations, max move 0.310 s, p95 0.125 s (8 parallel workers).
 - **V1** (E-031, validation seeds 221–260, 1,920 games): accept rule passed against greedy_v3 (pool Δ +0.95, every opponent's CI > 0, head-to-head 2.56) and against lab5_smart (+0.58, head-to-head 2.31). Gates: 0 crashes / warnings / violations; max move 0.319 s, p95 0.178 s under ≈ 12 parallel workers (slow leaf code; the shipped fast code halves planner time).
 - Team totals per game in V1: returned 17.3 (lab5_smart 11.5), conceded 8.6 (9.3), deaths 0.36 (1.00), carried food dropped 0.9 (2.6), games ended by returning 28 food: 25 of 720 (7).
 - Also positive on two independent tuning blocks vs lab5_smart: 401–440 (+0.57), 441–480 (+0.50).
@@ -64,7 +65,7 @@ Unchanged from lab5_smart: intercepts visible invaders, goes to eaten food, shad
 
 ## Known blind spots
 
-- **Generalisation**: decisions used only our own pool (the net was trained against it). A diagnostic against 13 outside opponents, including friend teams, gave +0.77 [+0.57, +0.98] over greedy_v3 with no opponent negative (E-035; not a decision input). Held-out teams and the locked test seeds have not been used (release gate, user decision).
+- **Generalisation**: decisions used only our own pool (the net was trained against it). A diagnostic against 13 outside opponents, including friend teams, gave +0.77 [+0.57, +0.98] over greedy_v3 with no opponent negative (E-035; not a decision input). Release gate (E-037, all 100 locked test seeds): +0.83 [+0.73, +0.94] over the pool and +1.02 [+0.85, +1.20] over the two blind-written held-out teams vs greedy_v3; generalisation gap R ≈ 4 % (greedy_v3 18 %). Still: all of these opponents are ours (written by us or by an agent for us), and real tournament teams are unknown.
 - **Timing**: planner time p99 ≈ 0.12 s, max ≈ 0.13 s with the fast code on this laptop under load. A slower cluster would hit the 0.3 s safety clock more often: still safe, but then decisions depend on load. Linux / Python 3.8 with real time limits, CPU saturated: 40 games, 0 warnings, max move 0.283 s (E-032).
 - **Ghost model**: chase-within-6 or hold. An opponent that intercepts from far away is modelled only through the learned leaf.
 - **Double attackers** (both enemies on our side) are not in the pool; the planner is attacker-only.

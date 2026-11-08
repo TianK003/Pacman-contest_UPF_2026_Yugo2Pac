@@ -25,7 +25,7 @@ Each version that has been in `my_team.py` has a behaviour page in [picks/](pick
 | [`greedy`](picks/greedy_v1.md) (`teams/greedy_v1.py`) | race-safe greedy attacker + patrol defender | — | E-002/E-003 (provisional) | 2026-10-16 → 2026-10-18 |
 | [`greedy_v2`](picks/greedy_v2.md) (`teams/greedy_v2.py`) | greedy + standoff breaker + intercepting defender + return at 8 | H-S12, H-S07, H-S04 | E-011, E-012 (+0.42 vs greedy) | 2026-10-18 (E-013) → 2026-10-18 (E-021) |
 | [`greedy_v3`](picks/greedy_v3.md) (`teams/greedy_v3.py`) | greedy_v2 + belief-based shadowing defender | H-S01, H-S07, M-04 | E-019 (+0.16 [+0.04, +0.28] vs greedy_v2 on validation seeds); E-021 test seeds +0.26 pool / +0.17 held-out | 2026-10-18 (E-021) → 2026-11-08 (E-032) |
-| [`greedy_v4`](picks/greedy_v4.md) (`teams/greedy_v4.py`) | greedy_v3 + lab5_smart switches + IW(1) attacker planner with learned leaf value | M-15, H-S01, Q3 flags | E-031 (+0.95 [+0.78, +1.13] vs greedy_v3, +0.58 vs lab5_smart on validation 221–260) | **since 2026-11-08 (E-032)**; release gate open |
+| [`greedy_v4`](picks/greedy_v4.md) (`teams/greedy_v4.py`) | greedy_v3 + lab5_smart switches + IW(1) attacker planner with learned leaf value | M-15, H-S01, Q3 flags | E-031 (+0.95 [+0.78, +1.13] vs greedy_v3, +0.58 vs lab5_smart on validation 221–260) | **since 2026-11-08 (E-032)**; release gate passed (E-037: test seeds +0.83 pool, +1.02 held-out) |
 
 ## Our teams
 
@@ -213,7 +213,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 
 | name | what it is | tested in | result | verdict |
 |---|---|---|---|---|
-| `greedy_v4` | `lab7_danger_netf` as defaults: lab5_smart + IW(1) attacker planner near ghosts with the learned leaf value (identity 18/18) | E-031 (V1), E-032, E-033, E-034, E-035 | validation 221–260: **+0.95 [+0.78, +1.13]** vs greedy_v3, +0.58 vs lab5_smart; Linux timing max 0.283 s under load; nothing tested since beats it | **incumbent** (`my_team.py` since 2026-11-08, confirmed by the user), **pool**; release gate open |
+| `greedy_v4` | `lab7_danger_netf` as defaults: lab5_smart + IW(1) attacker planner near ghosts with the learned leaf value (identity 18/18) | E-031 (V1), E-032, E-033, E-034, E-035, E-037 | locked test seeds (E-037): **+0.83 [+0.73, +0.94]** over the pool, **+1.02 [+0.85, +1.20]** over the held-out teams vs greedy_v3, 0 / 0 / 0, max move 0.310 s; validation 221–260: **+0.95 [+0.78, +1.13]** vs greedy_v3, +0.58 vs lab5_smart; Linux timing max 0.283 s under load; nothing tested since beats it | **incumbent** (`my_team.py` since 2026-11-08, confirmed by the user), **pool**; release gate passed (E-037) |
 
 ## Opponents we did not write
 

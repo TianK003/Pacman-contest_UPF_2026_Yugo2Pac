@@ -1578,7 +1578,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Still open**: none of the earlier decisions; the release gate is E-037.
 
 ## E-037 — Release gate for `greedy_v4` on the locked test seeds (2026-11-08)
-- **Status**: running (pre-registered before any test-seed game was played).
+- **Status**: done. **Release gate passed** (all 5 pre-registered criteria). Pre-registered (commit 24c61aa) before any test-seed game was played.
 - **Why**: user decision (2026-11-08, E-036): run the release gate of evaluation.md §2 for greedy_v4, which is in `my_team.py` (promoted E-032, confirmed by the user) and will play the tournament test run on 2026-11-23.
 - **Already satisfied**: accepted under the rule (V1, E-031); ≥ 200 games with 0 crashes / violations (V1: 720); Linux / Python 3.8 timing under load (E-032: 40 games, 0 warnings, max move 0.283 s).
 - **Setup**: `my_team.py` is byte-identical to `teams/greedy_v4.py` [verified, `cmp`], so the league entry `greedy_v4` stands for the submission. greedy_v4 and the previous incumbent greedy_v3 each play the non-mirror members of the new 8-member pool (greedy_v2, feature, camper, choke, exploit_v2, lab5_smart) and the two held-out teams (heldout_a, heldout_b), plus greedy_v4 vs greedy_v3, on **all 100 locked test seeds**, both colours: 17 pairs × 200 = 3,400 games, run `test2`, `--jobs 8`, `-q -c`, `--delay-step 0`. Repo commit at pre-registration in the commit message; framework `54cd83c`; Windows 11, Python 3.8.10.
@@ -1590,3 +1590,36 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   4. **Held-out**: the paired Δ over the two held-out teams has a CI upper bound > 0 (no significant regression against blind-written teams).
   5. **Head-to-head**: PPG(greedy_v4 vs greedy_v3) ≥ 1.5.
 - **Action**: pass → greedy_v4 is the confirmed release candidate for the 2026-11-23 test run. Fail → greedy_v4 stays in `my_team.py` for now (the user confirmed it) and the failed criterion goes to the user, whose call a fallback to greedy_v3 would be. Also reported: the generalisation gap R (evaluation.md §4: mean PPG over the 6 pool members vs over the 2 held-out teams) for both agents, compared with E-021 (greedy_v3 R ≈ 29 %).
+- **Results** [verified, run `test2`, 3,400 games, 2,556 s with 8 workers; summary in `eval/results/test2_summary.md`]:
+
+  | agent | games | W-T-L | PPG [95% CI] | crashes / time warnings / violations | max move | p95 move |
+  |---|---|---|---|---|---|---|
+  | greedy_v4 | 1,800 | 1443-143-214 | **2.48** [2.40, 2.56] | 0 / 0 / 0 | 0.310 s | 0.125 s |
+  | greedy_v3 | 1,800 | 813-252-735 | 1.50 [1.42, 1.57] | 0 / 0 / 0 | 0.065 s | 0.003 s |
+
+  **Paired greedy_v4 − greedy_v3 per opponent** (200 games each):
+
+  | opponent | greedy_v4 | greedy_v3 | paired Δ [95% CI] |
+  |---|---|---|---|
+  | lab5_smart | 2.23 | 1.04 | +1.18 [+0.91, +1.44] |
+  | greedy_v2 | 2.54 | 1.56 | +0.98 [+0.74, +1.21] |
+  | exploit_v2 | 2.64 | 1.75 | +0.89 [+0.69, +1.10] |
+  | choke | 2.48 | 1.65 | +0.83 [+0.60, +1.06] |
+  | feature | 2.65 | 2.10 | +0.56 [+0.38, +0.74] |
+  | camper | 2.60 | 2.06 | +0.55 [+0.34, +0.74] |
+  | heldout_a (held-out) | 2.48 | 1.44 | +1.04 [+0.77, +1.29] |
+  | heldout_b (held-out) | 2.35 | 1.35 | +1.00 [+0.75, +1.24] |
+
+  | criterion | result | pass |
+  |---|---|---|
+  | 1. gates | 0 crashes / forfeits, 0 time warnings, 0 sentinel violations in 1,800 greedy_v4 games; max move 0.310 s ≤ 0.5 s | ✓ |
+  | 2. pool (6 non-mirror members, 1,200 paired games) | **+0.83 [+0.73, +0.94]** | ✓ |
+  | 3. no regression (CI upper > −0.5 for every opponent) | worst camper +0.55 [+0.34, +0.74]; every opponent's CI is above 0 | ✓ |
+  | 4. held-out (400 paired games) | **+1.02 [+0.85, +1.20]** | ✓ |
+  | 5. head-to-head vs greedy_v3 (200 games) | **2.38** (greedy_v3 0.50) | ✓ |
+
+  Team totals per game (greedy_v4 / greedy_v3): returned 16.9 / 11.2, conceded 9.0 / 10.7, deaths 0.48 / 0.99, food lost 1.3 / 2.6, games ended by returning 28 food 78 / 24 (of 1,800).
+- **Generalisation gap** (evaluation.md §4; mean PPG over the 6 pool members vs over the 2 held-out teams, test seeds): greedy_v4 2.52 vs 2.42, **R ≈ 4 %**; greedy_v3 1.69 vs 1.40, R ≈ 18 % (E-021 measured 29 % for greedy_v3 against the old pool with greedy v1 and rusher, so the two R values are not comparable across experiments).
+- **Reproducibility check** [verified]: greedy_v3's results against the opponents shared with E-021 on the same seeds are identical (camper 2.06, feature 2.10, choke 1.65, exploit_v2 1.75, heldout_a 1.44, heldout_b 1.35): deterministic agents replay the same games one month later, on the same framework commit.
+- **Decision** (pre-registered rule): **the release gate passes**. greedy_v4 is the confirmed release candidate for the tournament test run on 2026-11-23. All release-gate items of evaluation.md §2 are now done: accepted (E-031), ≥ 200 clean games, Linux timing (E-032), locked test seeds + held-out teams (this entry).
+- **Reading**: the gain over greedy_v3 holds on maps nobody looked at (+0.83 on the pool, +0.95 on validation 221–260) and is, if anything, larger against the two blind-written teams (+1.02) than against our own pool. The held-out teams were never used to build or tune greedy_v4 (T-53), and the planner's learned leaf was trained only against our own pool, so this is the best evidence we have that it generalises. Test seeds: 1 use left before new ones must be drawn.

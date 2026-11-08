@@ -46,12 +46,15 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
 | E-034 (321–400) | vs greedy_v4: trigger 5/9 −0.04/−0.00, horizon 40 −0.03, plan_min 0.3 +0.01, 60-move target −0.03, full −0.38, **override +0.06 [+0.00, +0.12]** (1,440 games, worst opponent −0.06) | flat optimum; override = candidate |
 | E-035 (501–510, diagnostic) | greedy_v4 − greedy_v3 vs 13 outside opponents | +0.77 [+0.57, +0.98], none negative |
 
-## Open decisions for the user
-1. **Release gate for greedy_v4**: one locked test-seed run + held-out teams (`heldout_a`, `heldout_b`).
-2. **Fresh validation seed list** (new generator seed). Then validate `lab7_netf_override` by the accept rule; if it
-   passes, build `teams/greedy_v5.py` = `teams/greedy_lab_v7.py` with plan=override + greedy_v4's other options.
-3. **Reference pool update**: add greedy_v4 and lab5_smart (and maybe drop weak members).
-4. Policy: global-RNG draws are only a lint warning (T-02 allows them).
+## User decisions (morning, E-036)
+- **Done**: greedy_v4 confirmed as `my_team.py`; `greedy_v4` and `lab5_smart` added to the reference pool (now 10 members,
+  `_reference_pool` in `eval/league.json`; candidate command in CLAUDE.md / evaluation.md §5).
+- **Still open**:
+  1. **Release gate for greedy_v4**: one locked test-seed run (2nd of 3 allowed uses) + held-out teams (`heldout_a`, `heldout_b`).
+  2. **Fresh validation seed list** (new generator seed). Then validate `lab7_netf_override` by the accept rule; if it
+     passes, build `teams/greedy_v5.py` = `teams/greedy_lab_v7.py` with plan=override + greedy_v4's other options.
+     Power note: a true +0.06 has roughly a 30 % chance of clearing CI > 0 on 40 seeds and about 50 % on 80 seeds.
+- The submission has no global-RNG lint warnings, so that policy point needs no decision.
 
 ## Files made overnight
 - `teams/greedy_lab_v6.py` … `v10.py` (FROZEN), **`teams/greedy_lab_v11.py`** (lab). v6: planner, modes, formations;

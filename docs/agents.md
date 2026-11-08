@@ -122,7 +122,7 @@ All entries are greedy_v2 plus an exact belief filter over enemy cells. The filt
 
 | name | what it is | tested in | key result | verdict |
 |---|---|---|---|---|
-| `greedy_v3` | `lab3_shadow` as defaults (24/24 identical) | E-019, E-021 | locked test seeds (E-021): 1.79 PPG vs greedy_v2's 1.55; paired **+0.26 [+0.15, +0.36]** over the pool, **+0.17 [−0.00, +0.33]** over the held-out teams (heldout_b +0.35, heldout_a −0.02), head-to-head 1.56; Linux max move 0.105 s under full load | **incumbent** (`my_team.py` since 2026-10-18) |
+| `greedy_v3` | `lab3_shadow` as defaults (24/24 identical) | E-019, E-021 | locked test seeds (E-021): 1.79 PPG vs greedy_v2's 1.55; paired **+0.26 [+0.15, +0.36]** over the pool, **+0.17 [−0.00, +0.33]** over the held-out teams (heldout_b +0.35, heldout_a −0.02), head-to-head 1.56; Linux max move 0.105 s under full load | **past version**, pool (incumbent 2026-10-18 → 2026-11-08, E-021 → E-032) |
 
 ### `teams/greedy_lab_v5.py`: enemy-state switches on top of greedy_v3 (E-025)
 
@@ -141,7 +141,7 @@ All entries are greedy_v3 plus the named switches. Δ is against greedy_v3 on tu
 | `lab5_recall` | flags + `recall` (H-S26): two enemy Pacmen → attacker defends | never fired against the pool (800/800 = flags); **−0.58** vs double_attack, **−0.40** vs friend_aljaz_1 | **rejected** (it cuts our returns by a third) |
 | `lab5_intent` | flags + directed + open_goal + guard + recall | +0.10 [−0.03, +0.22]; −0.29 vs double attackers (recall) | **rejected** |
 | `lab5_all` | flags + shared + endgame + directed + open_goal + guard + recall | +0.14 [+0.01, +0.26]; −0.18 vs double attackers (recall) | **rejected** |
-| `lab5_smart` | flags + shared + endgame + directed + open_goal (the pre-registered selection from the screen) | **validation seeds 181–220: +0.25 [+0.11, +0.40]** over the pool, worst opponent greedy_v2 +0.00, h2h 1.59; food conceded 7.4 → 6.5; 0 crashes / warnings, max move 0.151 s | **passes the accept rule** (E-025); release gate open (Linux timing, test seeds + held-out); promotion = user decision |
+| `lab5_smart` | flags + shared + endgame + directed + open_goal (the pre-registered selection from the screen) | **validation seeds 181–220: +0.25 [+0.11, +0.40]** over the pool, worst opponent greedy_v2 +0.00, h2h 1.59; food conceded 7.4 → 6.5; 0 crashes / warnings, max move 0.151 s | passed the accept rule (E-025), never promoted: greedy_v4 (built on it) was promoted instead. **pool** since 2026-11-08 (user decision, E-036) |
 
 ### `teams/greedy_lab_v6.py`: width-based planner, map modes, formations (E-027–E-029; frozen 2026-11-08)
 
@@ -208,6 +208,12 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab7_netf_h40` | planner horizon 40 (greedy_v4: 30) | −0.03 [−0.09, +0.04] | flat: keep 30 |
 | `lab7_netf_override` | greedy decides; the net-leaf planner overrides near ghosts by margin 0.3 | +0.03 [−0.05, +0.12] on 321–360; **+0.09 [+0.02, +0.17] on 361–400; pooled +0.06 [+0.00, +0.12]** over 1,440 games, h2h 1.57 | **next validation candidate** (needs a fresh validation list: user decision) |
 | `lab7_netf_min03` | plan_min 0.3 (greedy_v4: 0.05) | +0.01 [−0.05, +0.07] (matches) | flat: keep 0.05 |
+
+### `teams/greedy_v4.py` (E-031, E-032)
+
+| name | what it is | tested in | result | verdict |
+|---|---|---|---|---|
+| `greedy_v4` | `lab7_danger_netf` as defaults: lab5_smart + IW(1) attacker planner near ghosts with the learned leaf value (identity 18/18) | E-031 (V1), E-032, E-033, E-034, E-035 | validation 221–260: **+0.95 [+0.78, +1.13]** vs greedy_v3, +0.58 vs lab5_smart; Linux timing max 0.283 s under load; nothing tested since beats it | **incumbent** (`my_team.py` since 2026-11-08, confirmed by the user), **pool**; release gate open |
 
 ## Opponents we did not write
 

@@ -1,4 +1,4 @@
-# greedy_v4: current submission (since 2026-11-08, E-032)
+# greedy_v4: current submission (since 2026-11-08, E-032; confirmed by the user the same day)
 
 `teams/greedy_v4.py` = `teams/greedy_lab_v7.py` with the `lab7_danger_netf` options as defaults (identity 18/18 vs `lab7_danger_net`, E-032). `my_team.py` is a copy.
 

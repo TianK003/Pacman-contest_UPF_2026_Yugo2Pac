@@ -1550,3 +1550,12 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | turtle | 3.00 | 2.90 | +0.10 [+0.00, +0.30] |
 
 - **Reading**: the gain over greedy_v3 is larger outside the pool (+0.77) than inside it (+0.95 on validation 221–260, E-031, same scale), and no opponent goes negative. The planner-with-learned-leaf gain is not specific to our pool. The strongest outside teams remain friend_aljaz_1 and _4 (greedy_v4 1.65 / 1.85 PPG). The release gate (locked test seeds + held-out teams) is still the user's decision.
+
+## E-036 — User decisions after the overnight session: greedy_v4 confirmed, reference pool 8 → 10 (2026-11-08)
+- **Status**: done (decisions only, no games).
+- **Decisions** (user, 2026-11-08 morning, after the overnight report):
+  1. greedy_v4 is confirmed as `my_team.py` (it had been promoted "for now" at 03:35, E-032).
+  2. `greedy_v4` and `lab5_smart` join the reference pool, which now has **10 members**: greedy_v4 (incumbent), greedy_v3, greedy_v2, greedy, feature, camper, rusher, choke, exploit_v2, lab5_smart. No member was dropped.
+- **Changes**: `_reference_pool` and its doc string in `eval/league.json` (and the `submission` notes, which still said greedy_v3); evaluation.md §5; CLAUDE.md; agents.md verdicts (greedy_v3 → past version, lab5_smart → pool, new greedy_v4 row).
+- **Consequences**: the accept rule's pool Δ is now over the 9 members other than the incumbent (the incumbent's games are the head-to-head). Pool numbers before this date used the 8-member pool (with lab5_smart and greedy_v4 as extra opponents in E-030 … E-035), so compare them only within one experiment. A candidate run plays 10 instead of 8 opponents (+25 % games).
+- **Still open** (user decisions): the release gate for greedy_v4 (locked test seeds + held-out teams; Linux timing done in E-032), and a fresh validation seed list (needed for any further accept decision, e.g. `lab7_netf_override`, E-034).

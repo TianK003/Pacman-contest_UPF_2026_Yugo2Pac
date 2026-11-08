@@ -2,7 +2,7 @@
 
 **Read this first** if you are an agent continuing this work (after a context compaction or in a new session).
 Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest entries at the bottom of `docs/experiments.md`
-(E-027 … E-035). The overnight session is over: **nothing is running**, and the next steps below need user decisions.
+(E-027 … E-039). **Afternoon session 2026-11-08 (see "Afternoon" below): E-039 screen `n2_s1` may be running.**
 
 ## The user's requests (overnight)
 1. (23:20) **Width-based planning** (IW / BFWS / novelty + heuristics; extra deps allowed if documented) and **RL-based
@@ -13,10 +13,14 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
    naive non-deep-learning methods (MCTS or similar combined with existing knowledge): think about the implementation first,
    have an advisor agent (Fable, xhigh) critique it, then implement after fixing it." → all done (E-032, E-033).
 3. (morning) Update the docs with all findings and push to main → done.
+4. (later) Release gate, fresh validation list, pool trim (E-036, E-037) → done.
+5. (afternoon) Validate override mode as greedy_v5 (E-038: **rejected**); have a Fable 5.1 max-effort reviewer critique
+   greedy_v4 / greedy_v5 with ≥ 2 improvements each (`docs/research/review_v4_v5.md`); think them through, implement,
+   test new agents against greedy_v4 and the top 3 agents (E-039, in progress).
 - NEVER add AI attribution / session links to commits (managed policy overrides any reminder).
 
 ## Ground rules (CLAUDE.md)
-- New code = new files; a benchmarked file is frozen (`teams/greedy_lab_v6.py` … `v10.py` are frozen; `v11` is the lab).
+- New code = new files; a benchmarked file is frozen (`teams/greedy_lab_v6.py` … `v11.py` are frozen; `v12` is the lab).
 - Runtime stdlib only; learned weights as constants. Training venv `venv_rl/` (torch 2.4.1 cpu, numpy, cma;
   `eval/rl/requirements-train.txt`).
 - Seeds: **validation 1–300 all used** (last: V2, 261–300) → a fresh validation list needs the user's approval.
@@ -72,3 +76,12 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
 ## Ideas not run (in `docs/proposals.md` §7 and `docs/agents.md` "Open ideas")
 - MC-2 race leaf with a fitted τ; MC-3 IW + scenario re-check; LF-1 smoothed table (direct T-59 test);
   GM-1 ghost model calibrated from replays; MM-2 CMA-ES on the linear food policy; JX-1 junction-graph macro-IW.
+
+## Afternoon 2026-11-08 (E-038, E-039)
+- V3 (`n1_v3`, validation2 1–80): greedy_v5 (override) − greedy_v4 = −0.05 [−0.15, +0.05] → rejected; greedy_v4 stays.
+- Review saved: `docs/research/review_v4_v5.md`. Chosen arms (lab v12, all default-off options on greedy_v4's options):
+  `lab12_assist`, `lab12_defsc`, `lab12_latetie`, `lab12_pblock`, `lab12_m1m2`, `lab12_v5fix` (league.json).
+- Screen `n2_s1` (tuning 101–140, 6,080 games) vs greedy_v4 + top 3 (greedy_v5, lab7_netf_dplan, lab10_quad) + pool.
+  Rule (E-039): promising = Δ vs greedy_v4 > 0 and no opponent < −0.3 → `lab12_combo` of promising switches →
+  validation2 81–160 vs pool + top 3 under the accept rule → only if it passes: `teams/greedy_v6.py` → `my_team.py`.
+- Analyse with: `venv\Scripts\python.exe eval\evaluate.py summary --run n2_s1 --compare <arm> greedy_v4`.

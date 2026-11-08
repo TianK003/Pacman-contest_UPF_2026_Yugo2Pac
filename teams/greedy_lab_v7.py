@@ -64,6 +64,7 @@
 # USE_HIDDEN_OPPONENT_FLAGS and the `flags` switch (Q3); with both off nothing hidden is read.
 
 import heapq
+import math
 import random
 import time
 from collections import deque
@@ -380,7 +381,24 @@ class WidthPlanner:
         capv = cfg.plan_cap
         node_cap = cfg.plan_nodes
         icept = m.icept
-        net = LEAF_NET if cfg.plan_leaf == 'net' else None
+        net = LEAF_NET if cfg.plan_leaf in ('net', 'netf') else None
+        fast = cfg.plan_leaf == 'netf'
+        if fast:
+            # static part of the first layer per cell (dist_home, side, dead-end depth), once per game
+            stat = getattr(m, 'net_static', None)
+            if stat is None:
+                w1, b1, _, _ = net
+                stat = []
+                for k in range(m.n):
+                    xd = min(m.dhome[k], 40) / 40.0
+                    xp = 0.0 if m.home[k] else 1.0
+                    xs = m.depthv[k]
+                    stat.append([bb + wr[1] * xd + wr[9] * xp + wr[11] * xs for wr, bb in zip(w1, b1)])
+                m.net_static = stat
+            dyn_w = [(wr[0], wr[2], wr[3], wr[4], wr[5], wr[6], wr[7], wr[8], wr[10]) for wr in net[0]]
+            w2n = net[2]
+            b2n = net[3]
+            tanh = math.tanh
         depthv = m.depthv
         cap_cells = [idx[c] for c in capsules]
 
@@ -459,6 +477,51 @@ class WidthPlanner:
                     h = -15.0
                 e2 = 2.718281828459045 ** (2.0 * h)
                 y += wo * (e2 - 1.0) / (e2 + 1.0)
+            if carry > 0 and dhome[c] > steps_left - depth:
+                return -a * carry
+            return y - a * carry
+
+        def leaf_netf(c, carry, fm, cm, gl, sl, depth):
+            row = dist[c]
+            g1d, g1s, g2d = 99, 0, 99
+            for k, g in enumerate(gl):
+                if g >= 0:
+                    dg = row[g]
+                    if (dg, sl[k]) < (g1d, g1s):
+                        g2d = g1d
+                        g1d, g1s = dg, sl[k]
+                    elif dg < g2d:
+                        g2d = dg
+            nf = 0
+            near = 999
+            in5 = 0
+            for fc in fcells:
+                if fm & fbit[fc]:
+                    nf += 1
+                    d = row[fc]
+                    if d < near:
+                        near = d
+                    if d <= 5:
+                        in5 += 1
+            cd = 999
+            for k, cc in enumerate(cap_cells):
+                if cm & (1 << k) and row[cc] < cd:
+                    cd = row[cc]
+            x0 = min(carry, 20) / 20.0
+            x2 = min(g1d, 15) / 15.0
+            x3 = min(g2d, 15) / 15.0
+            x4 = min(g1s, 40) / 40.0
+            x5 = nf / 30.0
+            x6 = (min(near, 30) / 30.0) if nf else 1.0
+            x7 = in5 / 10.0
+            x8 = (steps_left - depth) / 300.0
+            x10 = (min(cd, 30) / 30.0) if cd < 999 else 1.0
+            y = b2n
+            st = stat[c]
+            for k in range(len(w2n)):
+                a0, a2, a3, a4, a5, a6, a7, a8, a10 = dyn_w[k]
+                y += w2n[k] * tanh(st[k] + a0 * x0 + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5 + a6 * x6
+                                   + a7 * x7 + a8 * x8 + a10 * x10)
             if carry > 0 and dhome[c] > steps_left - depth:
                 return -a * carry
             return y - a * carry
@@ -589,6 +652,8 @@ class WidthPlanner:
                     key = j
                 if dead:
                     tv = v
+                elif fast:
+                    tv = v + disc * gamma * leaf_netf(j, ncarry, nfm, ncm, gl, sl, depth + 1)
                 elif net is not None:
                     tv = v + disc * gamma * leaf_net(j, ncarry, nfm, ncm, gl, sl, depth + 1)
                 else:

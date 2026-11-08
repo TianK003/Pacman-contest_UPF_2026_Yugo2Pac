@@ -39,6 +39,16 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md`, and the newest ent
 | value net | 12-16-1 tanh, 128k states, target banked−lost over 30 moves | held-out R² 0.46 (linear 0.21) |
 | planner timing (uncapped) | 287 searches, 3 games | expanded p99 815 / max 875 nodes; max 53 ms |
 
+## KEY FINDING (02:00): width planner + learned leaf value
+- X1 (E-030, fresh tuning 401–440): **lab7_danger_net +0.57 [+0.37, +0.76] vs lab5_smart**, every pool opponent
+  +0.46…+0.79 with CI > 0; deaths 0.40/game (lab5_smart 0.92, planner w/o net 1.31), returned 15.8 (9.0).
+  Other arms: danger_g +0.24 [+0.02, +0.44], override +0.12, danger +0.06, d8 +0.06 (identical to danger: under max
+  backup D never matters), near +0.03, nokill +0.04, nocap 0.00, shield 0.00 (never fires), hunt −0.23.
+  X1b: lab7_dplan (defender planner only) +0.19 [+0.03, +0.35]; lab7_power −0.23.
+- `plan_leaf=netf` = same net, faster code (static first-layer part per cell + math.tanh): **24/24 identical** to
+  `net`, planner time halved (p99 116 ms vs 178 ms). Ship netf.
+- C1 = lab7_danger_net → V1 validation running (validation 221–260).
+
 ## RUNNING NOW (check with `wc -l eval/results/<run>.jsonl`)
 - `n1_x1` (E-030): 11 arms × 720 games (tuning 401–440, pool + lab5_smart), 9 jobs, started 00:20, ETA ~01:50.
   Launched with `&` (not harness-tracked). Pre-registered rule in E-030.

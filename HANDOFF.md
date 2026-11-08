@@ -85,3 +85,4 @@ Then read `CLAUDE.md`, `docs/agents.md`, `docs/proposals.md` §7, and the newest
   Rule (E-039): promising = Δ vs greedy_v4 > 0 and no opponent < −0.3 → `lab12_combo` of promising switches →
   validation2 81–160 vs pool + top 3 under the accept rule → only if it passes: `teams/greedy_v6.py` → `my_team.py`.
 - Analyse with: `venv\Scripts\python.exe eval\evaluate.py summary --run n2_s1 --compare <arm> greedy_v4`.
+- **Option C (user, queued)**: after `n2_s1`, split `lab12_v5fix` → `lab12_v5guard`, `lab12_v5asym` if its Δ ≥ −0.07, and `lab12_defsc` → `lab13_defsc_posture`, `lab13_defsc_cap` if its Δ ≥ −0.06 (gates 0/0/0); run `n2_s2` vs the same 11 opponents on tuning 101–140, paired with n2_s1's greedy_v4 games; then stage 2 (E-039 amendment).

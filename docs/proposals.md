@@ -162,7 +162,7 @@ Gaps the search could not fill (unknown, not guessed):
 | ID | idea | status |
 |---|---|---|
 | WP-1 | Width-based lookahead (IW(1) / p-IW / novelty best-first) for the attacker near ghosts, over our own forward model (methods.md M-15) | built (`plan*` in lab6/lab7); screened E-028, confirmed/ablated E-030 |
-| WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7). Hand leaf: shield never fires, override +0.12 (E-030). **Net leaf override: +0.06 [+0.00, +0.12] vs greedy_v4 over 1,440 tuning games (E-034)** → the next validation candidate (needs a fresh validation list) |
+| WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7). Hand leaf: shield never fires, override +0.12 (E-030). Net leaf override: +0.06 [+0.00, +0.12] vs greedy_v4 over 1,440 tuning games (E-034), but **−0.05 [−0.15, +0.05] on validation2 (E-038, as greedy_v5): rejected** |
 | WP-3 | Learned leaf value for the planner (greedy policy's Monte-Carlo value, 12-16-1 MLP) — "greedy + RL" | built; **adopted** in greedy_v4 (E-030/E-031/E-032); second RL iteration did not help (X3) |
 | WP-4 | Planner-free scared-ghost hunting (`hunt_scared`), to tell lookahead from kill-farming | built (lab7); E-030 |
 | MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built; **rejected** (E-029: no mode > 0, no selector beats "no mode") |

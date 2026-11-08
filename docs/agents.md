@@ -206,7 +206,7 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `lab11_net60` (`teams/greedy_lab_v11.py`) | leaf net trained on a 60-move target (R² 0.402) | −0.03 [−0.14, +0.08] | rejected (RL-T closed) |
 | `lab7_netf_full` | planner decides on every attacker move | −0.38 [−0.56, −0.20]; returned 12.8 / game | rejected: plan only near ghosts |
 | `lab7_netf_h40` | planner horizon 40 (greedy_v4: 30) | −0.03 [−0.09, +0.04] | flat: keep 30 |
-| `lab7_netf_override` | greedy decides; the net-leaf planner overrides near ghosts by margin 0.3 | +0.03 [−0.05, +0.12] on 321–360; **+0.09 [+0.02, +0.17] on 361–400; pooled +0.06 [+0.00, +0.12]** over 1,440 games, h2h 1.57 | **next validation candidate** (needs a fresh validation list: user decision) |
+| `lab7_netf_override` | greedy decides; the net-leaf planner overrides near ghosts by margin 0.3 | +0.03 [−0.05, +0.12] on 321–360; **+0.09 [+0.02, +0.17] on 361–400; pooled +0.06 [+0.00, +0.12]** over 1,440 games, h2h 1.57 | validated as `greedy_v5` in E-038: **rejected** (−0.05 on validation2 1–80) |
 | `lab7_netf_min03` | plan_min 0.3 (greedy_v4: 0.05) | +0.01 [−0.05, +0.07] (matches) | flat: keep 0.05 |
 
 ### `teams/greedy_v4.py` (E-031, E-032)
@@ -214,6 +214,12 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | name | what it is | tested in | result | verdict |
 |---|---|---|---|---|
 | `greedy_v4` | `lab7_danger_netf` as defaults: lab5_smart + IW(1) attacker planner near ghosts with the learned leaf value (identity 18/18) | E-031 (V1), E-032, E-033, E-034, E-035, E-037 | locked test seeds (E-037): **+0.83 [+0.73, +0.94]** over the pool, **+1.02 [+0.85, +1.20]** over the held-out teams vs greedy_v3, 0 / 0 / 0, max move 0.310 s; validation 221–260: **+0.95 [+0.78, +1.13]** vs greedy_v3, +0.58 vs lab5_smart; Linux timing max 0.283 s under load; nothing tested since beats it | **incumbent** (`my_team.py` since 2026-11-08, confirmed by the user), **pool**; release gate passed (E-037) |
+
+### `teams/greedy_v5.py` (E-038)
+
+| name | what it is | tested in | result | verdict |
+|---|---|---|---|---|
+| `greedy_v5` | greedy_v4 with `plan='override'` as default (= `lab7_netf_override`, identity 8/8) | E-034 (as lab7_netf_override), E-038 (V3) | tuning 321–400: +0.06 [+0.00, +0.12]; **validation2 1–80: −0.05 [−0.15, +0.05]** vs greedy_v4, h2h 1.51 | **rejected** (V3); kept as a league opponent ≈ greedy_v4 strength |
 
 ## Opponents we did not write
 

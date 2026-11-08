@@ -1625,7 +1625,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Reading**: the gain over greedy_v3 holds on maps nobody looked at (+0.83 on the pool, +0.95 on validation 221–260) and is, if anything, larger against the two blind-written teams (+1.02) than against our own pool. The held-out teams were never used to build or tune greedy_v4 (T-53), and the planner's learned leaf was trained only against our own pool, so this is the best evidence we have that it generalises. Test seeds: 1 use left before new ones must be drawn.
 
 ## E-038 — V3: validation of override mode (`greedy_v5`) against greedy_v4 (2026-11-08)
-- **Status**: running (pre-registered before any game was played).
+- **Status**: done. **Rejected**: pool Δ −0.05 [−0.15, +0.05]; greedy_v4 stays. Pre-registered (commit 80c0506) before any game was played.
 - **Why**: user request (2026-11-08): validate the one candidate left from the overnight session, `lab7_netf_override` (E-034: +0.06 [+0.00, +0.12] vs greedy_v4 over 1,440 tuning games on seeds 321–400, h2h 1.57, worst opponent camper −0.06).
 - **File** `teams/greedy_v5.py` = `teams/greedy_v4.py` with one default changed: `plan='override'` (greedy decides; near a non-scared ghost the planner replaces greedy's move only when its best root value beats greedy's move by 0.3). Lint OK. **Identity**: greedy_v5 = `greedy_lab_v7.py` with lab7_netf_override's options, 8/8 games identical (seeds 27904464 / 85254603 × greedy_v3 / sparring_v2 × both colours, planner clock off).
 - **Run** `n1_v3`: **validation2 seeds 1–80** (`--seeds validation2 --n-seeds 80`, the first use of the fresh list), candidates greedy_v5 and greedy_v4 against the 8-member pool (greedy_v4 = head-to-head, greedy_v3, greedy_v2, feature, camper, choke, exploit_v2, lab5_smart): 15 pairs × 160 = 2,400 games, `--jobs 8`. 80 seeds because a true +0.06 has only ≈ 30 % power at 40 seeds (≈ 50 % at 80; evaluation.md §2 prefers ≥ 80 seeds per decision, E-019).
@@ -1636,3 +1636,15 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   4. Head-to-head: PPG(greedy_v5 vs greedy_v4) ≥ 1.5 (160 games).
   5. Confirmation: selection used tuning seeds 321–400 only; validation2 is unused ✓.
 - **Action**: pass → `teams/greedy_v5.py` is copied to `my_team.py` (user: "if it passes, it becomes greedy_v5"), with its own behaviour page; WSL timing check of greedy_v5; the locked test-seed run (last of 3 uses) is kept for the final release candidate before 2026-11-23. Fail → greedy_v4 stays; `teams/greedy_v5.py` stays in the league as a rejected candidate (frozen once benchmarked), and the next promoted version gets the next free name.
+- **V3 result** [verified, `n1_v3`, 2,400 games, validation2 seeds 1–80, 1,789 s with 8 workers]:
+
+  | criterion | result | pass |
+  |---|---|---|
+  | 1. gates | lint OK; 0 crashes, 0 time warnings, 0 sentinel violations; max move 0.192 s (greedy_v4 0.320 s) | ✓ |
+  | 2. pool Δ (greedy_v5 − greedy_v4, 7 members, 1,120 paired games) | **−0.05 [−0.15, +0.05]** | ✗ |
+  | 3. no regression | worst exploit_v2 −0.13 [−0.28, +0.01], choke −0.12 [−0.28, +0.03]; past versions greedy_v3 −0.03, greedy_v2 +0.04 | ✓ |
+  | 4. head-to-head vs greedy_v4 (160 games) | 1.51 (greedy_v4 1.23) | ✓ |
+
+  Per opponent (greedy_v5 / greedy_v4 PPG): camper 2.61 / 2.67, choke 2.50 / 2.62, exploit_v2 2.49 / 2.62, feature 2.74 / 2.76, greedy_v2 2.56 / 2.51, greedy_v3 2.36 / 2.39, lab5_smart 2.29 / 2.31. Team totals per game (v5 / v4): returned 17.0 / 16.6, conceded 9.0 / 8.8, deaths 0.36 / 0.39, food lost 1.1 / 1.4, standoff moves 234 / 219, 28-food finishes 40 / 48.
+- **Decision** (pre-registered rule): **rejected**. greedy_v4 stays in `my_team.py`; `teams/greedy_v5.py` stays in the league as a rejected candidate (frozen); the next promoted version gets the next free name (greedy_v6).
+- **Reading**: the tuning-seed edge (+0.06 [+0.00, +0.12] over 1,440 games, E-034) did not replicate on fresh seeds; it is the second time tonight that a small tuning gain vanished on validation (the defender planner: +0.10 on tuning, −0.03 on V2). Override mode dies a little less and drops less food but concedes a little more and finishes fewer games by returning 28; overall it is equal to danger mode within ±0.15. [untested] Selecting the best of several E-034 arms on the same tuning seeds inflated its estimate (winner's curse, evaluation.md G3).

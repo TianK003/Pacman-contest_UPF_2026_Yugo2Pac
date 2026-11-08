@@ -1338,7 +1338,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **C1** (pre-registered rule) = **`lab7_danger_net`** (largest Δ, all opponents > −0.3) → V1 validation and the X2 / X3 follow-ups (E-031).
 
 ## E-031 — Learned-leaf planner: validation (V1) and combinations (X2) (2026-11-08)
-- **Status**: running. Written at 02:00, after X1's interim table (lab7_danger_net +0.57 [+0.38, +0.75] on 605 of 720 games; lab7_dplan +0.19 [+0.03, +0.35] in X1b) and before the runs below.
+- **Status**: done (V1 passed 02:53; X2 and X3 complete; conclusions below). Written at 02:00, after X1's interim table (lab7_danger_net +0.57 [+0.38, +0.75] on 605 of 720 games; lab7_dplan +0.19 [+0.03, +0.35] in X1b) and before the runs below.
 - **C1** (E-030 rule: largest Δ, Δ > 0) = `lab7_danger_net`, pending the per-opponent check (no pool opponent below −0.3) on the complete arm.
 - **V1** (`n1_v1`, accept-rule run): **validation seeds 221–260** (`--seeds validation --seed-offset 220 --n-seeds 40`, unused), candidates `lab7_danger_net`, `lab5_smart`, `greedy_v3`, each against the 8 pool members and lab5_smart. Decision: the accept rule of evaluation.md §2 against the incumbent greedy_v3, and the same rule applied against lab5_smart (the better, unpromoted agent).
 - **X2** (`n1_x2`, screen): tuning seeds 441–480 (unused), arms `lab5_smart`, `lab7_danger_net` (second confirmation), `lab7_net_dplan`, `lab7_g_net`, `lab7_g_net_dplan`, `lab7_full_net`, against the pool + lab5_smart.
@@ -1475,7 +1475,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Reading** [verified on these games]:
   - **No non-DL arm beats greedy_v4**, and by the pre-stated rule none "matches" it (all point estimates < 0). No confirmation was triggered.
   - **Monte-Carlo search loses clearly (−0.43 … −0.72), in every form**: flat, with UCT, with any cutoff (hand, table, net), and even as a re-check on top of greedy_v4. The paired scenarios remove sampling noise, so this is model error: under aware chasing / intercepting scenario ghosts crossing looks dangerous and the override keeps the attacker home. These arms die rarely (0.40–0.52) but return 9–11 food per game instead of 16 (new trap T-60).
-  - **The leaf matters through its smoothness, not its R²**: table (R² 0.453) −0.33 with 3.3 dropped food per game; linear (R² 0.209) −0.11; quadratic (R² 0.461) −0.05 ≈ net. A max-backup search exploits the jumps and noisy cells of a piecewise-constant leaf (new trap T-59). The learned net can be matched by a degree-2 polynomial fitted by ridge regression on the same data: no neural network is needed for this gain [parts D + E; part E running].
+  - **The leaf matters through its smoothness, not its R²**: table (R² 0.453) −0.33 with 3.3 dropped food per game; linear (R² 0.209) −0.11; quadratic (R² 0.461) −0.05 ≈ net. A max-backup search exploits the jumps and noisy cells of a piecewise-constant leaf (new trap T-59). The learned net can be matched by a degree-2 polynomial fitted by ridge regression on the same data: no neural network is needed for this gain [parts D + E].
   - Ingredient order vs lab5_smart (E-030 scale: greedy_v4 ≈ lab5_smart + 0.5): hand leaf ≈ +0.06 < table ≈ +0.2 < lin ≈ +0.4 < quad ≈ net ≈ +0.5; MC arms ≈ −0.2 … 0. The outcome-trained leaf is the ingredient; a smooth model class is required to use it.
 - **Part E (pre-registered 05:40, before part D's head-to-head games were complete)**: an **equivalence measurement, not a promotion decision**. By the rule above, lab10_quad does not "match" (pool Δ −0.05 [−0.15, +0.05] over 720 games: the point estimate is below 0), so no confirmation is triggered. Because it is the only non-DL arm close to greedy_v4, `lab10_quad` and `greedy_v4` play the reserved tuning seeds 561–600 against the same opponents (run `n1_x4e`). Reported: the pooled Δ over parts D + E (1,440 paired games) and its CI. Reading: if the pooled CI lies within ±0.10, the quadratic leaf is practically equivalent to the net; if it excludes 0 from below, the net is better.
 - **Part E result** [verified, `n1_x4e`, 1,520 games, tuning seeds 561–600; 0 crashes / warnings / violations, max move 0.181 s]: lab10_quad − greedy_v4 = **+0.00 [−0.08, +0.08]** (720 paired games; every opponent within ±0.16, none significant); head-to-head 1.62 (part D: 1.40). **Pooled D + E: −0.02 [−0.09, +0.04] over 1,440 paired games**; head-to-head 1.51 over 160 games.
@@ -1486,7 +1486,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   4. No change to the submission: the quadratic leaf is equal, not better. [untested] It would be the fallback if the course ever objects to a trained neural net in the submission.
 
 ## E-034 — Leaf target horizon (RL-T) and planner trigger distance (2026-11-08)
-- **Status**: pre-registered 05:50.
+- **Status**: done (08:00). Pre-registered 05:50; parts B–D added and pre-registered one at a time. greedy_v4's settings are a flat optimum; override mode is the one candidate for the next validation round.
 - **Why**:
   - **RL-T** (proposals): the leaf nets and the table predict food banked − dropped within **30** moves. Under `open_goal` a safe carrier keeps eating and banks later, so carried food is undervalued (the table gives carrying 5, ghost far, 6 from home only +1.5).
   - **Trigger** (`plan_trigger` = 7) was never varied.
@@ -1495,6 +1495,38 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Screen** (`n1_x5`): `lab11_net60`, `lab7_netf_t5`, `lab7_netf_t9`, each paired with greedy_v4. Unused-tonight tuning seeds 321–360, both colours, vs the 8 pool members + lab5_smart + greedy_v4.
 - **Pre-stated reading**: as E-033 (match: Δ ≥ 0 with CI lower bound > −0.15; beat: CI > 0). A beating arm would need a fresh validation list (validation exhausted; user decision) before any promotion. No promotion tonight.
 - **Build (06:05)**: `d3_h60` reproduced d1's games exactly (450 games, 128,242 rows, PPG 2.11: deterministic agents), only the labels differ. `net60` held-out R² **0.402** (linear 0.301; the 30-move net had 0.464, the longer horizon is harder to predict). `teams/greedy_lab_v11.py` = v10 + `plan_leaf=net60f`; identity with greedy_v4's options = greedy_v4 (2/2, clock off); net60 planner p99 108 ms, max 114 ms under load. Runs started: `n1_x5a` (greedy_v4, t5, t9; 7 jobs) and `n1_x5b` (lab11_net60; 3 jobs).
+- **Results** [verified, `n1_x5a` + `n1_x5b`, tuning seeds 321–360, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]:
+
+  | arm | Δ vs greedy_v4 [95% CI] | PPG | max move s |
+  |---|---|---|---|
+  | `lab7_netf_t5` (trigger 5) | −0.04 [−0.11, +0.03] | 2.41 | 0.23 |
+  | `lab7_netf_t9` (trigger 9) | −0.00 [−0.06, +0.06] | 2.44 | 0.31 |
+  | `lab11_net60` (60-move leaf target, R² 0.402) | −0.03 [−0.14, +0.08] | 2.43 | 0.24 |
+
+  Reading: greedy_v4 sits on a flat optimum in these directions. The 60-move target changes the style a little (33 of 800 games ended by returning 28 food) but not the points: as in X3, changing what the leaf predicts does not improve play. RL-T closed.
+- **Part B** (`n1_x5c`, pre-registered 06:52, same seeds and opponents, paired with n1_x5a's greedy_v4 games): `lab7_netf_full` (the planner decides on every attacker move, not only near ghosts; the never-played X2 arm `full_net` with the fast leaf) and `lab7_netf_h40` (planner horizon 40 instead of 30). Same reading; no promotion tonight.
+- **Part B results** [verified, `n1_x5c`, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]: `lab7_netf_full` (planner on every attacker move) **−0.38 [−0.56, −0.20]**, returned 12.8 / game (greedy_v4 ≈ 16); `lab7_netf_h40` (horizon 40) −0.03 [−0.09, +0.04]. Reading: the planner should take over only near ghosts. [untested] Plausible reason: the leaf prices states under the greedy policy, which is what follows when the planner hands back control in danger mode; in full mode that no longer holds, and the planner's food sequencing is worse than greedy's nearest-safe-food rule.
+- **Part C** (`n1_x5d`, pre-registered 07:22, same seeds / opponents / pairing): `lab7_netf_override` (greedy decides; the net-leaf planner overrides only when its best root value beats greedy's move by 0.3; X1's override used the hand leaf) and `lab7_netf_min03` (plan_min 0.3 instead of 0.05). Same reading; no promotion tonight.
+- **Part C results** [verified, `n1_x5d`, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]: `lab7_netf_override` **+0.03 [−0.05, +0.12]** (deaths 0.40, returned 16.2, max move 0.20 s); `lab7_netf_min03` +0.01 [−0.05, +0.07] (deaths 0.57). Both **match** greedy_v4 by the pre-stated rule; neither beats it.
+- **Part D** (`n1_x5e`, pre-registered 07:42, informational): `lab7_netf_override` and `greedy_v4` on unused tuning seeds 361–400 against the same opponents, to see whether the only positive point estimate tonight replicates. Pooled C + D Δ reported. Even a positive pooled CI would only make it a candidate for a fresh validation list (user decision).
+- **Part D result** [verified, `n1_x5e`, 1,520 games, tuning seeds 361–400; 0 crashes / warnings / violations, max move 0.186 s]: lab7_netf_override − greedy_v4 = **+0.09 [+0.02, +0.17]** (720 paired games), head-to-head 1.68 (part C: 1.45). **Pooled C + D: +0.06 [+0.00, +0.12] over 1,440 paired games**, head-to-head 1.57 over 160.
+  Reading: a small, consistent edge for **override mode** (greedy decides; the planner replaces greedy's move near ghosts only when its best root value is > 0.3 better than greedy's own move in the same search tree). The CI touches 0 and it is tuning-seed evidence. It is the only candidate from tonight worth a validation run, which needs a fresh validation list (user decision). Accept-rule shape so far: pool Δ > 0 (borderline), head-to-head ≥ 1.5 (1.57), no opponent regression beyond 0.5 (pooled per-opponent table below).
+  Pooled C + D per opponent [verified, `summary --run n1_x5a n1_x5d n1_x5e --compare lab7_netf_override greedy_v4`, 160 paired games each]:
+
+  | opponent | override PPG | greedy_v4 PPG | paired diff [95% CI] |
+  |---|---|---|---|
+  | camper | 2.57 | 2.62 | −0.06 [−0.17, +0.07] |
+  | choke | 2.59 | 2.53 | +0.06 [−0.08, +0.20] |
+  | exploit_v2 | 2.43 | 2.46 | −0.03 [−0.17, +0.12] |
+  | feature | 2.77 | 2.79 | −0.01 [−0.11, +0.08] |
+  | greedy | 2.72 | 2.72 | +0.00 [−0.10, +0.10] |
+  | greedy_v2 | 2.70 | 2.49 | +0.21 [+0.08, +0.34] |
+  | greedy_v3 | 2.54 | 2.40 | +0.14 [−0.03, +0.31] |
+  | lab5_smart | 2.30 | 2.11 | +0.19 [−0.02, +0.42] |
+  | rusher | 2.64 | 2.60 | +0.04 [−0.10, +0.19] |
+
+  Team totals per game (override / greedy_v4, same runs): returned 16.2 / 15.9, conceded 8.0 / 9.1, deaths 0.39 / 0.43, 28-food finishes 35 / 37 of 1,600 / 1,840 games. The edge comes from the three greedy-family opponents (greedy_v2, greedy_v3, lab5_smart); against the other six it is ±0.06. [untested] Override keeps greedy's moves unless the planner sees a clear gain, so it differs from greedy_v4 mostly in close calls near ghosts.
+- **Conclusion (E-034)** [verified on tuning seeds 321–400]: greedy_v4's planner settings sit on a flat optimum. Trigger 5/9, horizon 40, plan_min 0.3 and a 60-move leaf target are all within ±0.05 of it; planning on every move clearly hurts (−0.38); **override-by-margin is slightly better (+0.06 [+0.00, +0.12] over 80 seeds)**, the one candidate for the next validation round.
 
 ## E-035 — Diagnostic: greedy_v4 vs greedy_v3 against opponents outside the reference pool (2026-11-08)
 - **Status**: done (06:40). **Diagnostic only, never a decision input** (friend teams: user rule; specialists are not in the pool).
@@ -1518,20 +1550,3 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | turtle | 3.00 | 2.90 | +0.10 [+0.00, +0.30] |
 
 - **Reading**: the gain over greedy_v3 is larger outside the pool (+0.77) than inside it (+0.95 on validation 221–260, E-031, same scale), and no opponent goes negative. The planner-with-learned-leaf gain is not specific to our pool. The strongest outside teams remain friend_aljaz_1 and _4 (greedy_v4 1.65 / 1.85 PPG). The release gate (locked test seeds + held-out teams) is still the user's decision.
-- **Results** [verified, `n1_x5a` + `n1_x5b`, tuning seeds 321–360, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]:
-
-  | arm | Δ vs greedy_v4 [95% CI] | PPG | max move s |
-  |---|---|---|---|
-  | `lab7_netf_t5` (trigger 5) | −0.04 [−0.11, +0.03] | 2.41 | 0.23 |
-  | `lab7_netf_t9` (trigger 9) | −0.00 [−0.06, +0.06] | 2.44 | 0.31 |
-  | `lab11_net60` (60-move leaf target, R² 0.402) | −0.03 [−0.14, +0.08] | 2.43 | 0.24 |
-
-  Reading: greedy_v4 sits on a flat optimum in these directions. The 60-move target changes the style a little (33 of 800 games ended by returning 28 food) but not the points: as in X3, changing what the leaf predicts does not improve play. RL-T closed.
-- **Part B** (`n1_x5c`, pre-registered 06:52, same seeds and opponents, paired with n1_x5a's greedy_v4 games): `lab7_netf_full` (the planner decides on every attacker move, not only near ghosts; the never-played X2 arm `full_net` with the fast leaf) and `lab7_netf_h40` (planner horizon 40 instead of 30). Same reading; no promotion tonight.
-- **Part B results** [verified, `n1_x5c`, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]: `lab7_netf_full` (planner on every attacker move) **−0.38 [−0.56, −0.20]**, returned 12.8 / game (greedy_v4 ≈ 16); `lab7_netf_h40` (horizon 40) −0.03 [−0.09, +0.04]. Reading: the planner should take over only near ghosts. [untested] Plausible reason: the leaf prices states under the greedy policy, which is what follows when the planner hands back control in danger mode; in full mode that no longer holds, and the planner's food sequencing is worse than greedy's nearest-safe-food rule.
-- **Part C** (`n1_x5d`, pre-registered 07:22, same seeds / opponents / pairing): `lab7_netf_override` (greedy decides; the net-leaf planner overrides only when its best root value beats greedy's move by 0.3; X1's override used the hand leaf) and `lab7_netf_min03` (plan_min 0.3 instead of 0.05). Same reading; no promotion tonight.
-- **Part C results** [verified, `n1_x5d`, 720 paired games each vs greedy_v4; 0 crashes / warnings / violations]: `lab7_netf_override` **+0.03 [−0.05, +0.12]** (deaths 0.40, returned 16.2, max move 0.20 s); `lab7_netf_min03` +0.01 [−0.05, +0.07] (deaths 0.57). Both **match** greedy_v4 by the pre-stated rule; neither beats it.
-- **Part D** (`n1_x5e`, pre-registered 07:42, informational): `lab7_netf_override` and `greedy_v4` on unused tuning seeds 361–400 against the same opponents, to see whether the only positive point estimate tonight replicates. Pooled C + D Δ reported. Even a positive pooled CI would only make it a candidate for a fresh validation list (user decision).
-- **Part D result** [verified, `n1_x5e`, 1,520 games, tuning seeds 361–400; 0 crashes / warnings / violations, max move 0.186 s]: lab7_netf_override − greedy_v4 = **+0.09 [+0.02, +0.17]** (720 paired games), head-to-head 1.68 (part C: 1.45). **Pooled C + D: +0.06 [+0.00, +0.12] over 1,440 paired games**, head-to-head 1.57 over 160.
-  Reading: a small, consistent edge for **override mode** (greedy decides; the planner replaces greedy's move near ghosts only when its best root value is > 0.3 better than greedy's own move in the same search tree). The CI touches 0 and it is tuning-seed evidence. It is the only candidate from tonight worth a validation run, which needs a fresh validation list (user decision). Accept-rule shape so far: pool Δ > 0 (borderline), head-to-head ≥ 1.5 (1.57), no opponent regression measured beyond 0.5 [not yet checked per opponent on the pooled data].
-- **Conclusion (E-034)** [verified on tuning seeds 321–400]: greedy_v4's planner settings sit on a flat optimum. Trigger 5/9, horizon 40, plan_min 0.3 and a 60-move leaf target are all within ±0.05 of it; planning on every move clearly hurts (−0.38); **override-by-margin is slightly better (+0.06 [+0.00, +0.12] over 80 seeds)**, the one candidate for the next validation round.

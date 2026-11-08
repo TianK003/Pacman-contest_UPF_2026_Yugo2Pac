@@ -10,3 +10,6 @@ eval/belief_probe/log_*.txt
 venv_rl/
 eval/rl/runs/
 eval/rl/data/
+
+# friend teams: other people's code, kept local only (CLAUDE.md rule 7)
+friends/

@@ -162,7 +162,7 @@ Gaps the search could not fill (unknown, not guessed):
 | ID | idea | status |
 |---|---|---|
 | WP-1 | Width-based lookahead (IW(1) / p-IW / novelty best-first) for the attacker near ghosts, over our own forward model (methods.md M-15) | built (`plan*` in lab6/lab7); screened E-028, confirmed/ablated E-030 |
-| WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7); E-030 |
+| WP-2 | Planner as veto only (`shield`) / override by margin | built (lab7). Hand leaf: shield never fires, override +0.12 (E-030). **Net leaf override: +0.06 [+0.00, +0.12] vs greedy_v4 over 1,440 tuning games (E-034)** → the next validation candidate (needs a fresh validation list) |
 | WP-3 | Learned leaf value for the planner (greedy policy's Monte-Carlo value, 12-16-1 MLP) — "greedy + RL" | built; **adopted** in greedy_v4 (E-030/E-031/E-032); second RL iteration did not help (X3) |
 | WP-4 | Planner-free scared-ghost hunting (`hunt_scared`), to tell lookahead from kill-farming | built (lab7); E-030 |
 | MM-1 | Map-mode portfolio + selector from map features (methods.md M-16; the user's "greedy_top_left" idea) | built; **rejected** (E-029: no mode > 0, no selector beats "no mode") |
@@ -171,4 +171,7 @@ Gaps the search could not fill (unknown, not guessed):
 | MC-1 | Non-deep-learning search (methods.md M-17): flat paired Monte Carlo over enumerated ghost scenarios, open-loop UCT, lookup-table / linear leaves | built; MC search **rejected** (−0.43 … −0.72); quadratic leaf ≈ net (E-033) |
 | RL-T | Leaf target horizon: the leaf nets / table predict food banked − dropped within 30 moves, which undervalues safely carried food that `open_goal` banks later (table: carrying 5, ghost far, 6 from home → only +1.5). Try H = 60 or "until banked or dead" as the target | tested (E-034): 60-move target −0.03 [−0.14, +0.08] vs greedy_v4; **closed** |
 | MC-2 | Race-analysis leaf with fitted escape probability (logistic fit of "dropped food within 30 moves" on the escape margin) | idea (needs a collection that logs the margin); advisor: modest |
+| MC-3 | IW planner + scenario re-check of its best few nodes (E-033 reserve arm): keep IW's line, but price its top-8 nodes against the weighted ghost scenarios | idea; risk: the scenario model made every MC arm timid (T-60) |
+| LF-1 | Smoothed (interpolated) lookup-table leaf: a direct test of T-59 (smoothness, not R², is what a max-backup search needs) | idea; the quadratic leaf already ≈ net (E-033), so only informative |
+| GM-1 | Ghost model calibrated from replays (how often enemy ghosts chase / intercept / hold, by distance) for the planner and any MC scenario | idea; would address T-60 and greedy_v4's "chase within 6 or hold" blind spot |
 

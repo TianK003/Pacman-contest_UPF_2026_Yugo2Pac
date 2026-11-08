@@ -217,8 +217,8 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | `heldout_a` | **held-out**, written blind by a separate agent: aggressive double attack with capsule use | release gate and rare checkpoints only; never read its code or replays, never tune against it (T-53) |
 | `heldout_b` | **held-out**: defence first, permanent guard + cautious raider, turtles when ahead late | same as `heldout_a`; the strongest opponent we have (greedy_v2 scored 0.89 against it, E-015) |
 | `submission` | whatever is in `my_team.py` | release gates (E-016) |
-| `friend_andy` | a friend's team (`friends/andy/my_team.py`, received 2026-10-23): `OffensiveAgent` + `DefensiveAgent` sharing a belief tracker. Its code is not studied for design and never copied (rule 7) | sparring. E-024: greedy_v3 scored 2.10 PPG against it, 329-62-109 over 500 games. Not in the reference pool |
-| `friend_aljaz_1` … `_5` | a friend's five teams, compiled Cython `.pyd` (Windows x64, Python 3.8 only), received 2026-10-23; not inspected beyond a strings scan | sparring. E-026 (partial): greedy_v3 0.64 PPG vs aljaz_1 (it returns 22.9 food per game), 1.73 vs aljaz_2; aljaz_4/5 untested. E-025: 0.88 vs aljaz_1 on tuning 151–200. **Strongest opponent we have**. Not in the reference pool |
+| `friend_andy` | a friend's team (`friends/andy/my_team.py`, received 2026-10-23): `OffensiveAgent` + `DefensiveAgent` sharing a belief tracker. Its code is not studied for design and never copied (rule 7) | sparring. E-024: greedy_v3 scored 2.10 PPG against it, 329-62-109 over 500 games. E-035 (diagnostic, tuning 501–510): greedy_v4 2.75 vs greedy_v3 1.95. Not in the reference pool |
+| `friend_aljaz_1` … `_5` | a friend's five teams, compiled Cython `.pyd` (Windows x64, Python 3.8 only), received 2026-10-23; not inspected beyond a strings scan | sparring. E-026 (partial): greedy_v3 0.64 PPG vs aljaz_1 (it returns 22.9 food per game), 1.73 vs aljaz_2; aljaz_4/5 untested. E-025: 0.88 vs aljaz_1 on tuning 151–200. E-035 (diagnostic, tuning 501–510, 20 games each): greedy_v4 1.65 / 2.35 / 2.70 / 1.85 / 2.15 vs aljaz_1..5 (greedy_v3 0.80 / 1.35 / 1.35 / 1.05 / 0.85). **Strongest opponent we have** (aljaz_1, aljaz_4). Not in the reference pool |
 
 ## Ideas already tested: don't redo them without a new reason
 
@@ -234,6 +234,14 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 | Attacker comes back on two invaders (`recall`) | E-007 (as part of `roles`), E-025 | −0.58 vs double_attack, −0.40 vs friend_aljaz_1: our returns fall by a third, theirs barely | — (against a double attack, race instead; proposals.md SM-9) |
 | Potential-field attacker (F2) | E-008, E-010 | worse than greedy | — |
 | Capsule rusher + border camper | E-006, E-007 | 0.00 | — |
+| Food-region focus modes (top / bottom / majority half, deep, shallow, cluster, far from ghosts) and a per-map mode selector | E-029 | every mode −0.07 … −0.01 vs lab5_smart; no cross-validated selector beats "no mode" (per-map labels are noise: oracle +0.28, CV ≤ +0.04) | the attacker's food choice changes a lot |
+| Both agents attack while behind (`formation` lead0 / lead5), power play on a capsule | E-029, E-030 | −0.76 / −1.05; power play −0.23: the empty home lets the enemy score | the home side can be held by something other than the defender |
+| IW planner with a hand-made leaf; `shield` veto; planner-free scared-ghost hunting | E-028, E-030 | hand leaf +0.06 (dies more: max backup over a deterministic model is optimistic); shield never fires; hunting −0.23 | — (use an outcome-trained leaf, M-15) |
+| Defender planner (`dplan`) on top of the attacker planner | E-030, E-031, E-032 (V2) | +0.10 on tuning seeds, −0.03 [−0.11, +0.05] on validation 261–300 (wins h2h 1.69 only) | tournament opponents turn out to be planner attackers like ours |
+| Second-iteration leaf nets (approximate policy iteration), 60-move leaf target | E-031 (X3), E-034 | −0.04 / −0.15; 60-move target −0.03: better prediction of the target does not give better play | the planner or the policy after it changes |
+| Monte-Carlo search: flat paired MC, open-loop UCT, MC re-check of greedy_v4's move, with hand / table / net cutoffs | E-033 | −0.43 … −0.72 vs greedy_v4: the scenario ghost model makes the attacker timid (T-60) | the ghost model is calibrated on real opponent behaviour |
+| Lookup-table leaf (5-D, R² ≈ net) | E-033 | −0.33 vs greedy_v4: the search exploits its jumps (T-59); a smooth quadratic leaf with the same R² ≈ greedy_v4 | the table is smoothed (interpolated) |
+| Planner on every attacker move (`full`); trigger 5 / 9, horizon 40, plan_min 0.3 | E-034 | full −0.38; the others within ±0.05 of greedy_v4 (flat optimum) | — |
 
 ## Open (untested) ideas
 
@@ -241,7 +249,9 @@ The planned queue in experiments.md and [proposals.md](proposals.md) have the de
 - weight tuning of F1 (P-16);
 - belief-based choice of the attack entry;
 - shared-mind team tactics (proposals.md SM-1..SM-13: power play, spotter, decoy, bait-and-trap, play selector);
-- TrailMax escape for the "cut off" attacker (heuristics.md H-S20).
+- TrailMax escape for the "cut off" attacker (heuristics.md H-S20);
+- **validation of `lab7_netf_override`** (override mode: pooled +0.06 [+0.00, +0.12] on tuning seeds 321–400, E-034), which needs a fresh validation seed list (user decision);
+- reserve ideas from the E-033 review: a race leaf with a fitted τ (proposals MC-2), IW with a scenario re-check of its top nodes, a smoothed (interpolated) table leaf as a direct test of T-59, a ghost model calibrated from replays.
 
 Tested on 2026-10-28 (E-025):
 - the hidden-opponent fields (`flags`);

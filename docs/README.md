@@ -15,6 +15,7 @@ Read the relevant files before working on the agent, and update them when you fi
 | [experiments.md](experiments.md) | Log book of every experiment, including failures | every run that informs a decision |
 | [picks/](picks/README.md) | One behaviour page per version that has been our submission (`my_team.py`): decision rules, parameters, rule profile, evidence, blind spots; how to trace a game move by move | a version is promoted to `my_team.py` |
 | [agents.md](agents.md) | Catalogue of every team we built or play against: what it is, what it was tested on, the result and the verdict; ideas already rejected and when they are worth retesting | a team is built, tested, adopted, rejected or added to the league |
+| [research/](research/) | Literature and design reports written before building: `width_planning.md` (IW / p-IW / BFWS for the attacker, E-028), `rl_and_modes.md` (algorithm selection, CMA-ES, map modes, E-029), `mcts_design.md` (non-DL Monte-Carlo design, draft 2 after an advisor review, E-033) | a new research or design report is written |
 
 ## Conventions
 

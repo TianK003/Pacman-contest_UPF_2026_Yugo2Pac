@@ -27,6 +27,7 @@ Build our team's two-agent Pacman Capture-the-Flag team for the UPF/EUTOPIA cont
 | `docs/evaluation.md` | how agents are compared: objective (3/1/0 points), accept rule, seed and opponent splits, league, reward-hacking guards |
 | `docs/picks/` | one behaviour page per version that has been in `my_team.py` (rules, parameters, rule profile, evidence, blind spots). **The current one explains what our agent does** |
 | `docs/agents.md` | catalogue of every team (league entry): what it is, what was tested, result, verdict; ideas already rejected. **Check it before building an idea** so tested agents are not redone |
+| `docs/research/` | literature and design reports (width-based planning, RL and map modes, Monte-Carlo design) |
 
 When you finish:
 - Log every experiment in `docs/experiments.md`, including failures.
@@ -101,7 +102,8 @@ venv\Scripts\python.exe eval\evaluate.py summary --run <name>
 
 - **How a run works**: `evaluate.py` plays colour-swapped game pairs on fixed `RANDOM<seed>` maps through `capture.py -q -c`. Every team is wrapped in `eval/sentinel_team.py`, which records move times and runtime rule violations (local only, never submitted). Each run writes `eval/results/<run>.jsonl` and prints a markdown summary.
 - **Seeds**: `eval/seeds/tuning.txt` is free to use; `validation.txt` is for accept/reject decisions; `test.txt` is **locked**, only for confirming a frozen release candidate, and each use is logged.
-- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v4.py`). Since 2026-10-18 new candidates play only the **reference pool** of 8 (`greedy_v3` = incumbent, `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`; `_reference_pool` in league.json), not all-vs-all: `--candidate <new> greedy_v3 --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 --compare <new> greedy_v3`.
+- **League**: entries live in `eval/league.json` (path + `create_team` options). **Never edit a file after it was benchmarked**; new versions get new files (`teams/greedy_v4.py`). Since 2026-10-18 new candidates play only the **reference pool** of 8 (`greedy_v3`, `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`; `_reference_pool` in league.json), not all-vs-all. Since 2026-11-08 the incumbent is `greedy_v4`, which is not a pool member yet (pool update = user decision), so candidates are paired with it and also play it and `lab5_smart` (evaluation.md §5): `--candidate <new> greedy_v4 --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --compare <new> greedy_v4`.
+- **Validation seeds 1–300 are all used** (2026-11-08): the next accept decision needs a fresh validation list (user decision).
 - **Held-out opponents**: `eval/heldout/` (`heldout_a`, `heldout_b`; `_heldout_pool` in league.json) were written blind (E-015).
   - Never read their code or replays, and never screen, tune or debug against them (T-53).
   - Use them only for the release gate and rare logged checkpoints.

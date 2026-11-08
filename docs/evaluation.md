@@ -90,7 +90,8 @@ Here F is the unknown field of entrants.
 | `validation.txt` | 300 | accept/reject decisions (section 2) |
 | `test.txt` | 100 | **locked**. Only for confirming a frozen release candidate, each use logged in experiments.md, at most 3 uses before new test seeds are drawn. **Used 1 of 3** (E-021, greedy_v3 vs greedy_v2) |
 
-- **Validation seeds used so far**: 1–20 (E-002), 21–60 (E-011), 61–100 (E-012), 101–180 (E-019). E-019 showed that one set of 40 maps can miss a real effect of about +0.2 (+0.05 on seeds 101–140, +0.26 on 141–180), so prefer ≥ 80 seeds per decision. 120 seeds are left.
+- **Validation seeds used so far**: 1–20 (E-002), 21–60 (E-011), 61–100 (E-012), 101–180 (E-019), 181–220 (E-025, lab5_smart), 221–260 (E-031 V1, greedy_v4 accepted), 261–300 (E-032 V2, defender planner rejected). E-019 showed that one set of 40 maps can miss a real effect of about +0.2 (+0.05 on seeds 101–140, +0.26 on 141–180), so prefer ≥ 80 seeds per decision. **All 300 validation seeds are used (2026-11-08)**: the next accept decision needs a fresh validation list from a new generator seed (user decision; the next candidate is `lab7_netf_override`, E-034).
+- **Tuning seeds used in the overnight session 2026-11-07/08** (screens, free to reuse but better avoided for a confirmation): 1–50 (leaf-net training data), 261–600 (E-028 … E-035).
 - If validation seeds have been used for many decisions (rule of thumb: > 10), draw a fresh validation list from a new generator seed and record it. Repeated decisions on the same seeds overfit them too [source: Cobbe et al. 2019 used separate train and test seed sets for procedurally generated levels; Zhang et al. 2018].
 - Fixed layouts (`defaultCapture`, ...) are sanity checks only, because the tournament uses random maps.
 

@@ -45,7 +45,10 @@ Unchanged from lab5_smart: intercepts visible invaders, goes to eaten food, shad
 
 - **V1** (E-031, validation seeds 221–260, 1,920 games): accept rule passed against greedy_v3 (pool Δ +0.95, every opponent's CI > 0, head-to-head 2.56) and against lab5_smart (+0.58, head-to-head 2.31). Gates: 0 crashes / warnings / violations; max move 0.319 s, p95 0.178 s under ≈ 12 parallel workers (slow leaf code; the shipped fast code halves planner time).
 - Team totals per game in V1: returned 17.3 (lab5_smart 11.5), conceded 8.6 (9.3), deaths 0.36 (1.00), carried food dropped 0.9 (2.6), games ended by returning 28 food: 25 of 720 (7).
-- Also positive on three independent tuning blocks: 401–440 (+0.57), 441–480 (+0.50).
+- Also positive on two independent tuning blocks vs lab5_smart: 401–440 (+0.57), 441–480 (+0.50).
+- **Settings are a flat optimum** (E-034, tuning 321–400, paired with greedy_v4): trigger 5 / 9, horizon 40, plan_min 0.3 and a 60-move leaf target are all within ±0.05; planning on every attacker move loses 0.38. Only override mode (greedy decides, the planner overrides near ghosts by margin 0.3) is slightly better: +0.06 [+0.00, +0.12] over 1,440 games, the candidate for the next validation round.
+- **The neural net is replaceable** (E-033): a quadratic ridge regression on the same 12 features (91 coefficients, `teams/greedy_lab_v10.py` `plan_leaf=quad`) plays equal, pooled −0.02 [−0.09, +0.04] over 1,440 games. A lookup table with the same R² loses 0.33 (T-59). Monte-Carlo search on top loses 0.43 (T-60).
+- **Second-iteration nets** trained on the planner's own games do not help (−0.04 / −0.15, X3 in E-031).
 
 ## Parameters
 

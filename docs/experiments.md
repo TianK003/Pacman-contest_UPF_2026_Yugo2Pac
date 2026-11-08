@@ -1768,3 +1768,27 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - `def_scared`'s tuning-seed gain against the top 3 (+0.24) does not show here (the combo's top-3 Δ is −0.08), but the combo cannot separate it from the other switches.
   - `m1m2` roughly doubles the planner's p95 move time (0.279 s vs 0.126 s); max 0.424 s is close to the 0.5 s budget.
   - Third time today that tuning-seed gains did not survive validation (defender planner E-032, override E-038, this). Two of the four "promising" arms were +1 point in 800 games: "Δ > 0" lets noise into a combination (new trap T-61).
+
+## E-040 — greedy_v4 (`my_team.py`) vs the friend's second version, `friend_andy_v2` (2026-11-08)
+- **Status**: done. Diagnostic only (friend teams are never decision inputs).
+- **Question** (user, 2026-11-08): how does our submission do against the friend's new team (`friends/andy/andy_v2.py`, received 2026-11-08), with the same evaluation as for the other friend teams (E-024)?
+- **Setup**: `eval/evaluate.py play --candidate submission --vs friend_andy_v2 --seeds tuning --n-seeds 250 --jobs 6 --run friend_andy_v2_vs_v4`: tuning seeds 1–250 (the same as E-024), both colours, 500 games, with `-c`; 564 s. `my_team.py` = greedy_v4 (byte-identical to `teams/greedy_v4.py`, commit e95a786), framework 54cd83c, Windows 11, Python 3.8.10. Before running, the friend's file was checked only for safety with a grep (imports: `random`, `heapq`, the framework; the only `eval(...)` is the template's `create_team`; no file / process / thread calls, no `random.seed`, no catch-all `except`); its strategy was not studied. League entry `friend_andy_v2`; `friends/` stays gitignored.
+- **Results** [verified]:
+
+  | agent | games | W-T-L | PPG [95% CI] | win % [exact CI] | avg margin | crash / warnings / violations | max move s |
+  |---|---|---|---|---|---|---|---|
+  | submission (greedy_v4) | 500 | 419-52-29 | **2.62 [2.54, 2.70]** | 84 [80, 87] | +9.0 | 0 / 0 / 0 | 0.193 |
+  | friend_andy_v2 | 500 | 29-52-419 | 0.28 [0.21, 0.35] | 6 [4, 8] | −9.0 | 0 / 0 / – | 0.076 |
+
+  | side we play | W | T | L |
+  |---|---|---|---|
+  | red | 213 | 22 | 15 |
+  | blue | 206 | 30 | 14 |
+
+  | per game | returned | conceded | deaths | kills | food lost | max carried | 28-finishes |
+  |---|---|---|---|---|---|---|---|
+  | submission | 15.7 | 6.7 | 0.76 | 1.67 | 1.3 | 10.5 | 21 |
+  | friend_andy_v2 | 6.7 | 15.7 | 1.67 | 0.76 | 1.4 | 4.8 | 0 |
+
+- **Comparison with earlier friend runs** (different versions on both sides, so not a like-for-like test): E-024 greedy_v3 vs friend_andy (v1), same seeds: 2.10 PPG, 329-62-109. E-035 greedy_v4 vs friend_andy (v1), tuning 501–510: 2.75 over 20 games.
+- **Conclusion**: [verified] greedy_v4 beats `friend_andy_v2` clearly on both colours (84 % wins, 6 % losses). [untested] Whether andy_v2 is stronger than andy v1 would need greedy_v4 vs friend_andy on the same 250 seeds. Tuning seeds only; no validation or test budget used.

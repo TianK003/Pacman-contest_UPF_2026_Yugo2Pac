@@ -8,6 +8,8 @@
                      "notes": "whatever is currently in my_team.py (the tournament entry; = greedy_v4 since 2026-11-08, E-032; greedy_v3 2026-10-18 to 2026-11-08, E-021; greedy_v2 before, E-013); use for release gates, not as a frozen league member"},
   "friend_andy":    {"path": "friends/andy/my_team.py", "ours": false, "frozen": true,
                      "notes": "a friend's agent (OffensiveAgent + DefensiveAgent, shared belief tracker), received 2026-10-23; sparring only, never read for design or copied"},
+  "friend_andy_v2": {"path": "friends/andy/andy_v2.py", "ours": false, "frozen": true,
+                     "notes": "the same friend's second version, received 2026-11-08; checked for safety only (imports, file/process calls, random.seed), sparring only, never read for design or copied"},
   "friend_aljaz_1": {"path": "friends/aljaz_1-5_windows_x64_python38/aljaz_1.py", "ours": false, "frozen": true,
                      "notes": "a friend's team, version 1 of 5, compiled Cython .pyd (win x64, py3.8), received 2026-10-23; sparring only, binary not inspected beyond a strings scan"},
   "friend_aljaz_2": {"path": "friends/aljaz_1-5_windows_x64_python38/aljaz_2.py", "ours": false, "frozen": true,

@@ -1650,7 +1650,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Reading**: the tuning-seed edge (+0.06 [+0.00, +0.12] over 1,440 games, E-034) did not replicate on fresh seeds; it is the second time tonight that a small tuning gain vanished on validation (the defender planner: +0.10 on tuning, −0.03 on V2). Override mode dies a little less and drops less food but concedes a little more and finishes fewer games by returning 28; overall it is equal to danger mode within ±0.15. [untested] Selecting the best of several E-034 arms on the same tuning seeds inflated its estimate (winner's curse, evaluation.md G3).
 
 ## E-039 — Improvements from the external review of greedy_v4 / greedy_v5 (2026-11-08)
-- **Status**: screen done (`n2_s1`); option C splits running (`n2_s2`). Screen pre-registered before any game was played.
+- **Status**: screen (`n2_s1`) and option C splits (`n2_s2`) done; stage 2 (`n2_val`) running. Screen pre-registered before any game was played.
 - **Why** (user, 2026-11-08): have an external reviewer (Fable 5.1, maximum effort) inspect greedy_v4 and greedy_v5, propose at least two improvements to each, then think them through, implement them and test the new agents against greedy_v4 and our top 3 agents. Review: `docs/research/review_v4_v5.md` (read-only reviewer; tuning-seed data only, no test seeds, no held-out teams, no running validation).
 - **Base**: greedy_v4 (V3 rejected greedy_v5 while the review ran, E-038), so the v4 proposals are arms on greedy_v4 and the v5 proposals one arm on override mode.
 - **What was chosen and why** (from the review's 9 proposals plus two of ours):
@@ -1729,3 +1729,24 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - Not promising: `late_tie`, `v5fix`.
   - Option C: both conditions hold (`v5fix` 0.00 ≥ −0.07, `def_scared` +0.07 ≥ −0.06, gates 0 / 0 / 0), so `n2_s2` runs all four split arms (3,520 games).
   - [untested] Consequence for stage 2: criterion 2 counts the 7 pool members only, where `def_scared` is ≈ 0; its gain is against the top 3, which are reported but not counted.
+- **Option C result** [verified, `n2_s2`, 3,520 games, 3,173 s with 8 workers; paired with greedy_v4's games in `n2_s1`]. Gates for all four arms: 0 crashes, 0 time warnings, 0 sentinel violations; max move ≤ 0.302 s.
+
+  | arm | Δ vs greedy_v4, 10 opponents (800 paired) | exact | worst opponent | 7 pool members | top 3 | h2h vs greedy_v4 | promising (rule) |
+  |---|---|---|---|---|---|---|---|
+  | def_scared: posture only | **+0.07 [−0.02, +0.16]** | +0.0663 | greedy_v2 −0.14 | −0.01 [−0.09, +0.06] | **+0.25 [+0.04, +0.46]** | 1.44 | yes |
+  | def_scared: capsule guard only | +0.01 [−0.03, +0.04] | +0.0088 | greedy_v3 −0.07 | −0.00 [−0.04, +0.03] | +0.04 [−0.05, +0.12] | 1.40 | yes |
+  | v5fix: all-die guard only | +0.02 [−0.07, +0.11] | +0.0175 | camper −0.14 | +0.02 [−0.07, +0.12] | +0.01 [−0.17, +0.21] | 1.31 | yes, but below posture (+0.0663): does not compete |
+  | v5fix: margin 0.1 only | +0.00 [−0.11, +0.11] | +0.0025 | camper −0.09 | −0.03 [−0.16, +0.09] | +0.08 [−0.10, +0.28] | 1.48 | yes, but below posture: does not compete |
+
+  Reading: the whole `def_scared` effect is the scared-defender posture (+0.0663, the same as the bundle); the capsule guard changes few games. The two override fixes are each ≈ 0 (the guard alone +0.02, food lost per game with margin 0.1: 1.02 vs 1.45). [untested] Selection over ten arms on one seed set inflates the best one (G3).
+- **Stage-2 candidate (by the rule)**: promising danger-mode parts are `assist`, both `def_scared` parts (so `def_scared='1'`, the full bundle), `plan_blocked` and `m1m2`; the v5 parts do not exceed the best promising danger-mode arm. `lab12_combo` (league.json) = greedy_v4's options + `plan_nodes=1200, plan_models=m1m2, assist=1, def_scared=1, plan_blocked=1` on `teams/greedy_lab_v12.py`. Lint OK. Smoke (`smoke_combo`, tuning 141–143 vs greedy_v3 / lab5_smart, 12 games): 8-2-2, 0 crashes / warnings / violations, max move 0.171 s.
+- **Stage 2, pre-registered before any stage-2 game** (`n2_val`):
+  - Command: `--candidate lab12_combo greedy_v4 --vs greedy_v4 greedy_v3 greedy_v2 feature camper choke exploit_v2 lab5_smart greedy_v5 lab7_netf_dplan lab10_quad --seeds validation2 --seed-offset 80 --n-seeds 80 --run n2_val --jobs 8`: validation2 seeds 81–160 (never used), both colours, 21 pairings × 160 = 3,360 games.
+  - **Accept** `lab12_combo` over greedy_v4 if all hold (evaluation.md §2):
+    1. lint OK; 0 crashes, 0 time warnings, 0 sentinel violations; max move ≤ 0.5 s.
+    2. Paired Δ PPG over the 7 non-incumbent pool members (greedy_v3, greedy_v2, feature, camper, choke, exploit_v2, lab5_smart; 1,120 paired games) > 0 with 95 % CI lower bound > 0.
+    3. No pool member with CI upper bound ≤ −0.5; min PPG against past versions (greedy_v3, greedy_v2) not down by more than 0.5.
+    4. Head-to-head vs greedy_v4 ≥ 1.5 (160 games).
+    5. Selection used tuning seeds 101–140 only, so these validation seeds are not selection seeds and this run is also the confirmation.
+  - Reported, not counted: Δ over all 10 opponents and over the top 3.
+  - If accepted: `teams/greedy_v6.py` = v12 with `lab12_combo`'s options as defaults (identity-checked) → `my_team.py`, picks page. It would then not yet have passed the release gate (locked test seeds have 1 use left; Linux timing), which is a separate step before 2026-11-23. If rejected: greedy_v4 stays.

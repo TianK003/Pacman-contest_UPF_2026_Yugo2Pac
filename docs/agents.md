@@ -233,7 +233,11 @@ v12 = v11 + default-off options `assist`, `def_scared`, `late_tie`, `plan_blocke
 | `lab12_pblock` | standoff breaker allowed to act while the danger planner is on | E-039 screen | +0.00 [−0.10, +0.10]; standoff moves +28, food lost −0.17 | promising by the letter of the rule (+1 point) → in the stage-2 combo |
 | `lab12_m1m2` | planner ghost models chase + intercept, 1,200 nodes | E-039 screen | +0.03 [−0.05, +0.11], even across opponents | promising → in the stage-2 combo |
 | `lab12_v5fix` | override mode + all-die guard + margin 0.1 when greedy's root value < 0 | E-039 screen | 0.00 [−0.09, +0.09] | not promising; split in `n2_s2` (option C) |
-| `lab12_v5guard`, `lab12_v5asym`, `lab13_defsc_posture`, `lab13_defsc_cap` | the option C split parts | E-039 `n2_s2` | running | — |
+| `lab13_defsc_posture` | def_scared: only the scared-defender posture | E-039 `n2_s2` | **+0.07 [−0.02, +0.16]**; top 3 +0.25 [+0.04, +0.46], pool −0.01 | promising: the whole def_scared effect |
+| `lab13_defsc_cap` | def_scared: only the capsule guard | E-039 `n2_s2` | +0.01 [−0.03, +0.04] | promising by the rule (+0.009) |
+| `lab12_v5guard` | override + all-die guard only | E-039 `n2_s2` | +0.02 [−0.07, +0.11] | promising but below posture: not in stage 2 |
+| `lab12_v5asym` | override + margin 0.1 when greedy's line loses, only | E-039 `n2_s2` | +0.00 [−0.11, +0.11]; food lost 1.02 vs 1.45 | promising by the rule but below posture: not in stage 2 |
+| `lab12_combo` | greedy_v4 + assist + def_scared + plan_blocked + m1m2 (1,200 nodes) | E-039 stage 2 (`n2_val`, validation2 81–160) | running | — |
 
 ## Opponents we did not write
 

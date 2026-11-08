@@ -1,6 +1,6 @@
 {
   "_reference_pool": ["greedy_v3", "greedy_v2", "greedy", "feature", "camper", "rusher", "choke", "exploit_v2"],
-  "_reference_pool_doc": "Since 2026-10-18 (user decision, E-013) new candidates play only these (no all-vs-all). Incumbent: greedy_v3 since E-021 (2026-10-18); greedy_v2 stays as the previous incumbent. choke and exploit_v2 added the same day (user decision, E-017). See docs/evaluation.md section 5.",
+  "_reference_pool_doc": "Since 2026-10-18 (user decision, E-013) new candidates play only these (no all-vs-all). Incumbent: greedy_v4 since E-032 (2026-11-08; pool members unchanged until the user decides, candidates also play greedy_v4 and lab5_smart); before that greedy_v3 since E-021 (2026-10-18); greedy_v2 stays as the previous incumbent. choke and exploit_v2 added the same day (user decision, E-017). See docs/evaluation.md section 5.",
   "_heldout_pool": ["heldout_a", "heldout_b"],
   "_heldout_pool_doc": "Written 2026-10-18 by a separate agent that was told not to read our code, docs or results (E-015). Never use them for screening, tuning or debugging; never read their code or replays while designing candidates. Use only for the release gate and rare logged checkpoints. See docs/evaluation.md section 5.",
   "_doc": "Opponent pool / league (docs/evaluation.md). 'ours': rules-checked by eval/check_rules.py. Entries whose file is marked frozen must never change; new versions get new files.",

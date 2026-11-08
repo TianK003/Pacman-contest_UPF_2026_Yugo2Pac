@@ -114,6 +114,7 @@ Here F is the unknown field of entrants.
   - `choke`: greedy_v2's attacker + `ChokeDefender` (H-M03), in `teams/sparring_v2.py`.
   - `exploit_v2`: the F1 attacker + `ShadowDefender`, written against greedy_v2's E-014 weaknesses.
 - **Update 2026-10-18 (E-021)**: `greedy_v3` replaced greedy_v2 as the incumbent (= `my_team.py`). greedy_v2 stays in the pool as the previous incumbent, so the pool has **8 members**: `greedy_v3`, `greedy_v2`, `greedy`, `feature`, `camper`, `rusher`, `choke`, `exploit_v2`. Trimming it (e.g. dropping greedy v1 or rusher, the weakest in E-017) is a user decision.
+- **Update 2026-11-08 (E-032)**: `greedy_v4` replaced greedy_v3 as the incumbent (= `my_team.py`). The pool members are unchanged until the user decides (adding greedy_v4 / lab5_smart, dropping weak members). Meanwhile new candidates are paired with greedy_v4 and also play greedy_v4 and lab5_smart as opponents: `--candidate <new> greedy_v4 --vs greedy_v3 greedy_v2 greedy feature camper rusher choke exploit_v2 lab5_smart greedy_v4 --compare <new> greedy_v4`.
 
 ```powershell
 # evaluate a new candidate against the reference pool (incumbent greedy_v3 paired on the same seeds)

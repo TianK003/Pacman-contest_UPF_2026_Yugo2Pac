@@ -4,7 +4,8 @@ One page per version that has been in `my_team.py`. Each page explains the versi
 
 | version | file | in `my_team.py` | accepted on | page |
 |---|---|---|---|---|
-| greedy_v3 | `teams/greedy_v3.py` | since 2026-10-18 (E-021) | validation +0.16 [+0.04, +0.28] vs greedy_v2 (E-019); test seeds +0.26 pool / +0.17 held-out (E-021) | [greedy_v3.md](greedy_v3.md) |
+| greedy_v4 | `teams/greedy_v4.py` | since 2026-11-08 (E-032) | validation 221–260: +0.95 [+0.78, +1.13] vs greedy_v3, +0.58 [+0.42, +0.74] vs lab5_smart (E-031); release gate open | [greedy_v4.md](greedy_v4.md) |
+| greedy_v3 | `teams/greedy_v3.py` | 2026-10-18 (E-021) → 2026-11-08 (E-032) | validation +0.16 [+0.04, +0.28] vs greedy_v2 (E-019); test seeds +0.26 pool / +0.17 held-out (E-021) | [greedy_v3.md](greedy_v3.md) |
 | greedy_v2 | `teams/greedy_v2.py` | 2026-10-18 (E-013) → 2026-10-18 (E-021) | validation +0.42 vs greedy, twice (E-011, E-012) | [greedy_v2.md](greedy_v2.md) |
 | greedy (v1) | `teams/greedy_v1.py` | 2026-10-16 (E-003) → 2026-10-18 (E-013) | provisional: best of the first league, 40/40 vs the baseline (E-002, E-003) | [greedy_v1.md](greedy_v1.md) |
 

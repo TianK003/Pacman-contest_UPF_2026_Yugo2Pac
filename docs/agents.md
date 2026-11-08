@@ -24,7 +24,8 @@ Each version that has been in `my_team.py` has a behaviour page in [picks/](pick
 |---|---|---|---|---|
 | [`greedy`](picks/greedy_v1.md) (`teams/greedy_v1.py`) | race-safe greedy attacker + patrol defender | — | E-002/E-003 (provisional) | 2026-10-16 → 2026-10-18 |
 | [`greedy_v2`](picks/greedy_v2.md) (`teams/greedy_v2.py`) | greedy + standoff breaker + intercepting defender + return at 8 | H-S12, H-S07, H-S04 | E-011, E-012 (+0.42 vs greedy) | 2026-10-18 (E-013) → 2026-10-18 (E-021) |
-| [`greedy_v3`](picks/greedy_v3.md) (`teams/greedy_v3.py`) | greedy_v2 + belief-based shadowing defender | H-S01, H-S07, M-04 | E-019 (+0.16 [+0.04, +0.28] vs greedy_v2 on validation seeds); E-021 test seeds +0.26 pool / +0.17 held-out | **since 2026-10-18 (E-021)** |
+| [`greedy_v3`](picks/greedy_v3.md) (`teams/greedy_v3.py`) | greedy_v2 + belief-based shadowing defender | H-S01, H-S07, M-04 | E-019 (+0.16 [+0.04, +0.28] vs greedy_v2 on validation seeds); E-021 test seeds +0.26 pool / +0.17 held-out | 2026-10-18 (E-021) → 2026-11-08 (E-032) |
+| [`greedy_v4`](picks/greedy_v4.md) (`teams/greedy_v4.py`) | greedy_v3 + lab5_smart switches + IW(1) attacker planner with learned leaf value | M-15, H-S01, Q3 flags | E-031 (+0.95 [+0.78, +1.13] vs greedy_v3, +0.58 vs lab5_smart on validation 221–260) | **since 2026-11-08 (E-032)**; release gate open |
 
 ## Our teams
 
@@ -161,7 +162,21 @@ All entries are lab5_smart (= `lab6_off`, identity 18/18) plus the named switche
 |---|---|---|---|
 | `lab7_off` | none | 18/18 identical to lab6_off | **identity** |
 | `lab7_danger` | = lab6_p2_danger + 2,000-node cap | 18/18 identical to lab6_p2_danger | E-030 |
-| `lab7_override`, `lab7_danger_g`, `lab7_danger_nokill`, `lab7_danger_nocap`, `lab7_danger_d8`, `lab7_danger_near`, `lab7_hunt`, `lab7_shield`, `lab7_danger_net`, `lab7_power` | see league.json notes and E-030 | E-030 | pending |
+| `lab7_danger_net` | danger planner + learned leaf value (12-16-1 MLP of the greedy policy's 30-move value, trained on 450 lab6_off games) | X1 (tuning 401–440) **+0.57 [+0.37, +0.76]** vs lab5_smart, all opponents > 0; **V1 (validation 221–260): +0.95 [+0.78, +1.13] vs greedy_v3, +0.58 [+0.42, +0.74] vs lab5_smart, h2h 2.56 / 2.31**; deaths 0.36 / game (lab5_smart 1.00), returned 17.3 (11.5); X2 +0.50 | **passes the accept rule** (E-031); promotion = user decision |
+| `lab7_danger_netf` | = lab7_danger_net with faster leaf code | 24/24 identical games; planner time halved | the version to ship |
+| `lab7_danger_g` | ghost-distance-bucket atoms (hand leaf) | X1 +0.24 [+0.02, +0.44] | superseded by the net |
+| `lab7_override` | planner overrides greedy by margin | X1 +0.12 [−0.09, +0.31] | not pursued |
+| `lab7_danger_d8` | death penalty 8 | identical games to lab7_danger (max backup ignores D) | rejected |
+| `lab7_danger_nokill`, `lab7_danger_nocap` | no scared-ghost / capsule rewards | +0.04 / 0.00 vs lab7_danger's +0.06 | ablation: the gain is not kill-farming |
+| `lab7_danger_near` | hidden ghosts at the nearest likely cell | +0.03 | rejected |
+| `lab7_shield` | planner as veto only | never fires (identical to lab5_smart) | rejected |
+| `lab7_hunt` | planner-free scared-ghost chasing | −0.23 [−0.37, −0.11] | rejected |
+| `lab7_dplan` | IW(1) defender planner only | X1b +0.19 [+0.03, +0.35] | combined in `lab7_net_dplan` |
+| `lab7_power` | SM-3 power play | X1b −0.23 [−0.32, −0.15] | rejected |
+| `lab7_net_dplan` | learned-leaf attacker planner + defender planner | X2 (tuning 441–480) +0.60 [+0.43, +0.77] (lab7_danger_net +0.50 on the same games) | E-031 C2 candidate |
+| `lab7_g_net` | ghost-bucket atoms + net | X2 +0.47 | no gain over the net alone |
+| `lab7_net2`, `lab7_net3` | second RL-loop iteration nets (on lab6_off + planner games / planner games only) | X3 (tuning 481–520) −0.04 [−0.12, +0.04] / −0.09 vs lab7_danger_netf | not adopted (the first net stays) |
+| `lab7_danger_piw`, `_m1m2`, `_both`, `lab7_danger_dplan` | p-IW, two ghost models, two placements, planner + dplan (hand leaf) | not played (X1b stopped) | — |
 
 ## Opponents we did not write
 

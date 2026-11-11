@@ -1792,3 +1792,38 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 
 - **Comparison with earlier friend runs** (different versions on both sides, so not a like-for-like test): E-024 greedy_v3 vs friend_andy (v1), same seeds: 2.10 PPG, 329-62-109. E-035 greedy_v4 vs friend_andy (v1), tuning 501–510: 2.75 over 20 games.
 - **Conclusion**: [verified] greedy_v4 beats `friend_andy_v2` clearly on both colours (84 % wins, 6 % losses). [untested] Whether andy_v2 is stronger than andy v1 would need greedy_v4 vs friend_andy on the same 250 seeds. Tuning seeds only; no validation or test budget used.
+
+## E-041 — greedy_v4 and greedy_v3 vs 15 public entries from last year's (2025) UPF contest (2026-11-11)
+- **Status**: done. Diagnostic only (outside teams are never decision inputs; no accept/reject decision made).
+- **Question** (user, 2026-11-11): how do our agents do against last year's contest entries, some of which placed near the top? The user put 15 public repos in `last_year_winners/` (gitignored, like `friends/`).
+- **Setup**: before running, each `my_team.py` was checked only for safety with a grep: stdlib + framework imports only, the only `eval(...)` is the template's `create_team`, no file / process / thread / network calls, no `random.seed`. Their strategies were not studied (rule 7). League entries `lyw_*` (`ours: false`, frozen). For LL_Autonomous_Pacman the repo-root `my_team.py` was used (it differs from `pacman-agent/my_team.py`). Smoke run `lyw_smoke` (tuning seed 1, both colours), then `eval/evaluate.py play --candidate greedy_v4 greedy_v3 --vs <14 lyw teams> --seeds tuning --seed-offset 1 --n-seeds 25 --jobs 8 --run lyw_vs_v4v3`: tuning seeds 2–26, both colours, 1400 games, `-c`, 1613 s. greedy_v4 = `my_team.py` (byte-identical, commit e95a786), framework 54cd83c, Windows 11, Python 3.8.10.
+- **Excluded**: `In-The-Fridge` crashes on its first move every game on this framework (`AttributeError: 'dict_keys' object has no attribute 'mapping'`, its line 240) [verified, smoke run + direct run]. It was not patched.
+- **Opponent bug**: `despookjes` crashes in about 41 % of games (`UnboundLocalError: local variable 'min_invader_distance'`, its line 373, reproduced on RANDOM99112321) and is also slow (max move 1.37 s, 21 time warnings, 3 max-warning forfeits). Those games count as our wins; the table also gives PPG without them.
+- **Results** [verified] (50 games per pairing; sorted by greedy_v4 PPG; v4 − v3 is paired on the same seed and colour):
+
+  | opponent | v4 W-T-L | v4 PPG | v4 avg margin | v3 W-T-L | v3 PPG | v4 − v3 [95% CI] | opp. forfeits vs v4 | v4 PPG excl. forfeits |
+  |---|---|---|---|---|---|---|---|---|
+  | flagrats | 29-7-14 | **1.88** | +3.1 | 32-7-11 | 2.06 | −0.18 [−0.63, +0.27] | 0 | 1.88 |
+  | pacman_agent | 33-8-9 | 2.14 | +2.7 | 22-9-19 | 1.50 | +0.64 [+0.21, +1.07] | 0 | 2.14 |
+  | dotgobblers | 38-6-6 | 2.40 | +7.3 | 29-9-12 | 1.92 | +0.48 [+0.07, +0.89] | 0 | 2.40 |
+  | autsys_pacman | 38-11-1 | 2.50 | +11.2 | 33-13-4 | 2.24 | +0.26 [−0.15, +0.67] | 0 | 2.50 |
+  | pacman_as | 39-10-1 | 2.54 | +9.8 | 37-10-3 | 2.42 | +0.12 [−0.16, +0.40] | 0 | 2.54 |
+  | despookjes | 42-4-4 | 2.60 | +5.6 | 40-6-4 | 2.52 | +0.08 [−0.28, +0.44] | 19 | 2.35 |
+  | ll_autonomous_pacman | 41-7-2 | 2.60 | +8.6 | 23-13-14 | 1.64 | +0.96 [+0.54, +1.38] | 0 | 2.60 |
+  | pacmancontest | 40-10-0 | 2.60 | +9.7 | 34-8-8 | 2.20 | +0.40 [+0.03, +0.77] | 0 | 2.60 |
+  | pacman_agent_bonatarda | 43-6-1 | 2.70 | +13.5 | 43-4-3 | 2.66 | +0.04 [−0.26, +0.34] | 0 | 2.70 |
+  | thedotdominators | 43-7-0 | 2.72 | +13.4 | 40-10-0 | 2.60 | +0.12 [−0.16, +0.40] | 0 | 2.72 |
+  | clingho_pacman | 46-4-0 | 2.84 | +13.1 | 42-7-1 | 2.66 | +0.18 [−0.06, +0.42] | 0 | 2.84 |
+  | idontthink | 48-1-1 | 2.90 | +15.2 | 39-3-8 | 2.40 | +0.50 [+0.16, +0.84] | 0 | 2.90 |
+  | pacboys | 48-2-0 | 2.92 | +16.5 | 48-2-0 | 2.92 | +0.00 [−0.11, +0.11] | 0 | 2.92 |
+  | toopac | 50-0-0 | 3.00 | +19.1 | 46-0-4 | 2.76 | +0.24 [+0.01, +0.47] | 0 | 3.00 |
+
+  | overall (700 games each) | W-T-L | PPG [95% CI] | win % | excl. opponent forfeits | crash / warnings / max move s |
+  |---|---|---|---|---|---|
+  | greedy_v4 | 578-83-39 | **2.60 [2.51, 2.68]** | 83 | 2.58 (681 games) | 0 / 0 / 0.312 |
+  | greedy_v3 | 508-101-91 | 2.32 [2.22, 2.43] | 73 | 2.30 (678 games) | 0 / 0 / 0.080 |
+  | v4 − v3, paired | | **+0.27 [+0.18, +0.37]** | | | |
+
+  greedy_v4 by colour: red 287-36-27, blue 291-47-12.
+- **Notes**: the sentinel's "agent is not a CaptureAgent" flag on 8 of the teams only means they import `capture_agents` without the `contest.` prefix (a second copy of the class); it does not change their play. "No sentinel report" on our side happens only in games the opponent forfeited early; our engine records show 0 problems in all 1400 games.
+- **Conclusion**: [verified] greedy_v4 beats every one of the 14 working entries on average (lowest 1.88 PPG vs flagrats), and it is ahead of greedy_v3 overall (+0.27, CI above 0), the same direction as E-032/E-037 on our own pool. The hardest opponents here are `flagrats` (14 losses in 50, the only pairing where v4 is not ahead of v3) and `pacman_agent` (9 losses). [untested] Why we lose to flagrats; `eval/replay_probe.py classify` on those games would show it. Tuning seeds only; no validation or test budget used.

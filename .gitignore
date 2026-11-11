@@ -13,3 +13,6 @@ eval/rl/data/
 
 # friend teams: other people's code, kept local only (CLAUDE.md rule 7)
 friends/
+
+# last year's contest entries: other people's code, kept local only (CLAUDE.md rule 7)
+last_year_winners/

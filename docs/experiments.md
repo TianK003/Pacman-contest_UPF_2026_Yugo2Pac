@@ -1947,3 +1947,15 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | (3) head-to-head wins ≥ losses | **29-25-26** (PPG 1.40) | yes |
 
   - **Verdict: pass.** lab14_stuck (= greedy_v4 + `plan_stuck`) is the **proposed incumbent**. Over all E-043 decision games: pool −0.011 (161–200) and +0.027 (201–240); last-year 14 teams +0.051 [+0.029, +0.074]; head-to-head 55-53-52 over 160 games. Goes into `my_team.py` only after the user confirms; the release gate (locked test seeds, 3rd and last use; held-out teams; Linux timing) is the user's call.
+- **Addendum: 1,000-game head-to-head** (user request 2026-11-11, diagnostic, not a decision input; `--run h2h14_1000`, tuning seeds 1–500 × 2 colours, 6 workers; 275 of these maps (2–276) were E-041/E-042 design maps, but only in games against last-year teams) [verified]:
+
+  | | lab14_stuck vs greedy_v4 |
+  |---|---|
+  | W-T-L | **340-318-342** |
+  | PPG [95 % CI, seed bootstrap] | 1.338 [1.315, 1.360] (greedy_v4: 1.342) |
+  | (W − L) / games [95 % CI] | −0.002 [−0.010, +0.005] |
+  | mean score margin | −0.01 |
+  | gates | 0 crashes / forfeits / warnings / violations in 1,000 games; max move 0.272 s (greedy_v4 0.294 s) |
+
+  - Per map (both colours): 336 maps one win each, 156 maps two ties, and only **8 of 500 maps** differ from the colour mirror (lab14_stuck +1 on 4, −1 on 2, −2 on 2). So in the mirror the switch almost never fires: the head-to-head is decided by the map and the colour, which is why the CI on W − L is so narrow. 31.8 % of mirror games are ties (the score records do not say how many are 0-0).
+  - Reading: the head-to-head is a true dead heat; the 1.5 threshold (T-62) could not have been met by this candidate on any seed list.

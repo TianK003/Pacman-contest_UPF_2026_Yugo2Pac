@@ -1986,3 +1986,20 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - **Accept** (all must hold): gates; guards: Δ pool ≥ −0.03, Δ last-year ≥ −0.03, every pool member's paired-Δ CI upper bound > −0.5, head-to-head net wins (W − L)/n ≥ −0.10 with its 95 % CI upper bound ≥ 0 (T-62); gain: the 95 % CI lower bound of Δ pool **or** of Δ last-year is > 0.
 - **Confirmation run** (`--run conf15`): **validation3 seeds 41–80**, same opponents, for whatever passes the decision run: same gates and guards; the gain's point estimate > 0 again; the CI of that Δ over both blocks together above 0. Passing both = **confirmed candidate**, proposed to the user (promotion and the release gate are the user's call). Passing only the decision run = single-pass candidate.
 - **Not done**: no promotion, no test seeds, no held-out teams, `plan_stuck` not mixed in.
+- **Build log (2026-11-11, before any screen game)**:
+  - `teams/greedy_lab_v15.py` built (v14 + 576 lines): `TeamBrain`, `BrainAgent(RoleAgent)`, switches `brain`, `relay`, `eyes`, `push`, `relief`; two inert hooks in v14's code (`attack_food()` in `attack_core`, the `create_team` branch). `eval/check_rules.py`: OK [verified].
+  - How the brain works in the code: `perceive` → `brain.tick` (deaths of our bodies from position jumps, enemies' `is_pacman` history, our last return, own-sight memory, the plays, a per-round census) → the unchanged v14 decision → `brain.post` (role, rule label, idle count, entry, target, load). A play changes roles only through one latch read by `role_of`; `relay` swaps the shared `home_roles` dict. The teammate's code is never re-run.
+  - One build detail added to the pre-registered `relief` rule, before any scored game: it starts only if some enemy food lies within the leash (6 steps of home); otherwise the helper would only stand at the border.
+  - Tooling: `eval/sentinel_team.py` copies the brain's in-memory counters into each game record (key `brain`); `eval/group_compare.py` prints the head-to-head as W-T-L with net wins and a seed-bootstrap CI, the firing rate (`--fired`), the Δ on fired games, the leak check and the census (`--census`).
+  - League entries: `lab15_off` (identity), `lab15_brain`, `lab15_relay`, `lab15_eyes`, `lab15_push`, `lab15_relief`.
+  - **Build gates** [verified, 2026-11-11 22:20]:
+
+    | gate | result |
+    |---|---|
+    | `eval/check_rules.py teams/greedy_lab_v15.py` | OK |
+    | identity, all v15 switches off (`lab15_off`) vs greedy_v4, full action sequences, 4 maps × 4 opponents (lyw_flagrats, lyw_pacman_agent, lyw_autsys_pacman, camper) × 2 colours | 32 / 32 identical (12 / 12 again on the final file, after the `relief` leash-food detail) |
+    | identity, `brain=1` alone (`lab15_brain`) | 32 / 32 identical (12 / 12 again on the final file) |
+    | smoke `smoke15`: 5 arms + greedy_v4 vs lyw_flagrats, lyw_pacman_agent, camper, choke, baseline, tuning seeds 291–293, 180 games, `-c` | our arms: 0 crashes, 0 time warnings, 0 violations; max move 0.438 s (`lab15_relay`); `lab15_brain` = greedy_v4's score in 30 / 30 paired games |
+    | each play fires (30 games per arm) | `relay`: 2 swaps (4 attacker deaths: 2 swaps, 1 "busy", 1 "held"); `eyes`: 97 % of games, 27 moves per game; `push`: (a) 13 % of games, (b) 10 %; `relief`: 33 % of games (+ 3 % scared mode) |
+
+  - Spot check of one `relay` game with `eval/trace_game.py` (vs camper, RANDOM60790497, red): the attacking body was eaten at move 130 as a scared ghost on our side; from the next move the body at the border attacks and the respawned body defends [verified]. The trace tool labels a `RoleAgent` defender that walks to its last evidence as "eat" (it has no defender call to recognise): a labelling limit of the tool, not a role error.

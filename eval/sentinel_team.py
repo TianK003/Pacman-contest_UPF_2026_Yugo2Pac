@@ -155,6 +155,7 @@ def _wrap(agent, recorder):
         if original_final is not None:
             original_final(game_state)
         recorder.diag_final(index, game_state)
+        recorder.brain(index, agent)
         recorder.finish(index)
 
     agent.register_initial_state = register_initial_state
@@ -217,6 +218,13 @@ class _Recorder:
         if d is not None:
             d['counts']['returned'] = game_state.get_agent_state(index).num_returned
 
+    def brain(self, index, agent):
+        """Team counters of an agent that has a team brain (teams/greedy_lab_v15.py, E-044): read-only copy
+        of its in-memory `brain.count` dict, so each game record says which plays fired."""
+        count = getattr(getattr(agent, 'brain', None), 'count', None)
+        if isinstance(count, dict):
+            self.agents[index]['brain'] = dict(count)
+
     def startup(self, index, seconds):
         self.agents[index]['startup_s'] = seconds
 
@@ -248,6 +256,7 @@ class _Recorder:
                 'over_budget': sum(1 for t in times if t > self.budget),
                 'violations': data['violations'],
                 'diag': data['diag']['counts'] if data['diag'] else None,
+                'brain': data.get('brain'),
             }
         directory = os.path.dirname(os.path.abspath(self.log))
         os.makedirs(directory, exist_ok=True)

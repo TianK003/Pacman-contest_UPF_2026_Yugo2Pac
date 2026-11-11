@@ -278,3 +278,7 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: averaging over scenarios where every ghost is aware and chases or cuts us off makes any crossing look dangerous, so a margin-based override keeps choosing to wait at the border.
 - **What happened**: E-033's flat paired Monte Carlo and UCT arms died rarely (0.40–0.52 per game) but returned only 8.9–11.1 food per game (greedy_v4 15.8) and lost 0.43–0.72 PPG to greedy_v4, even as a re-check on top of greedy_v4.
 - **Prevention**: calibrate a ghost model against real ghost behaviour (e.g. fit type weights from replays) before trusting expectations under it; watch returns and standoff moves, not only deaths.
+
+**T-62: "PPG ≥ 1.5 head-to-head" is not "not losing" when the mirror has ties** [hit E-043]
+- **Why**: a tie gives 1 point to each side, so with wins = losses the head-to-head PPG is 1.5 − T/(2n). Near-identical agents tie often (E-043: 28 of 80 games, PPG 1.32 for both sides), so the threshold silently becomes "must beat the incumbent", which a fix aimed at other opponents cannot do.
+- **Prevention**: when pre-registering, state the head-to-head criterion as W ≥ L (or a CI on W − L), or report the tie rate next to the PPG. Never change the criterion after seeing the result; ask the user.

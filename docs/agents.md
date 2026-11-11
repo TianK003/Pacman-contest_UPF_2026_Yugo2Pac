@@ -239,6 +239,19 @@ v12 = v11 + default-off options `assist`, `def_scared`, `late_tie`, `plan_blocke
 | `lab12_v5asym` | override + margin 0.1 when greedy's line loses, only | E-039 `n2_s2` | +0.00 [−0.11, +0.11]; food lost 1.02 vs 1.45 | promising by the rule but below posture: not in stage 2 |
 | `lab12_combo` | greedy_v4 + assist + def_scared + plan_blocked + m1m2 (1,200 nodes) | E-039 stage 2 (`n2_val`, validation2 81–160) | **−0.06 [−0.15, +0.02]** on the pool, all 10 −0.07, h2h 1.37; returned −0.8, standoff +36 per game | **rejected**; kept as a league opponent |
 
+### greedy_lab_v14 arms (E-043): fixes for the pitfalls found against last year's teams
+
+v14 = v13 + default-off options `plan_stuck` (+ `stuck_moves`), `brk_tabu`, `plan_special`, `open_safe`, `scared_raid` (header of `teams/greedy_lab_v14.py`). With all off it plays exactly like greedy_v4 (32/32 games). Every arm = greedy_v4 + one switch, screened on tuning 561–584 (`scr14`) vs the 7 other pool members, greedy_v4 and 7 last-year teams.
+
+| name | what it is | tested in | result (Δ vs greedy_v4: pool / last-year; h2h) | verdict |
+|---|---|---|---|---|
+| `lab14_stuck` | after 8 attacker moves without a race-safe target (breaker walks, no safe food, no safe way home) the planner decides even with no ghost within 7 | E-043 screen; stage 2 `val14` (validation2 161–200) | screen 0.000 / **+0.068 [+0.027, +0.113]**, h2h 1.44; validation **−0.011 [−0.036, +0.014] / +0.051 [+0.029, +0.074]** (14 teams), h2h **1.32 (26-28-26)**; ties vs last-year 49 vs 64 | **fails the pre-registered h2h ≥ 1.5** (dead heat, see T-62); passes the other criteria; decision pending with the user |
+| `lab14_tabu` | standoff breaker never re-picks its last 3 entries or one within 2 steps of them | E-043 screen | +0.006 / +0.006, h2h 1.48 | not promising (the loop is rare) |
+| `lab14_special` | planner also in the "≤ 2 food left" and "this trip wins" special cases | E-043 screen | 0 / 0 (identical games), h2h 1.42 | not promising: never changes a game |
+| `lab14_opensafe` | carrying ≥ 8 food on further needs a home crossing every enemy reaches after us by carried/4 | E-043 screen | −0.006 / +0.060 [−0.042, +0.170], h2h **1.27** | not promising (loses the mirror: banks too early) |
+| `lab14_raid` | scared defender raids the enemy half while both enemies are Pacmen, back in time | E-043 screen | 0 / +0.036 [−0.027, +0.104], h2h 1.42 | not promising |
+| `lab13_defsc_posture` (re-test) | scared-defender posture (E-039) on fresh seeds | E-043 screen | **−0.036** / +0.009, h2h 1.50 | not promising (E-039's +0.07 does not repeat) |
+
 ## Opponents we did not write
 
 | name | what it is | use |
@@ -274,6 +287,7 @@ v12 = v11 + default-off options `assist`, `def_scared`, `late_tie`, `plan_blocke
 | Monte-Carlo search: flat paired MC, open-loop UCT, MC re-check of greedy_v4's move, with hand / table / net cutoffs | E-033 | −0.43 … −0.72 vs greedy_v4: the scenario ghost model makes the attacker timid (T-60) | the ghost model is calibrated on real opponent behaviour |
 | Lookup-table leaf (5-D, R² ≈ net) | E-033 | −0.33 vs greedy_v4: the search exploits its jumps (T-59); a smooth quadratic leaf with the same R² ≈ greedy_v4 | the table is smoothed (interpolated) |
 | Planner on every attacker move (`full`); trigger 5 / 9, horizon 40, plan_min 0.3 | E-034 | full −0.38; the others within ±0.05 of greedy_v4 (flat optimum) | — |
+| Pitfall fixes vs last year's teams (E-043): breaker tabu, planner in special cases, safer carry-on check, scared-defender raid, posture re-test | E-043 | each within ±0.04 of greedy_v4 on both groups, or loses the mirror (open_safe 1.27); only `plan_stuck` gains (+0.05 vs last year's 14, pool −0.01) | a new opponent group shows the pitfall often |
 | Review proposals on greedy_v4 (E-039): attacker assist, scared-defender posture + capsule guard, late tie banking, breaker under the planner, chase + intercept ghost models; override guard / asymmetric margin | E-039 | each alone within ±0.07 of greedy_v4 on tuning (posture +0.07, all from the top 3); the combination of the four ≥ 0 rejected on validation2 81–160 (−0.06, h2h 1.37: attacks less) | a switch shows ≥ +0.05 alone on fresh seeds; never combine arms that are ≈ 0 (T-61) |
 
 ## Open (untested) ideas
@@ -287,7 +301,6 @@ The planned queue in experiments.md and [proposals.md](proposals.md) have the de
 - reserve ideas from the E-033 review: a race leaf with a fitted τ (proposals MC-2), IW with a scenario re-check of its top nodes, a smoothed (interpolated) table leaf as a direct test of T-59, a ghost model calibrated from replays.
 
 - from last year's entries (E-041 follow-up, [untested] for us): **opportunistic double attack** gated on the exact hidden `is_pacman` (both attack while no enemy is a Pacman; one returns as soon as one is), with a **top / bottom food split** between the two attackers (= SM-10). Differs from the rejected raids (E-018 standoff-gated, E-020 belief-recalled, both before `flags`) and from `formation` (E-029, unconditional while behind);
-- **scared defender raids**: while our defender is scared, cross and eat shallow enemy food instead of keeping its distance (E-039 `def_scared` tested only the distance posture);
 - **defence against a double attack**: flagrats' double-attack games are races (both sides return ≈ 20; greedy_v4 15-1-10 in them, E-041 follow-up).
 
 Tested on 2026-10-28 (E-025):

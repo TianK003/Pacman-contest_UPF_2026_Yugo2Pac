@@ -1895,3 +1895,42 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Stage 2 = decision run** (`--run val14`): the candidate and greedy_v4 against the same 7 pool members, greedy_v4 (head-to-head) and **all 14 working last-year teams**, on **validation2 seeds 161–200** (fresh), both colours, `-c`.
   - **Accept rule** (user decision 2026-11-11, "pool guard + last-year gain"; replaces the pool-improvement criterion of evaluation.md §2 for this decision only): (1) gates as above for the candidate; (2) pool guard: paired Δ over the 7 pool members ≥ −0.03 (point estimate) and every pool member's paired-Δ CI upper bound > −0.5; (3) head-to-head PPG(candidate vs greedy_v4) ≥ 1.5; (4) **paired Δ over the 14 last-year teams, pooled with equal weight, 95 % CI lower bound > 0** (`eval/group_compare.py`, bootstrap over whole seeds). Single last-year teams are reported, never decisive.
   - **Action**: pass → the candidate becomes the proposed incumbent; it goes into `my_team.py` only after the user confirms, and a release gate on the locked test seeds (use 3 of 3) is the user's call. Fail → greedy_v4 stays; results are logged.
+- **Screen result** (`scr14`, 4,992 games, my_team.py = greedy_v4 at e95a786, framework 54cd83c) [verified]. Paired Δ vs greedy_v4 on the same opponent, seed and colour (`eval/group_compare.py`); every arm passed the gates (0 crashes / forfeits / warnings / violations; max move 0.22–0.34 s):
+
+  | arm | Δ pool (7) [95 % CI] | Δ last-year (7) [95 % CI] | h2h vs greedy_v4 | max move | promising? |
+  |---|---|---|---|---|---|
+  | `lab14_stuck` | +0.000 [−0.030, +0.027] | **+0.068 [+0.027, +0.113]** | 1.44 | 0.265 s | **yes** |
+  | `lab14_tabu` | +0.006 [0.000, +0.018] | +0.006 [0.000, +0.018] | 1.48 | 0.285 s | no (last-year < +0.05) |
+  | `lab14_special` | 0.000 (identical games) | 0.000 (identical games) | 1.42 | 0.221 s | no |
+  | `lab14_opensafe` | −0.006 [−0.086, +0.065] | +0.060 [−0.042, +0.170] | **1.27** | 0.247 s | no (h2h < 1.40) |
+  | `lab14_raid` | 0.000 (identical games) | +0.036 [−0.027, +0.104] | 1.42 | 0.343 s | no (last-year < +0.05) |
+  | `lab13_defsc_posture` | **−0.036** [−0.119, +0.027] | +0.009 [−0.104, +0.116] | 1.50 | 0.298 s | no (pool < −0.03) |
+
+  - `lab14_stuck` per opponent: gains vs autsys +0.21, pacman_as +0.15, pacmancontest +0.08, ll_autonomous +0.04, lab5_smart +0.06; loss vs choke −0.08 [−0.21, 0.00]; identical games vs flagrats, pacman_agent, dotgobblers and 4 pool members. So the frozen-carrier / breaker-loop 0-0s it targets appear in only a few of these 24 maps.
+  - `lab14_special` never changed a game: the "≤ 2 food" and "trip wins" situations with a ghost within 7 are rare, and in them the planner chose greedy's move.
+  - `lab14_opensafe`: +0.35 vs pacman_agent, −0.15 vs dotgobblers, and it loses the mirror (1.27): banking earlier costs points against an equal opponent.
+  - **Stage-2 candidate** = greedy_v4 + `plan_stuck` = the existing entry `lab14_stuck` (no new file or entry needed).
+- **Stage-2 result** (`val14`, validation2 161–200, 3,440 games; my_team.py = greedy_v4 at e95a786, framework 54cd83c) [verified]. The run was stopped by Claude Code at 3,375 games because the laptop ran low on memory (not the run's fault) and finished with `--resume --jobs 4`; no game was replayed or dropped.
+
+  | accept criterion (pre-registered) | result | pass? |
+  |---|---|---|
+  | (1) gates: 0 crashes / forfeits / warnings / violations | 1,760 games: 0 / 0 / 0 / none; max move 0.342 s (greedy_v4 0.334 s) | yes |
+  | (2) pool guard: Δ over the 7 pool members ≥ −0.03 | −0.011 [−0.036, +0.014] (560 paired) | yes |
+  | (2) every pool member's CI upper > −0.5 | worst exploit_v2 −0.07 [−0.17, 0.00] | yes |
+  | (3) head-to-head PPG(lab14_stuck vs greedy_v4) ≥ 1.5 | **1.32** (80 games, **26-28-26**); greedy_v4 vs lab14_stuck also 1.32 | **no** |
+  | (4) Δ over the 14 last-year teams, CI lower > 0 | **+0.051 [+0.029, +0.074]** (1,120 paired) | yes |
+
+  | last-year team | PPG lab14_stuck | PPG greedy_v4 | Δ [95 % CI] |
+  |---|---|---|---|
+  | pacman_agent | 2.29 | 2.11 | +0.17 [+0.04, +0.34] |
+  | thedotdominators | 2.92 | 2.80 | +0.12 [+0.03, +0.28] |
+  | autsys_pacman | 2.83 | 2.74 | +0.09 [0.00, +0.20] |
+  | flagrats | 2.56 | 2.48 | +0.09 [0.00, +0.23] |
+  | pacman_as | 2.90 | 2.81 | +0.09 [−0.03, +0.21] |
+  | clingho / idontthink | 2.84 / 2.89 | 2.80 / 2.85 | +0.04 each |
+  | despookjes / pacboys / pacmancontest | 2.83 / 2.96 / 2.96 | 2.80 / 2.94 / 2.94 | +0.03 each |
+  | dotgobblers / ll_autonomous / bonatarda / toopac | — | — | 0.00 |
+
+  - Ties against the 14 last-year teams: 49 for lab14_stuck vs 64 for greedy_v4 (of 1,120 games each): the fix does what it was built for, and never lowers the PPG against any single last-year team.
+  - **Verdict by the letter of the rule: fail** (criterion 3); greedy_v4 stays. The head-to-head is a dead heat (26-28-26; screen 20-9-19), not a loss.
+  - **Finding (T-62)**: the threshold 1.5 is evaluation.md's "A is not losing to the incumbent", but with ties PPG = 1.5 − T/(2n) when wins = losses, so an *equal* agent scores 1.5 only without ties. Here 35 % of the mirror games are ties, so an equal agent scores ≈ 1.32 and the criterion demands a head-to-head *win*. Whether to keep the rule as written, or to re-read criterion 3 as "wins ≥ losses" for this decision, is the user's call; it was not changed after seeing the data.

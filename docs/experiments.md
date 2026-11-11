@@ -1959,3 +1959,4 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 
   - Per map (both colours): 336 maps one win each, 156 maps two ties, and only **8 of 500 maps** differ from the colour mirror (lab14_stuck +1 on 4, −1 on 2, −2 on 2). So in the mirror the switch almost never fires: the head-to-head is decided by the map and the colour, which is why the CI on W − L is so narrow. 31.8 % of mirror games are ties (the score records do not say how many are 0-0).
   - Reading: the head-to-head is a true dead heat; the 1.5 threshold (T-62) could not have been met by this candidate on any seed list.
+- **Decision (user, 2026-11-11)**: **not promoted**: "basically the same agent" (head-to-head 340-318-342; the gain is +0.05 vs last year's teams only). greedy_v4 stays in `my_team.py`; lab14_stuck stays a league entry and the `plan_stuck` switch stays available in `teams/greedy_lab_v14.py`.

@@ -1827,3 +1827,20 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   greedy_v4 by colour: red 287-36-27, blue 291-47-12.
 - **Notes**: the sentinel's "agent is not a CaptureAgent" flag on 8 of the teams only means they import `capture_agents` without the `contest.` prefix (a second copy of the class); it does not change their play. "No sentinel report" on our side happens only in games the opponent forfeited early; our engine records show 0 problems in all 1400 games.
 - **Conclusion**: [verified] greedy_v4 beats every one of the 14 working entries on average (lowest 1.88 PPG vs flagrats), and it is ahead of greedy_v3 overall (+0.27, CI above 0), the same direction as E-032/E-037 on our own pool. The hardest opponents here are `flagrats` (14 losses in 50, the only pairing where v4 is not ahead of v3) and `pacman_agent` (9 losses). [untested] Why we lose to flagrats; `eval/replay_probe.py classify` on those games would show it. Tuning seeds only; no validation or test budget used.
+- **Follow-up: idea study** (user request, 2026-11-11). The six teams that scored most against us or held our scoring lowest (flagrats, DotGobblers, pacman_agent, LL_Autonomous_Pacman, AutSys, TheDotDominators; plus pacman_AS) were read for ideas only, by three reading agents briefed to describe tactics in words and never reproduce code (rule 10); no code was copied. Findings [source = their code; effects on play untested]:
+  - flagrats: both agents attack whenever no enemy is a Pacman (reads hidden `is_pacman`); once an invader appears, the agent closer to it (or the one on its start square, or the one carrying less) defends; two attackers split food by top / bottom half of the map; ghost cells and their neighbours are walls in the food search.
+  - DotGobblers: ghost-penalised path cost (each step costs 1 + 10·max(0, 5 − ghost distance)), food chosen by path cost minus cluster size, homing pressure carried × home distance growing with time (small loads), a per-move penalty for staying home, and a scared defender that crosses to eat while scared.
+  - pacman_agent: a defender that stands still halfway between our-side capsule and the border, goes to just-eaten food, chases only visible invaders; the attacker takes the capsule first and returns at 3 (10 while ghosts are scared).
+  - LL_Autonomous: particle filters with hidden `is_pacman` to hunt a hidden raider, border interception, camping on a precomputed food-sealing bottleneck, layered return triggers (carried × distance home).
+  - AutSys / TheDotDominators / pacman_AS: one fixed visible-only defender each; they barely attack, so our raider meets two ghosts (likely why our returns are low against them).
+  - Already tested by us in some form: capsule guard (E-039 `cap`), bottleneck / choke defence (`choke`, H-M03), belief hunting of hidden invaders (E-019, E-025), food clusters (E-029), return thresholds (E-007/E-010/E-011).
+- **flagrats split by its double attack** [verified, E-041 games; "double attack" = both its agents > 60 Pacman moves]:
+
+  | | games | our W-T-L | they return | we return |
+  |---|---|---|---|---|
+  | greedy_v4, flagrats single attack | 24 | 14-6-4 | 3.7 | 9.8 |
+  | greedy_v4, flagrats double attack | 26 | 15-1-10 | 19.8 | 20.0 |
+  | greedy_v3, flagrats single attack | 32 | 20-7-5 | 5.8 | 10.9 |
+  | greedy_v3, flagrats double attack | 18 | 12-0-6 | 18.2 | 21.7 |
+
+  Double-attack games become scoring races, and 10 of greedy_v4's 14 losses to flagrats are in them. New untested ideas are listed in agents.md "Open (untested) ideas".

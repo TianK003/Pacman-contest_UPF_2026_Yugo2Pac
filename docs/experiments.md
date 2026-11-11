@@ -1937,3 +1937,13 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Stage 3 = confirmation run** (user decision 2026-11-11 after stage 2: "confirm on fresh seeds"; this bullet was committed before any stage-3 game was played). `--run conf14`: lab14_stuck and greedy_v4 against the same 7 pool members and each other (head-to-head) on **validation2 seeds 201–240** (fresh, unused), both colours, `-c`, 1,200 games. The last-year gain is not re-tested (stage 2 already measured it on 14 teams).
   - **Accept** (all must hold): (1) gates as above; (2) pool guard: paired Δ over the 7 pool members ≥ −0.03 and every member's CI upper bound > −0.5; (3) head-to-head **wins ≥ losses** for lab14_stuck vs greedy_v4 over these 80 games (replaces "PPG ≥ 1.5", T-62).
   - **Action**: pass → lab14_stuck is the proposed incumbent (into `my_team.py` only after the user confirms; release gate on the locked test seeds is the user's call). Fail → greedy_v4 stays.
+- **Stage-3 result** (`conf14`, validation2 201–240, 1,200 games, 0 harness errors; my_team.py = greedy_v4 at e95a786, framework 54cd83c) [verified]:
+
+  | accept criterion (pre-registered, commit 4155471) | result | pass? |
+  |---|---|---|
+  | (1) gates | 640 games: 0 crashes / forfeits / warnings / violations; max move 0.301 s (greedy_v4 0.315 s) | yes |
+  | (2) pool guard: Δ over the 7 pool members ≥ −0.03 | **+0.027 [0.000, +0.062]** (560 paired) | yes |
+  | (2) every pool member's CI upper > −0.5 | worst lab5_smart −0.01 [−0.04, 0.00]; best exploit_v2 +0.10 | yes |
+  | (3) head-to-head wins ≥ losses | **29-25-26** (PPG 1.40) | yes |
+
+  - **Verdict: pass.** lab14_stuck (= greedy_v4 + `plan_stuck`) is the **proposed incumbent**. Over all E-043 decision games: pool −0.011 (161–200) and +0.027 (201–240); last-year 14 teams +0.051 [+0.029, +0.074]; head-to-head 55-53-52 over 160 games. Goes into `my_team.py` only after the user confirms; the release gate (locked test seeds, 3rd and last use; held-out teams; Linux timing) is the user's call.

@@ -1962,7 +1962,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Decision (user, 2026-11-11)**: **not promoted**: "basically the same agent" (head-to-head 340-318-342; the gain is +0.05 vs last year's teams only). greedy_v4 stays in `my_team.py`; lab14_stuck stays a league entry and the `plan_stuck` switch stays available in `teams/greedy_lab_v14.py`.
 
 ## E-044 — Team brain: the attacker and the defender know each other's situation (2026-11-11 night → 2026-11-12)
-- **Status**: pre-registered (this entry was committed before any screening or validation game was played). Plan: `C:\Users\Tian\.claude\plans\tranquil-growing-tarjan.md` (approved by the user 2026-11-11 21:45).
+- **Status**: screen 1 done (23:44): `relay`, `eyes`, `relief` promising, `push` not; second wave (`greedy_lab_v16.py`) gated (00:00), screen 2 (`scr16`) running. Pre-registered (this entry was committed before any screening or validation game was played). Plan: `C:\Users\Tian\.claude\plans\tranquil-growing-tarjan.md` (approved by the user 2026-11-11 21:45).
 - **Why**: user request (2026-11-11): a brain / attention mechanism so that each agent knows what the other is doing and how it will react, for proactive planning (help in good situations such as late pushes, prepare for bad ones such as the attacker being chased or dying). Base mindset stays attacker + defender. Three brainstorm agents (defender lens, attacker lens, architect + sceptic) produced the proposals; the user approved the plan.
 - **User decisions for this experiment**: roles bend only as temporary help with a return rule; a run stopped for low memory may be resumed automatically with fewer workers; a fresh list `eval/seeds/validation3.txt` (300 seeds, `make_validation3.py`, `random.Random(20261111)`, disjoint from tuning / validation / validation2 / test [verified: 0 overlaps]) is used for decisions; pass rules set by the assistant; nothing is promoted without the user.
 - **Code**: `teams/greedy_lab_v15.py` = copy of `greedy_lab_v14.py` + `TeamBrain` (one shared object: what each agent posts, a situation classifier, a play state machine, in-memory counters) + `BrainAgent(RoleAgent)`, built only when `brain=1` or a play is on. Second wave: `teams/greedy_lab_v16.py`.
@@ -2003,3 +2003,116 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
     | each play fires (30 games per arm) | `relay`: 2 swaps (4 attacker deaths: 2 swaps, 1 "busy", 1 "held"); `eyes`: 97 % of games, 27 moves per game; `push`: (a) 13 % of games, (b) 10 %; `relief`: 33 % of games (+ 3 % scared mode) |
 
   - Spot check of one `relay` game with `eval/trace_game.py` (vs camper, RANDOM60790497, red): the attacking body was eaten at move 130 as a scared ghost on our side; from the next move the body at the border attacks and the respawned body defends [verified]. The trace tool labels a `RoleAgent` defender that walks to its last evidence as "eat" (it has no defender call to recognise): a labelling limit of the tool, not a role error.
+- **Screen 1 result** (`scr15`, 5,696 games, tuning seeds 301–332, 22:20–23:44; my_team.py = greedy_v4, framework 54cd83c) [verified]. Paired Δ vs greedy_v4 on the same opponent, seed and colour (`eval/group_compare.py`); every arm: 0 crashes / forfeits, 0 time warnings, 0 violations.
+
+  | arm | Δ pool (7) [95 % CI] | Δ last-year (7) [95 % CI] | h2h vs greedy_v4 W-T-L, net wins [CI] | play fired in (pool / last-year) | Δ on fired games (pool / last-year) | leak | max move | promising? |
+  |---|---|---|---|---|---|---|---|---|
+  | `lab15_brain` (census) | 0.000 | 0.000 | 20-24-20, 0.000 | — | — | 0 / 896 | 0.352 s | identical to greedy_v4 in 896 / 896 paired games |
+  | `lab15_relay` | **+0.062 [+0.002, +0.138]** | +0.020 [−0.013, +0.056] | 20-24-20, 0.000 [−0.047, +0.047] | 21.7 % / 14.3 % | +0.289 [+0.010, +0.621] / +0.141 [−0.104, +0.351] | 0 | 0.419 s | **yes** (pool ≥ +0.05) |
+  | `lab15_eyes` | +0.009 [−0.031, +0.047] | **+0.080 [+0.020, +0.145]** | 20-24-20, 0.000 [−0.062, +0.078] | 96.2 % / 90.6 % | +0.009 / +0.089 [+0.025, +0.159] | 0 | 0.155 s | **yes** (last-year ≥ +0.05) |
+  | `lab15_push` | +0.018 [−0.013, +0.049] | +0.036 [+0.011, +0.067] | 23-20-21, +0.031 [−0.031, +0.109] | 7.8 % / 22.8 % | +0.229 [−0.152, +0.679] / +0.157 [+0.045, +0.273] | 0 | 0.191 s | no (below +0.05 on both groups; the sign is positive everywhere) |
+  | `lab15_relief` | +0.016 [−0.062, +0.089] | **+0.069 [+0.009, +0.136]** | 19-21-24, −0.078 [−0.219, +0.047] | 44.9 % / 34.2 % | +0.035 / +0.203 [+0.021, +0.386] | 0 | 0.311 s | **yes** (last-year ≥ +0.05; h2h ≥ −0.10) |
+
+  - Leak check: in every arm, every game in which the play never fired has greedy_v4's score (0 leaks). The other session's 500 games (E-045) ran on this laptop during the screen; the census arm still equals greedy_v4 in 896 / 896 games, so the extra load did not change any game.
+  - What changes on the board (per game, greedy_v4 → arm):
+
+    | arm | group | W-T-L | 0-0 ties | deaths | food returned |
+    |---|---|---|---|---|---|
+    | greedy_v4 | pool / last-year | 360-27-61 / 364-53-31 | 8 / 40 | 0.41 / 0.40 | 17.7 / 15.2 |
+    | relay | pool / last-year | 371-22-55 / 368-50-30 | 2 / 39 | 0.44 / 0.43 | 18.2 / 15.5 |
+    | eyes | pool / last-year | 362-25-61 / 381-38-29 | 7 / 26 | 0.39 / 0.38 | 17.8 / 15.9 |
+    | push | pool / last-year | 365-20-63 / 375-36-37 | 3 / 25 | 0.41 / 0.42 | 17.7 / 15.6 |
+    | relief | pool / last-year | 362-28-58 / 382-30-36 | 3 / 21 | 0.43 / 0.50 | 17.7 / 16.6 |
+
+  - Per opponent (Δ PPG, 64 games each; reported, never decisive): the last-year gain of `eyes` and `relief` comes mostly from lyw_autsys_pacman (+0.41, +0.39: its 0-0 standoffs become wins), then dotgobblers (+0.14 eyes), pacman_agent (+0.16 relief); `relay`: exploit_v2 +0.16, camper +0.11, ll_autonomous_pacman +0.11; worst single cells: `relief` vs greedy_v3 −0.17, `eyes` vs lab5_smart −0.08.
+  - Counters: `relay` swaps 0.26 / 0.17 per game (attacker deaths 0.35 / 0.25; "too far" 0.03, "busy" 0.02–0.04, "held" 0.02–0.03); games with one swap +0.41 / +0.21, games with two or more (18 / 11 games) −0.22 / −0.18. `eyes` drops a ghost on 34 / 43 attacker moves per game; attacker idle moves 29 → 24 (pool) and 38 → 26 (last-year), evade moves vs last-year 17.8 → 8.3, deaths unchanged. `push`: (a) 0.03 / 0.13 and (b) 0.05 / 0.12 entries per game, both modes positive. `relief`: 0.64 / 0.54 entries per game, 6.0 / 4.6 helper moves; exits: attacker unstuck 0.31 / 0.19, an enemy became a Pacman 0.27 / 0.28, 25-move limit 0.06 / 0.04, helper died 0.01 / 0.02; the gain is in the quiet-home mode vs last-year (+33 points over 141 games).
+  - **Situation census** (greedy_v4's own games via `lab15_brain`, own moves per game, pool / last-year): no invader 203 / 216, one 94 / 67, two 0.6 / 11.7; defender scared 28 / 21; attacker on their side 146 / 165 (carrying ≥ 5: 70 / 104), walking back from deep at home 49 / 45, near the border at home 102 / 85; attacker idle (≥ 6 moves in a row without a safe target or progress) 29 / 39, of which 24 / 35 with no invader at home; no enemy Pacman for 80 moves: 58 / 85; score tied 103 / 127, late and tied 2.3 / 6.3; attacker deaths 0.31 / 0.20, defender deaths 0.10 / 0.19.
+- **Amendment before screen 2 (2026-11-11 23:55, before any `scr16` or validation3 game)**; reasons in one line each:
+  - The second wave screens `swap` (role handover at a border standoff: when the attacker's breaker has chosen another entry, the defender is ≥ 6 steps nearer to it and no enemy is a Pacman, the body near the entry attacks and the blocked body defends) **instead of the `relay` pre-walk**: the counters show the defender is almost never too far when the attacker dies ("too far" 0.03 per game), so a pre-walk has no room; entry walks are 25–28 % of attacker moves.
+  - No revision of a first-wave arm: no counter names a flaw (no leaks, no dead play, exits as designed).
+  - Screen 2 also screens three **combinations** on fresh seeds, because three arms are promising and two of them (`eyes`, `relief`) gain on the same standoff games: `c3` = relay + eyes + relief (the pre-registered "combination of all promising arms"), `c2` = relay + eyes (never empties home), `c4` = c3 + push (does the tie-break push add anything). And the two fixes of E-045 (`pocket`, `cash`), under the same rule.
+  - **Decision-run candidates, fixed after screen 2, at most 3**: (1) the best single promising arm of screens 1–2 (highest mean of its two group Δ); (2) the best screened combination, if it is promising in screen 2 by the same rule; (3) the better E-045 arm, if promising. A second-wave arm that is promising but was not screened inside a combination is carried only as a single arm. The accept and confirmation rules are unchanged.
+- **Second-wave build log (2026-11-12 00:00, before any `scr16` game)**:
+  - `teams/greedy_lab_v16.py` = `greedy_lab_v15.py` (frozen after screen 1) + 230 lines: switches `swap`, `cover` (both need the hidden opponents' fields and are off without `flags`), sub-mode options `eyes_maze`, `push_modes`, `relief_modes` (defaults = v15's behaviour), and E-045's `pocket`, `cash`. All default off.
+  - League entries: `lab16_off`, `lab16_c3`, `lab16_c2`, `lab16_c4`, `lab16_swap`, `lab16_cover`, `lab16_pocket`, `lab16_cash` (the last two run with `brain=1` so that their counters reach the game record; the brain alone changes no move, checked below).
+  - **Build gates** [verified, 2026-11-12 00:00]:
+
+    | gate | result |
+    |---|---|
+    | `eval/check_rules.py teams/greedy_lab_v16.py` | OK |
+    | identity, every switch off vs greedy_v4 (full action sequences, 12 recorded games: 6 opponents, both colours) | 12 / 12 identical |
+    | identity, v16 with one v15 switch on vs the same v15 arm (`relay`, `eyes`, `push`, `relief`) | 12 / 12 identical, each |
+    | identity, `pocket` / `cash` with `brain=1` vs the same switch without the brain | 12 / 12 identical, each |
+    | smoke `smoke16`: 7 arms + greedy_v4 vs lyw_flagrats, lyw_pacman_agent, camper, choke, baseline, tuning seeds 294–296, 240 games, `-c` | our arms: 0 crashes, 0 time warnings, 0 violations; max move 0.072 s |
+    | each play fires (30 games per arm) | `swap`: 0.37 swaps per game, 23 % of games; `cover`: 17 % of games, 1.1 moves per game (exits: invader gone 2, late 2, 8-move limit 1); `pocket`: 90 % of games, 64 attacker moves per game; `cash`: 53 % of games, 14 moves per game; inside `c3`: relay 17 %, eyes 93 %, relief 20 % of games; `c4` adds push in 2 games |
+
+  - Smoke observation on `pocket` (not scored, not tuned on): with a hidden enemy the pessimistic belief removes most dead-end food once the attacker carries 5 ("3 safe of 25" in one traced game), so it walks to open food instead; food lost per game 0.7 (greedy_v4 1.5), food returned 12.3 (12.7). Two games on map 45445946 scored below greedy_v4; both traces end in greedy_v4's own known stalemates (cornered with 8 food by baseline's defender; dithering at the border with nothing carried), reached through the different route, not in a pocket-specific fault. Screened as built.
+
+## E-045 — Loss diagnosis of greedy_v4 against a friend's agent, and two greedy fixes from it (2026-11-11 night → 2026-11-12)
+- **Status**: diagnosis logged and confirmed on the pool and last-year games (hypothesis A); two fixes (`lab16_pocket`, `lab16_cash`) pre-registered below, before any screen game of them; they are screened in `scr16` (E-044).
+- **Why**: a second Claude session working in this repository ran greedy_v4 against a friend's agent for the user, diagnosed our losses and passed the findings to this session at ~23:15 with the user's request to "plan changes to the greedy agent as well with the knowledge gathered", overnight, next to E-044. [reported: the request reached this session through the other session's message, not from the user directly.] Friend teams are diagnostics only (user rule 2026-11-11): nothing below is decided on this opponent.
+- **Diagnostic run** (by the other session; `eval/results/diego_vs_v4.jsonl`): `eval/evaluate.py play --candidate greedy_v4 --vs friend_diego --seeds tuning --n-seeds 250 --jobs 2 --run diego_vs_v4`: tuning seeds 1–250, both colours, 500 games, `-c`, 22:20–22:51. `friend_diego` = `friends/diego/my_team.py` (packed source; [reported] checked for safety by decoding names only; never read for design; kept local, `friends/` is git-ignored). greedy_v4 = `my_team.py`, framework 54cd83c.
+  - **Result** [verified from the result file]: greedy_v4 **340-45-115, 2.13 PPG**, red 179-20-51, blue 161-25-64; 75 of the 115 losses are by ≤ 5 points; 20 maps lost from both colours, 123 won from both; 0 crashes / warnings / violations, max move 0.349 s. [reported] CI [2.01, 2.25].
+  - **Overlap with E-044** [verified from file times]: these 500 games (22:20–22:51) and the replay probes after them (to 23:21) ran on this laptop while screen 1 of E-044 (`scr15`, 6 workers) was running. Effect on `scr15`: see its leak check (E-044).
+- **Where the points go** (other session: `replay_probe.py classify`, then `replay --events` on all 160 non-wins and on a random 100 games, 69 of them wins; files `eval/results/diego_vs_v4_replay_nonwins.md`, `..._sample100.md`, parsing script `..._event_stats.py.txt`). The per-game numbers below are [verified]: I re-ran the parsing script on the two replay files; the classify shares are [reported].
+
+  | per game | wins (69) | losses (115) | ties (45) |
+  |---|---|---|---|
+  | attacker deaths | 0.29 | 0.94 | 0.67 |
+  | food lost by the attacker | 0.86 | 5.07 | 2.91 |
+  | attacker deaths carrying ≥ 5 (total) | 5 | 44 | 11 |
+  | defender deaths | 0.16 | 0.36 | 0.04 |
+  | games in which they ate a capsule | 68 % | 93 % | 49 % |
+  | our deaths per third (plies 0–399 / 400–799 / 800+) | 0.09 / 0.19 / 0.17 | 0.24 / 0.51 / 0.54 | 0.13 / 0.22 / 0.36 |
+  | our returns per third | 1.6 / 12.6 / 6.7 | 1.3 / 9.1 / 3.7 | 2.1 / 6.5 / 2.0 |
+  | their returns per third | 3.5 / 7.0 / 2.7 | 5.1 / 9.8 / 5.4 | 2.6 / 5.2 / 2.8 |
+  | behind at ply 800 (games) | 15 | 80 | 10 |
+  | median ply of our last return | 904 | 785 | 656 |
+
+  - [reported] classify, points lost: out-defended 37 %, our deaths (≥ 3 or ≥ 6 food lost) 30 %, equal trade 14 %, out-raced 7 %, we returned ≤ 3: 5 %, 0-0 ties 7 %. Standoff plies per game: wins 124, ties 246, losses 110. In non-wins about 33 % of invaded plies have two invaders.
+  - **Attacker deaths by load** (the 160 non-wins, 138 attacker deaths, 714 food lost) [verified, my own parse of the replay file]:
+
+    | carried at death | deaths | of them in a dead end | food lost | of it in dead ends |
+    |---|---|---|---|---|
+    | 0 | 48 | 0 | 0 | 0 |
+    | 1–4 | 35 | 32 | 99 | 92 |
+    | 5–7 | 17 | 13 | 94 | 70 |
+    | ≥ 8 | 38 | 32 | 521 | 438 |
+
+    73 % of the food our attacker loses is lost in deaths that carry 8 or more, i.e. after `open_goal` let the trip go on past `return_at` = 8, and 84 % of that is lost inside a dead end. In the 115 losses, 57 of 108 attacker deaths are in a dead end; in 34 of the 57 the killer was in sight when we entered and in 41 it could reach the exit before us [verified].
+- **Hypotheses** (from the other session, ranked by points; each is a hypothesis until seen on the pool / last-year games):
+
+  | # | hypothesis | already known? | earlier tests |
+  |---|---|---|---|
+  | A | the attacker dies with a big load in dead ends it cannot leave | yes: E-014, E-042 pitfall 4 (2–3 % of games against the pool and last-year teams have a death carrying ≥ 10, E-043) | exit-race checks at every load: deaths halve, points flat (E-002, E-018); a stricter `open_goal` margin (`open_safe`): loses the mirror, h2h 1.27 (E-043) |
+  | B | one defender against frequent small raids, two invaders a third of the time | yes: E-042 pitfall 2 | attacker recall −0.58 (E-025), assist 0.00 (E-039); `cover` is in E-044's second wave |
+  | C | their capsule: in 93 % of losses; our defender dies twice as often | yes: E-042 pitfall 1 | scared posture: +0.07 tuning, not repeated (E-039, E-043); capsule guard within noise (E-039); scared raid +0.04 (E-043) |
+  | D | late collapse: behind at ply 800 in 80 of 115 losses, deaths triple in the last third, last return at ply ~785 | new measurement | late tie banking and endgame horizons within noise (E-039, E-044 plan) |
+  | E | stalls in ties: 246 standoff plies | yes: E-042 pitfall 3 | `plan_stuck` +0.05 vs last-year, not promoted (E-043); E-044's `relief`, `push`, `eyes`, `swap` aim at it |
+  | F | 20 maps lost from both colours; blue is worse (161-25-64 vs 179-20-51) | new | — |
+- **Confirmation on the pool and last-year games** (2026-11-11 23:52) [verified]: `eval/replay_probe.py replay --run scr15 --agent greedy_v4 --worst 2000 --events` replayed every non-win of greedy_v4 in screen 1 of E-044 (387 games, tuning seeds 301–332) with the true state; parsed by load and dead end.
+
+  | opponents | games | non-wins | attacker deaths in them | food lost | deaths carrying ≥ 8 (food) | share of the lost food | of that inside a dead end | dead-end deaths: killer in sight at entry | killer first at the exit |
+  |---|---|---|---|---|---|---|---|---|---|
+  | pool (7) | 448 | 88 | 51 | 291 | 19 (180) | 62 % | 93 % | 18 / 41 | 29 / 41 |
+  | last-year (7) | 448 | 84 | 19 | 177 | 11 (174) | 98 % | 100 % | 6 / 12 | 5 / 12 |
+  | our own v15 arms (mirror games) | 320 | 215 | 46 | 296 | 20 (197) | 67 % | 70 % | 21 / 36 | 32 / 36 |
+
+  | opponents | carried at death: 0 | 1–4 | 5–7 | ≥ 8 | non-wins with a death carrying ≥ 8 | non-wins in which they ate a capsule | our returns per third | their returns per third |
+  |---|---|---|---|---|---|---|---|---|
+  | pool (7) | 8 | 11 (11 in a dead end) | 13 (12) | 19 (18) | 16 of 88 | 72 | 2.8 / 5.8 / 3.1 | 4.6 / 6.0 / 5.1 |
+  | last-year (7) | 7 | 1 (1) | 0 | 11 (11) | 11 of 84 | 38 | 0.5 / 2.0 / 2.5 | 1.5 / 4.0 / 1.4 |
+
+  - **A is confirmed** on both groups: most of the food our attacker loses is lost in a death that carries 8 or more inside a dead end, and in most dead-end deaths the killer reaches the exit first. From the sentinel data of the whole screen, greedy_v4's attacker loses per game 1.03 / 2.93 / 3.48 food in wins / ties / losses against the pool and 0.73 / 0.47 / 4.90 against last year's teams.
+  - **Size of the prize**: a death carrying ≥ 8 occurs in 16 of 448 pool games (3.6 %) and 11 of 448 last-year games (2.5 %) that we did not win. Even if every one of them became a win, the gain is at most about +0.1 points per game; a realistic share is +0.02 … +0.04, at the edge of what a screen resolves.
+  - **D** shows against the pool (their returns in the last third 5.1 vs ours 3.1) but not against last year's teams (1.4 vs 2.5). **C**: the capsule is eaten in 82 % of pool non-wins and 45 % of last-year non-wins. B, E, F were not re-measured here.
+- **Fixes, pre-registered before any screen game** (in `teams/greedy_lab_v16.py`, default off, [untested]):
+
+  | arm | switch | what it does | aims at | expected Δ (pool / last-year) |
+  |---|---|---|---|---|
+  | `lab16_pocket` | `pocket=1` (`pocket_load` 5, `pocket_margin` 2) | carrying 5 or more, a food inside a dead end is a target (for greedy and for the planner) only if the attacker is back at that dead end's entrance 2 moves before any enemy can stand there (seen enemy: exact distance; hidden: pessimistic quantile of the belief, as `open_goal`; a scared enemy counts from the end of its timer); the other dead-end food waits until the load is banked | A | −0.03 … +0.04 / 0 … +0.04 |
+  | `lab16_cash` | `cash=1` (`cash_moves` 100, `cash_at` 3) | in the last 100 own moves the attacker goes home with 3 food and `open_goal` no longer extends the trip | D (and A late in the game) | 0 ± 0.03 / 0 ± 0.02 |
+
+  - How `pocket` differs from the earlier tests of A: the exit-race checks (E-002, E-018) applied at every load and cost as much food as they saved; `open_safe` (E-043) made the whole trip extension stricter. `pocket` leaves trips with a small load alone and only removes dead-end targets whose exit we cannot win, when there is a load to lose.
+  - **Test**: screen 2 of E-044 (`scr16`, tuning seeds 333–364, pool + greedy_v4 + last-year 7), E-044's "promising" rule; the better of the two, if promising, is the third decision-run candidate (E-044 amendment). Firing is counted by `pocket_moves` / `cash_moves` (attacker moves on which the rule changed the target list / the return threshold applied).
+  - **Not built**: B (`cover` of E-044 is the only untested idea; recall and assist failed), C (three earlier tests within noise), E (E-044's plays aim at it), F (no mechanism proposed; a map / colour effect needs its own measurement).

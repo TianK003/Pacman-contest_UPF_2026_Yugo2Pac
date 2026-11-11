@@ -1,0 +1,59 @@
+import re, ast, collections, statistics as st, sys
+def parse(fn):
+    games=[]; g=None
+    for line in open(fn, encoding='utf-8', errors='replace'):
+        if line.startswith('### '):
+            m=re.match(r'### greedy_v4 vs friend_diego, (\d+) \((\w+)\)',line); g={'seed':int(m[1]),'col':m[2],'deaths':[]}; games.append(g)
+        elif line.startswith('- death'):
+            m=re.match(r'- death ply (\d+) agent (\d+) at \((\d+), (\d+)\) carrying (\d+), depth (\d+), dist home (\S+), killer in sight at dead-end entry: (\S+), killer lead to the exit at entry: (\S+)',line)
+            g['deaths'].append(dict(ply=int(m[1]),agent=int(m[2]),carried=int(m[5]),depth=int(m[6]),seen=m[8],lead=m[9]))
+        elif line.startswith('- our returns'): g['our']=ast.literal_eval(line.split(': ',1)[1])
+        elif line.startswith('- their returns'): g['their']=ast.literal_eval(line.split(': ',1)[1])
+        elif line.startswith('- capsules'): g['caps']=ast.literal_eval(line.split(': ',1)[1])
+        elif line.startswith('| greedy_v4 vs'):
+            c=[x.strip() for x in line.split('|')[1:-1]]
+            m=re.match(r'greedy_v4 vs friend_diego, (\d+) \((\w+)\)',c[0])
+            for G in games:
+                if G['seed']==int(m[1]) and G['col']==m[2]: G['score']=int(c[1]); G['plies']=int(c[2])
+    return games
+NW=parse(sys.argv[1]); S=parse(sys.argv[2])
+W=[g for g in S if g['score']>0]
+L=[g for g in NW if g['score']<0]; T=[g for g in NW if g['score']==0]
+def role(g,a):  # first index of our team = attacker (index 0 or 1)
+    return 'attacker' if a in (0,1) else 'defender'
+def rep(name,G):
+    n=len(G); D=[(g,d) for g in G for d in g['deaths']]
+    print('###',name,n)
+    for r in ('attacker','defender'):
+        X=[d for g,d in D if role(g,d['agent'])==r]
+        print(' %s deaths/game %.2f, food lost/game %.2f, carried>=5: %d, deep(depth>=3) %d'%(r,len(X)/n,sum(d['carried'] for d in X)/n,sum(d['carried']>=5 for d in X),sum(d['depth']>=3 for d in X)))
+    # defender death relative to their capsule
+    dd=[(g,d) for g,d in D if role(g,d['agent'])=='defender']
+    aftercap=sum(any(c[2]=='theirs' and 0<=d['ply']-c[0]<=80 for c in g['caps']) for g,d in dd)
+    print(' defender deaths within 80 plies after their capsule: %d/%d'%(aftercap,len(dd)))
+    tc=sum(any(c[2]=='theirs' for c in g['caps']) for g in G)/n; oc=sum(any(c[2]=='ours' for c in g['caps']) for g in G)/n
+    print(' games where they ate a capsule %.0f%%, we ate one %.0f%%'%(100*tc,100*oc))
+    # timing of returns by game third
+    def thirds(key):
+        b=[0,0,0]
+        for g in G:
+            for p,_,f in g[key]: b[min(2,p//400)]+=f
+        return ' / '.join('%.1f'%(x/n) for x in b)
+    print(' our returns by third (plies 0-399/400-799/800+): %s'%thirds('our'))
+    print(' their returns by third: %s'%thirds('their'))
+    # death timing
+    b=[0,0,0]
+    for g,d in D: b[min(2,d['ply']//400)]+=1
+    print(' our deaths by third: %s'%' / '.join('%.2f'%(x/n) for x in b))
+    # leading then losing: was our score ahead at ply 800?
+    def lead_at(g,p): return sum(f for q,_,f in g['our'] if q<p)-sum(f for q,_,f in g['their'] if q<p)
+    print(' ahead at ply 800: %d, behind: %d, level: %d'%(sum(lead_at(g,800)>0 for g in G),sum(lead_at(g,800)<0 for g in G),sum(lead_at(g,800)==0 for g in G)))
+    print(' last our return ply (median) %s; returns count/game %.1f, mean size %.1f'%(st.median([max([p for p,_,_ in g['our']] or [0]) for g in G]),sum(len(g['our']) for g in G)/n, (sum(f for g in G for _,_,f in g['our'])/max(1,sum(len(g['our']) for g in G)))))
+for name,G in (('WINS (sample)',W),('LOSSES',L),('TIES',T)): rep(name,G)
+print('### attacker deaths detail (losses)')
+X=[d for g in L for d in g['deaths'] if d['agent'] in (0,1)]
+print(' n',len(X),'in dead end',sum(d['depth']>0 for d in X),'killer seen at entry',sum(d['seen']=='True' for d in X),'not seen',sum(d['seen']=='False' for d in X),'lead<=0',sum(d['lead'] not in ('None',) and int(d['lead'])<=0 for d in X))
+print(' open-corridor deaths',sum(d['depth']==0 for d in X),'carrying mean %.1f'%st.mean([d['carried'] for d in X if d['depth']==0] or [0]))
+Y=[d for g in L for d in g['deaths'] if d['agent'] in (2,3)]
+print('### defender deaths (losses) n',len(Y),'carried>0',sum(d['carried']>0 for d in Y), 'dist home None/val', collections.Counter(d['depth'] for d in Y).most_common(4))
+print('### who out-returned: their returns per game in losses by number of their return trips', st.mean(len(g['their']) for g in L), st.mean(len(g['their']) for g in W))

@@ -2156,6 +2156,29 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | **all four (240 games)** | 2.308 | 2.417 | **+0.108 [−0.013, +0.229]** | 2.400 | **+0.092 [−0.037, +0.229]** |
 
   Both candidates: 0 crashes, 0 time warnings, max move 0.209 s / 0.162 s. Reading: no friend team gets worse and the sign is positive, but with 240 games the interval includes 0. The plays do not address what E-045 found against `friend_diego` (big loads lost in dead ends); `friend_aljaz_1` remains the opponent we are level with (30-1-29 → 35-1-24).
+- **Decisions taken by the assistant during the night** (user, 2026-11-11 ~23:30: "all decisions from now on should be autonomous - you make them", each with a 1–2 sentence reason):
+
+  | # | time | decision | why (1-2 sentences) |
+  |---|---|---|---|
+  | 1 | 22:10 | `relief` starts only if some enemy food lies within the 6-step leash | Without it the helper would only stand at the border; added before any scored game. |
+  | 2 | 22:20 | Second wave gets `swap` (role handover at a border standoff) instead of the planned `relay` pre-walk | The smoke counters show the defender is already at the border when the attacker dies (relay "too far" = 0), so a pre-walk has nothing to gain; entry walks are 25-28 % of attacker moves. |
+  | 3 | 23:15 | Took on the other session's loss diagnosis as E-045, sharing screen 2 and the decision runs | It is the same kind of work the user asked for in E-042/E-043 and fits the compute budget only if it shares runs. |
+  | 4 | 23:15 | Asked the other session to run no more games tonight | Its 500 games overlapped screen 1; extra load can change moves under the 0.3 s planner budget. |
+  | 5 | 23:30 | No promotion to `my_team.py` whatever passes | The pre-registered rule says candidates are proposed to the user; the test run is on 11-23, so nothing is lost by waiting. |
+  | 6 | 23:30 | No AI/session line in commit messages | The organisation's policy forbids AI attribution in git metadata and outranks the session reminder. |
+  | 7 | 23:55 | Screen 2 also screens three combinations (relay+eyes+relief, relay+eyes, all four) and at most 3 candidates go to the decision run | Three arms were promising in screen 1 and two of them gain on the same standoff games, so a combination must be screened on fresh seeds before validation seeds are spent on it. |
+  | 8 | 23:55 | `push` is not carried as a single candidate | It missed the pre-registered +0.05 bar on both groups (+0.018 / +0.036); it stays only inside the 4-play combination. |
+  | 9 | 00:05 | `pocket` screened as built, although two smoke games scored below greedy_v4 | Both traces end in greedy_v4's own known stalemates, not a pocket fault; tuning on 2 smoke games would be overfitting. |
+  | 10 | 00:10 | E-045's fixes limited to `pocket` and `cash` | Only hypothesis A (big loads lost in dead ends) was confirmed on the pool and last-year games; B, C, E already have failed or pending tests, F has no mechanism. |
+  | 11 | 01:38 | Decision-run candidates: `lab15_eyes`, `lab16_c2` (relay + eyes), `lab16_swap` | eyes is the best single arm and c2 the only promising combination (the pre-registered picks); swap takes the place left empty by the E-045 arms because it is promising and the only arm that wins the mirror. |
+  | 12 | 01:38 | `relief` and `push` dropped from the combination | On the same games, adding relief to relay + eyes costs 0.076 on the pool and adds 0.000 against last year's teams; push adds nothing measurable. |
+  | 13 | 01:38 | `pocket` and `cash` (E-045) not carried | Neither is promising: pocket -0.004 / -0.031, cash -0.038 / +0.022, both lose the mirror. |
+  | 14 | 03:36 | `swap` rejected; confirmation run started for `lab15_eyes` and `lab16_c2` | Pre-registered rule: swap is below the pool guard (-0.036) and shows no gain; the other two pass every guard with a last-year gain whose CI is above 0. |
+  | 15 | 05:47 | Both `lab15_eyes` and `lab16_c2` reported as confirmed candidates; `lab16_c2` suggested first | Both pass the pre-registered confirmation; c2 has the larger gain against last year's teams (+0.078 vs +0.061) at no pool cost, eyes is the simpler fallback. |
+  | 16 | 05:48 | Linux timing check run for both candidates | The plan lists it for any confirmed candidate and it costs 10 minutes. |
+  | 17 | 06:00 | Extra diagnostic run against the friend teams, with no decision attached | E-045 started from losses to a friend's agent; the table answers "does it help there" without touching the verdict. |
+  | 18 | 06:00 | No `plan_stuck` combination screened and no shippable file (`greedy_v6`) built | The approved plan excludes mixing in plan_stuck tonight, and which candidate to ship is the user's choice. |
+  | 19 | 06:28 | Diagnostic cut to the four fast friend teams (diego, andy, andy_v2, aljaz_1) | Three of the compiled aljaz teams take about a minute per game, so the full run would have ended after 08:00; greedy_v4 games against the dropped teams are kept but unpaired. |
 
 ## E-045 — Loss diagnosis of greedy_v4 against a friend's agent, and two greedy fixes from it (2026-11-11 night → 2026-11-12)
 - **Status**: diagnosis logged and confirmed on the pool and last-year games (hypothesis A); two fixes (`lab16_pocket`, `lab16_cash`) pre-registered below, before any screen game of them; **screened in `scr16` (E-044): neither is promising** (result at the end of this entry).

@@ -2145,6 +2145,17 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 
   Same level as greedy_v4's own Linux check (max move 0.283 s, E-032): the plays add no measurable move time.
 - **Diagnostic after the decision (pre-stated 06:00, not a decision input)**: run `diag15`: greedy_v4, `lab15_eyes`, `lab16_c2` vs the friend teams (`friend_diego`, `friend_andy`, `friend_andy_v2`, `friend_aljaz_1..5`) on tuning seeds 365–394, both colours, `-c`. Purpose: E-045 started from losses against a friend's agent, so the user will want to know whether the confirmed plays change anything there. Friend teams are diagnostics only (user rule 2026-11-11): whatever this shows, the verdict above stands.
+- **Diagnostic result** (`diag15` + `diag15b`, tuning seeds 365–394, both colours, `-c`, 06:00–06:37) [verified]; **not a decision input**. The run as pre-stated was stopped at 379 of 1,440 games: `friend_aljaz_2..4` take about a minute per game and it would have ended after 08:00. greedy_v4's finished pairings are kept (`diag15`); the two candidates then played the four fast friend teams on the same seeds (`diag15b`, 480 games). `friend_aljaz_2` / `_3` have greedy_v4 games only (2.53 / 2.37 PPG), `_4` / `_5` nothing usable.
+
+  | opponent (60 games each) | greedy_v4 W-T-L (PPG) | `lab15_eyes` W-T-L (PPG) | Δ [95 % CI] | `lab16_c2` W-T-L (PPG) | Δ [95 % CI] |
+  |---|---|---|---|---|---|
+  | `friend_diego` | 47-3-10 (2.40) | 49-3-8 (2.50) | +0.10 [−0.15, +0.35] | 48-4-8 (2.47) | +0.07 [−0.27, +0.40] |
+  | `friend_andy` | 51-7-2 (2.67) | 53-7-0 (2.77) | +0.10 [−0.05, +0.27] | 52-7-1 (2.72) | +0.05 [−0.13, +0.25] |
+  | `friend_andy_v2` | 51-6-3 (2.65) | 51-6-3 (2.65) | 0.00 [−0.10, +0.10] | 51-6-3 (2.65) | 0.00 [−0.10, +0.10] |
+  | `friend_aljaz_1` | 30-1-29 (1.52) | 35-0-25 (1.75) | +0.23 [−0.08, +0.57] | 35-1-24 (1.77) | +0.25 [−0.05, +0.58] |
+  | **all four (240 games)** | 2.308 | 2.417 | **+0.108 [−0.013, +0.229]** | 2.400 | **+0.092 [−0.037, +0.229]** |
+
+  Both candidates: 0 crashes, 0 time warnings, max move 0.209 s / 0.162 s. Reading: no friend team gets worse and the sign is positive, but with 240 games the interval includes 0. The plays do not address what E-045 found against `friend_diego` (big loads lost in dead ends); `friend_aljaz_1` remains the opponent we are level with (30-1-29 → 35-1-24).
 
 ## E-045 — Loss diagnosis of greedy_v4 against a friend's agent, and two greedy fixes from it (2026-11-11 night → 2026-11-12)
 - **Status**: diagnosis logged and confirmed on the pool and last-year games (hypothesis A); two fixes (`lab16_pocket`, `lab16_cash`) pre-registered below, before any screen game of them; **screened in `scr16` (E-044): neither is promising** (result at the end of this entry).

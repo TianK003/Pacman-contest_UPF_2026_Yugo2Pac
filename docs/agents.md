@@ -252,6 +252,19 @@ v14 = v13 + default-off options `plan_stuck` (+ `stuck_moves`), `brk_tabu`, `pla
 | `lab14_raid` | scared defender raids the enemy half while both enemies are Pacmen, back in time | E-043 screen | 0 / +0.036 [−0.027, +0.104], h2h 1.42 | not promising |
 | `lab13_defsc_posture` (re-test) | scared-defender posture (E-039) on fresh seeds | E-043 screen | **−0.036** / +0.009, h2h 1.50 | not promising (E-039's +0.07 does not repeat) |
 
+### greedy_lab_v15 arms (E-044): the team brain, first wave
+
+v15 = v14 + `TeamBrain` (one shared object per team: what each agent posts, a situation classifier, a play state machine, counters) + `BrainAgent(RoleAgent)`, built only when `brain=1` or a play is on. With every switch off, and with `brain=1` alone, it plays exactly like greedy_v4 (32/32 recorded games; 896/896 screen games). Every arm = greedy_v4 + one play, screened on tuning 301–332 (`scr15`, 5,696 games) vs the 7 other pool members, greedy_v4 and 7 last-year teams. Frozen after the screen.
+
+| name | what it is | tested in | result (Δ vs greedy_v4: pool / last-year 7; h2h W-T-L) | verdict |
+|---|---|---|---|---|
+| `lab15_off` | v15 with every new switch off | E-044 identity | identical to greedy_v4 | identity check only |
+| `lab15_brain` | brain on, no play (census of team situations) | E-044 screen 1 | 0 / 0, identical in 896/896 games | census only |
+| `lab15_relay` | when the attacking body dies, the body near the border attacks and the respawned body defends (roles swapped until the next respawn) | E-044 screen 1 | **+0.062 [+0.002, +0.138]** / +0.020; h2h 20-24-20; fires in 22 % / 14 % of games | promising (pool) |
+| `lab15_eyes` | the attacker's greedy safety checks ignore a ghost only the defender sees (> Manhattan 5, > 10 maze steps, not in its own sight for 8 moves) | E-044 screen 1 | +0.009 / **+0.080 [+0.020, +0.145]**; h2h 20-24-20; fires in 96 % / 91 % of games; 0-0 ties vs last-year 40 → 26, deaths unchanged | promising (last-year) |
+| `lab15_push` | late tie-break push by the defender when the opponent is passive or can no longer bank | E-044 screen 1 | +0.018 / +0.036 [+0.011, +0.067]; h2h 23-20-21; fires in 8 % / 23 % of games | not promising by the rule (below +0.05 on both groups; positive everywhere) |
+| `lab15_relief` | the defender helps a stuck attacker on a 6-step leash while home is quiet or it is scared; returns when an enemy becomes a Pacman, the attacker is unstuck, or after 25 moves | E-044 screen 1 | +0.016 / **+0.069 [+0.009, +0.136]**; h2h 19-21-24 (net −0.078); fires in 45 % / 34 % of games; 0-0 ties vs last-year 40 → 21 | promising (last-year); weakest mirror |
+
 ## Opponents we did not write
 
 | name | what it is | use |

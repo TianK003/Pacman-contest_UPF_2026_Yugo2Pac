@@ -45,7 +45,7 @@ Columns: what it exploits, which measured weakness it targets, cost, risk, and h
 
 | ID | tactic | how it works | shared information used | weakness targeted (evidence) | sign it works | effort | risk | status |
 |---|---|---|---|---|---|---|---|---|
-| SM-1 | **Team brain** | One object sets roles, targets and entries for both agents each turn, and does the map analysis once (H-M11) | everything | needed by every row below | `lab_off`-style identity with all tactics off | medium | low (structure only) | idea |
+| SM-1 | **Team brain** | One object sets roles, targets and entries for both agents each turn, and does the map analysis once (H-M11) | everything | needed by every row below | `lab_off`-style identity with all tactics off | medium | low (structure only) | **built** (E-044: `TeamBrain` in `greedy_lab_v15/16.py`; identical to greedy_v4 with every play off, 896/896 games) |
 | SM-2 | **Shared belief** | One belief per enemy, updated at both agents' turns: spread only the enemy that just moved; apply both agents' sonar; a vanished food pins that enemy exactly | sonar, sight, food events | defender's tracking (E-019: median error 4) | belief error | — | — | **built** (`shared`, E-025): error 4 → 2, truth never ruled out; screen pending |
 | SM-3 | **Power play** | After we kill an enemy (it is in its prison for a known number of moves) or eat their capsule (exact scared timer), the defender joins the attack and comes back before the window closes | respawn detection, exact timers, belief | raids by the defender gained against guards and lost the same against attackers (E-018, E-020); a known window removes the attackers | food returned per game rises; food conceded does not rise | low | medium | **built** as `formation='power'` (`lab7_power`, teams/greedy_lab_v7.py); screen E-030 |
 | SM-4 | **Decoy / two-entry overload** | Agent A shows itself at entry X; the enemy guard shadows A (visible in the shared belief); agent B crosses at a far entry Y | belief of their guard, both positions | 0–0 standoffs (18% of lost points, E-014); 25% of attacker moves are walks between entries (E-022) | fewer standoff moves, more Pacman moves | medium | medium | idea |
@@ -175,3 +175,22 @@ Gaps the search could not fill (unknown, not guessed):
 | LF-1 | Smoothed (interpolated) lookup-table leaf: a direct test of T-59 (smoothness, not R², is what a max-backup search needs) | idea; the quadratic leaf already ≈ net (E-033), so only informative |
 | GM-1 | Ghost model calibrated from replays (how often enemy ghosts chase / intercept / hold, by distance) for the planner and any MC scenario | idea; would address T-60 and greedy_v4's "chase within 6 or hold" blind spot |
 
+## 8. Added 2026-11-12 (E-044 team brain, E-045 loss diagnosis)
+
+The team brain (SM-1) is one shared object: each agent posts what it is doing (role, rule, idle count, entry, target, load), the brain classifies the team situation each turn (invaders, defender scared, attacker raiding / idle / dead, clock and score) and runs at most one role-bending play at a time through a latch both agents read. Every play has an enter rule, a return rule and a cooldown. Results are Δ points per game vs greedy_v4 (pool / last year's teams).
+
+| ID | play | what it does | status |
+|---|---|---|---|
+| TB-1 | `eyes` | the attacker's greedy safety checks ignore a ghost that only the defender sees (> Manhattan 5, > 10 maze steps, not in its own sight for 8 moves); the planner still models it. T-56 turned around | **confirmed candidate** (E-044): +0.031 [+0.006, +0.057] / +0.061 [+0.033, +0.091] on validation3 1–80 |
+| TB-2 | `relay` | when the attacking body dies, the body near the border attacks and the respawned body defends | promising alone (+0.062 / +0.020, screen 1); **confirmed inside `relay` + `eyes`** (E-044): +0.020 / +0.078 [+0.052, +0.104]; on top of eyes it adds −0.012 / +0.017 |
+| TB-3 | `swap` | role handover at a border standoff: the body nearer the attacker's new entry attacks | screen +0.056 vs last-year and a won mirror; **rejected on validation** (pool −0.036, last-year +0.010) |
+| TB-4 | `relief` (≈ SM-7) | the defender helps a stuck attacker on a 6-step leash while home is quiet | promising alone (+0.016 / +0.069); **dropped**: inside relay + eyes −0.076 on the pool, 0.000 vs last-year (T-63) |
+| TB-5 | `push` | late tie-break push by the defender when the opponent is passive or can no longer bank | +0.018 / +0.036 alone (below the bar), nothing inside a combination; not adopted |
+| TB-6 | `cover` (≈ SM-8) | an idle attacker closes the second exit of an invader carrying ≥ 2 | no effect (+0.016 / +0.009): fires in 13–26 % of games, the invader rarely comes |
+| LD-1 | `pocket` | a loaded attacker takes dead-end food only if it is back at the entrance before any enemy | not promising (−0.004 / −0.031); fourth restriction aimed at big-load dead-end deaths that saves what it costs |
+| LD-2 | `cash` | bank at 3 in the last 100 moves | not promising (−0.038 [−0.080, −0.004] on the pool) |
+
+Open, [untested]:
+- a combination of the confirmed plays with `plan_stuck` (E-043: +0.05 vs last-year); both act on standoffs, so the gains may overlap (T-63): screen the combination next to relay + eyes on fresh seeds;
+- an escape improvement for the cut-off attacker (H-S20) instead of entry restrictions (LD-1);
+- a home-safety signal for plays that send the defender across (TB-4, TB-5), e.g. the belief that no enemy can reach our food before the helper is back.

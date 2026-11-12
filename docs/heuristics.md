@@ -256,6 +256,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
 - **Variants**: attacker + defender; double attack (no invaders and a weak enemy defence); double defence (ahead late).
 - **Evidence**: [reported: the KTH tournament concluded that "rigid roles often resulted in deadlocks, dynamic role switching was a competitive advantage"; abhinavcreed13 switches by number of invaders].
 - **Status**: **tested in a basic form** (`roles` switch, E-007): +0.12 [+0.00, +0.23] against the pool, but it **loses head-to-head to greedy** (0.95) and against camper (−0.45). Probable cause: the defender joins the attack and leaves our side open. Not adopted; the next step is to screen its three parts separately.
+- **E-044 (event-triggered swaps, exactly one attacker and one defender at all times)** [verified]: swapping the roles when the attacking body dies (`relay`) is promising alone (+0.062 on the pool) and confirmed inside `relay` + `eyes`; swapping at a border standoff (`swap`) won its screen and failed validation (pool −0.036); sending the defender across as temporary help (`relief`, `push`) is not adopted.
 
 ### H-S09: Teammate coordination
 - **Idea**:
@@ -264,7 +265,7 @@ Evidence tags follow [README.md](README.md). `[reported: X]` means team X's own 
   - Share beliefs and goals through the team object.
 - **Compute**: a greedy assignment of goals to agents (2×K, cheap).
 - **Evidence**: [untested]. Sharing beliefs via a global [reported: KTH].
-- **Status**: idea.
+- **Status**: a team brain is **built** (E-044, proposals.md section 8): both agents post what they are doing and read one play latch. **Whose sight is it** [verified, E-044 `eyes`]: a ghost that only the defender sees (far from the attacker and not in its own sight recently) is not the attacker's problem; ignoring it in the greedy safety checks turns 0-0 standoffs into wins against last year's teams (+0.061 [+0.033, +0.091], deaths unchanged) and is a confirmed candidate. An idle attacker covering an invader's second exit (`cover`, the pincer) had no effect.
 
 ### H-S10: Anti-oscillation and commitment
 - **Idea**: detect cycles (e.g. a repeated position in the last 8 moves) and break them. Commit to a goal for N steps unless the threat changes. Break ties at random with our **own** RNG instance (T-02).

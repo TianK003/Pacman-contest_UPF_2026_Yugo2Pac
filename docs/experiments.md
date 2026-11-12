@@ -2136,6 +2136,15 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - What changes on the board over both blocks, c2 vs greedy_v4 against last year's teams: +78 wins, −60 ties (0-0 ties 138 → 87), −18 losses in 2,240 games (win rate 87.5 % → 91.0 %); deaths per game unchanged (0.35–0.39), food returned +1.0 per game, conceded +0.2. Against the pool: +12 wins, −14 ties, +2 losses in 1,120 games.
   - Leak check: 0 flagged for eyes; 3 for c2, all lyw_despookjes games in which that team crashed in the candidate's game only (wins both times). lyw_despookjes crashed in 128 of its 240 games (its own code).
 - **Outcome of E-044**: two **confirmed candidates**, `lab15_eyes` and `lab16_c2`; nothing promoted (`my_team.py` = greedy_v4, the user's call). Not used: test seeds, held-out teams. Rejected: `swap` (decision run), `relief`, `push`, `cover` (screens). Seeds used: tuning 291–296 (smokes), 301–364 (screens); validation3 1–80 of 300.
+- **Linux timing of the two confirmed candidates (05:48–05:57)** [verified]: WSL Ubuntu 24.04, CPython 3.8.20, `~/pacman_wsl` mirror re-synced; `eval/check_rules.py` OK on both files there. `lab15_eyes` and `lab16_c2` vs greedy_v3, choke, exploit_v2, lab5_smart, lyw_flagrats on tuning seeds 516–520 (reused: a timing check tunes nothing), both colours, `-q -c` (real `SIGALRM` limits), 12 workers on 12 logical CPUs (load average 8) (run `wsl_c2_loaded`, kept in the WSL mirror).
+
+  | agent | games | W-T-L | crashes | time warnings | timeouts | violations | max move | worst p95 | max startup |
+  |---|---|---|---|---|---|---|---|---|---|
+  | `lab15_eyes` | 50 | 43-6-1 | 0 | 0 | 0 | 0 | 0.229 s | 0.141 s | 1.70 s |
+  | `lab16_c2` | 50 | 43-6-1 | 0 | 0 | 0 | 0 | 0.166 s | 0.104 s | 1.42 s |
+
+  Same level as greedy_v4's own Linux check (max move 0.283 s, E-032): the plays add no measurable move time.
+- **Diagnostic after the decision (pre-stated 06:00, not a decision input)**: run `diag15`: greedy_v4, `lab15_eyes`, `lab16_c2` vs the friend teams (`friend_diego`, `friend_andy`, `friend_andy_v2`, `friend_aljaz_1..5`) on tuning seeds 365–394, both colours, `-c`. Purpose: E-045 started from losses against a friend's agent, so the user will want to know whether the confirmed plays change anything there. Friend teams are diagnostics only (user rule 2026-11-11): whatever this shows, the verdict above stands.
 
 ## E-045 — Loss diagnosis of greedy_v4 against a friend's agent, and two greedy fixes from it (2026-11-11 night → 2026-11-12)
 - **Status**: diagnosis logged and confirmed on the pool and last-year games (hypothesis A); two fixes (`lab16_pocket`, `lab16_cash`) pre-registered below, before any screen game of them; **screened in `scr16` (E-044): neither is promising** (result at the end of this entry).

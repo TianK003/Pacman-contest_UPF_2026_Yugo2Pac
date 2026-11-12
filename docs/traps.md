@@ -276,6 +276,7 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: sight is shared (T-23): our attacker sees every enemy within 5 of *either* of us. A defender that stands at the border across from the enemy guard shows that guard to our attacker. greedy's race-safe attacker then treats the guard as blocking and waits.
 - **What happened**: the first shadowing defender followed the enemy "nearest our side", usually their border guard, and turned a 22–0 win over baseline_team into a 0–0 standoff (E-019 smoke). The tracker switch of E-007 made the attacker timid the same way, through extra (remembered) ghosts.
 - **Prevention**: when a change gives the attacker more ghost sightings, re-check the attacker's standoff and Pacman-move counts. The defender should follow the enemy that has actually come over, not their guard.
+- **Measured and addressed (E-044, `eyes`)**: letting the attacker's greedy safety checks ignore ghosts that only the defender sees removes 12 attacker idle moves per game and a third of the 0-0 ties against last year's teams, with deaths unchanged; a confirmed candidate, not yet in `my_team.py`.
 
 **T-59: A search exploits the errors of its leaf; a good R² is not enough** [hit E-030, E-033]
 - **Why**: a planner that backs up the best node (IW, max over continuations) seeks out the states its evaluation overrates. A piecewise-constant leaf (lookup table) has jumps at bucket edges and noisy sparse cells; the search walks to them.

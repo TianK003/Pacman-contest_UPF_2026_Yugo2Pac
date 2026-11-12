@@ -230,6 +230,14 @@ Section A matters most: those traps can make us **cheat by accident**.
 - **Why**: with ~800 paired games a screen arm's CI half-width is ≈ 0.08–0.10, so "Δ > 0" admits arms that are pure noise (two E-039 arms qualified by +1 point). Switches that are each ≈ 0 can still share a direction of harm (E-039: three of them took time from the attack) and add up in the combination: −0.07 on validation.
 - **Prevention**: pre-register a screen threshold well above 0 (e.g. Δ ≥ +0.05 or CI lower > −0.02), validate the best single arm rather than a bundle, and check the diagnostics of the arms for a shared side effect before combining.
 
+**T-63: Two screen arms that win the same games do not add up** [hit E-044]
+- **Why**: `eyes` (+0.080 vs last-year) and `relief` (+0.069) each gained mostly on the same 0-0 standoff games (lyw_autsys_pacman +0.41 / +0.39). Together they win those games once: on the same seeds, adding `relief` to relay + eyes gave 0.000 vs last-year and −0.076 on the pool, because only its cost was left (the defender leaves home; ties become losses as often as wins).
+- **Prevention**: before combining promising arms, look at which opponents and which games carry each gain; if they overlap, screen the combination on fresh seeds next to the smaller one (c2 next to c3) and keep the arm with the lower cost.
+
+**T-64: A scored run next to other jobs on the same machine** [hit E-044 / E-045]
+- **Why**: the planner stops on a 0.3 s clock, so another session's games on the same laptop can change its moves. A second session ran 500 games during screen 1 without either session knowing of the other.
+- **Prevention**: one scored run at a time per machine; include a census arm that must reproduce the incumbent (896 / 896 identical games showed no effect here); tell any other session to wait.
+
 **T-48: Changing a frozen league file**
 - **Why**: league entries (`eval/league.json`) point to team files. Editing a file after it was benchmarked silently changes an "old version" and invalidates past results and the forgetting check.
 - **Prevention**: new versions get new files (`greedy_v2.py`). Frozen files are marked `"frozen": true`.

@@ -1962,7 +1962,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 - **Decision (user, 2026-11-11)**: **not promoted**: "basically the same agent" (head-to-head 340-318-342; the gain is +0.05 vs last year's teams only). greedy_v4 stays in `my_team.py`; lab14_stuck stays a league entry and the `plan_stuck` switch stays available in `teams/greedy_lab_v14.py`.
 
 ## E-044 — Team brain: the attacker and the defender know each other's situation (2026-11-11 night → 2026-11-12)
-- **Status**: screen 1 done (23:44): `relay`, `eyes`, `relief` promising, `push` not; screen 2 done (01:34): `c2` (relay + eyes) and `swap` promising; c3, c4, `cover` not; decision run `val15` (validation3 1–40) running with `lab15_eyes`, `lab16_c2`, `lab16_swap`. Pre-registered (this entry was committed before any screening or validation game was played). Plan: `C:\Users\Tian\.claude\plans\tranquil-growing-tarjan.md` (approved by the user 2026-11-11 21:45).
+- **Status**: screen 1 done (23:44): `relay`, `eyes`, `relief` promising, `push` not; screen 2 done (01:34): `c2` (relay + eyes) and `swap` promising; c3, c4, `cover` not; decision run `val15` (validation3 1–40) done (03:34): `lab15_eyes` and `lab16_c2` pass, `lab16_swap` fails; confirmation run `conf15` (validation3 41–80) running. Pre-registered (this entry was committed before any screening or validation game was played). Plan: `C:\Users\Tian\.claude\plans\tranquil-growing-tarjan.md` (approved by the user 2026-11-11 21:45).
 - **Why**: user request (2026-11-11): a brain / attention mechanism so that each agent knows what the other is doing and how it will react, for proactive planning (help in good situations such as late pushes, prepare for bad ones such as the attacker being chased or dying). Base mindset stays attacker + defender. Three brainstorm agents (defender lens, attacker lens, architect + sceptic) produced the proposals; the user approved the plan.
 - **User decisions for this experiment**: roles bend only as temporary help with a return rule; a run stopped for low memory may be resumed automatically with fewer workers; a fresh list `eval/seeds/validation3.txt` (300 seeds, `make_validation3.py`, `random.Random(20261111)`, disjoint from tuning / validation / validation2 / test [verified: 0 overlaps]) is used for decisions; pass rules set by the assistant; nothing is promoted without the user.
 - **Code**: `teams/greedy_lab_v15.py` = copy of `greedy_lab_v14.py` + `TeamBrain` (one shared object: what each agent posts, a situation classifier, a play state machine, in-memory counters) + `BrainAgent(RoleAgent)`, built only when `brain=1` or a play is on. Second wave: `teams/greedy_lab_v16.py`.
@@ -2086,6 +2086,26 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   | 3 | `lab16_swap` | **amendment**: the third place was reserved for an E-045 arm and neither is promising; `swap` takes it as the only promising second-wave arm and the only arm whose mirror result is above 0. The number of candidates stays within the pre-registered 3 and the accept rule is unchanged | scr16: −0.029 / +0.056, h2h +0.141 |
 
   Not carried: `relay`, `relief` as single arms (not the best single), c3 / c4 (pool below the guard), `push`, `cover`, `pocket`, `cash` (not promising). A combination with `swap` was not screened, so none is validated (T-61).
+- **Decision run result** (`val15`, 6,960 games, validation3 seeds 1–40 [verified: exactly the first 40 of the list], 2026-11-12 01:38–03:34, 6 workers; my_team.py = greedy_v4, framework 54cd83c) [verified]. Paired Δ vs greedy_v4; last-year = all 14 teams. greedy_v4 on these seeds: pool 452-41-67 (2.495 PPG), last-year 983-94-43 (2.717).
+
+  | candidate | Δ pool (7) [95 % CI] | Δ last-year (14) [95 % CI] | h2h vs greedy_v4 W-T-L, net wins [CI] | worst pool member [CI] | crashes / warnings / violations | max move | accept rule |
+  |---|---|---|---|---|---|---|---|
+  | `lab15_eyes` | +0.023 [−0.014, +0.061] | **+0.086 [+0.046, +0.125]** | 30-20-30, 0.000 [−0.100, +0.087] | greedy_v3 −0.06 [−0.16, 0.00] | 0 / 0 / 0 | 0.161 s | **pass** |
+  | `lab16_c2` (relay + eyes) | +0.023 [−0.025, +0.077] | **+0.106 [+0.074, +0.138]** | 32-18-30, +0.025 [−0.100, +0.150] | greedy_v3 −0.04 [−0.11, 0.00] | 0 / 0 / 0 | 0.204 s | **pass** |
+  | `lab16_swap` | **−0.036** [−0.114, +0.039] | +0.010 [−0.010, +0.031] | 32-17-31, +0.013 [−0.050, +0.075] | greedy_v2 −0.16 [−0.33, 0.00] | 0 / 0 / 0 | 0.166 s | **fail** (pool below −0.03; no gain with a CI above 0) |
+
+  | arm | group | W-T-L | 0-0 ties | deaths | food returned | food lost | conceded |
+  |---|---|---|---|---|---|---|---|
+  | greedy_v4 | pool / last-year | 452-41-67 / 983-94-43 | 13 / 73 | 0.34 / 0.35 | 16.0 / 15.4 | 1.07 / 0.87 | 7.0 / 3.9 |
+  | eyes | pool / last-year | 457-39-64 / 1025-64-31 | 14 / 47 | 0.33 / 0.34 | 16.1 / 16.2 | 1.00 / 0.84 | 6.9 / 3.9 |
+  | c2 | pool / last-year | 459-33-68 / 1035-57-28 | 11 / 41 | 0.38 / 0.35 | 16.4 / 16.6 | 1.14 / 0.80 | 7.5 / 4.2 |
+  | swap | pool / last-year | 448-33-79 / 990-84-46 | 11 / 62 | 0.37 / 0.35 | 16.6 / 15.7 | 1.16 / 0.90 | 7.8 / 4.1 |
+
+  - Where the last-year gain is (per opponent, 80 games each, reported only): c2 gains on lyw_clingho_pacman +0.33 [+0.15, +0.50], lyw_autsys_pacman +0.30 [+0.12, +0.49], lyw_pacman_agent +0.24 [+0.05, +0.44], lyw_flagrats +0.17 [+0.01, +0.36], lyw_pacman_as +0.17, lyw_dotgobblers +0.14, lyw_thedotdominators +0.12; its worst cells are −0.04 (lyw_despookjes, lyw_idontthink, greedy_v3). The gain is ties turned into wins (last-year ties 94 → 57, 0-0 ties 73 → 41) and fewer losses (43 → 28), with deaths unchanged.
+  - Counters: eyes drops a ghost on 35–38 attacker moves per game (90 % of games); attacker idle moves 28 / 25 per game (swap, which has no eyes: 32) and evade moves 7 (swap: 15); relay swaps 0.20 per game (17 % of games); swap 0.92 swaps per game (30 % of games).
+  - `swap` did not repeat its screen (+0.056 last-year, mirror 30-13-21 → +0.010, 32-17-31) and costs against our own family (greedy_v2 −0.16, greedy_v3 −0.11). **Rejected.**
+  - Leak check: the tool flags 1 / 4 / 4 games (eyes / c2 / swap). All nine are games against lyw_despookjes in which that team crashed in the candidate's game and not in greedy_v4's (a win for us both times; a crashed game writes no report, so its counters read as "not fired"). No game with an unfired play differs otherwise. lyw_despookjes crashed in 136 of its 320 games (its own code, as in E-041).
+  - **Next**: confirmation run `conf15` (validation3 seeds 41–80) for `lab15_eyes` and `lab16_c2`, started 03:36.
 
 ## E-045 — Loss diagnosis of greedy_v4 against a friend's agent, and two greedy fixes from it (2026-11-11 night → 2026-11-12)
 - **Status**: diagnosis logged and confirmed on the pool and last-year games (hypothesis A); two fixes (`lab16_pocket`, `lab16_cash`) pre-registered below, before any screen game of them; **screened in `scr16` (E-044): neither is promising** (result at the end of this entry).

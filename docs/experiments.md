@@ -2077,7 +2077,7 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - `cover`: enters 0.35 times per game (21 % of games), 2.1 moves per game; 0.20 of the 0.35 entries end at the 8-move limit, 0.06 with the invader gone: the invader rarely comes to the covered exit. No effect.
   - Counters inside c2: relay swaps 0.21 per game (18 % of games), eyes 34 attacker moves per game (90 %); attacker idle moves 40 → 28 per game, evade moves 14 → 8, attacker deaths 0.27 → 0.28.
   - Per opponent (reported, never decisive): c2's best cells are lyw_pacman_agent +0.23 [+0.06, +0.45], choke +0.19 [+0.05, +0.36], lyw_autsys_pacman +0.17 [+0.03, +0.34]; worst greedy_v3 −0.06, exploit_v2 −0.02.
-- **Decision-run candidates (fixed 2026-11-12 01:45, before any validation3 game)**:
+- **Decision-run candidates (fixed 2026-11-12 01:38, before any validation3 game)**:
 
   | # | candidate | why it is in | screens (Δ pool / last-year) |
   |---|---|---|---|

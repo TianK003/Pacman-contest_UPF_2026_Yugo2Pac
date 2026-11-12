@@ -1,16 +1,171 @@
-# greedy_v4.py
+# greedy_v6.py
 # ------------
-# Submission candidate promoted 2026-11-08 (user decision; docs/experiments.md E-031/E-032).
-# = teams/greedy_lab_v7.py with the `lab7_danger_netf` options as DEFAULTS, so the tournament (which
-# passes no create_team arguments) plays exactly the validated configuration:
-#   lab5_smart (flags, shared belief, endgame roles, directed belief, open_goal) +
-#   width-based planner (IW(1) over (cell, carried) atoms, planner v2) for the attacker while a
-#   non-scared enemy ghost is modelled within 7 maze steps, with a learned leaf value (LEAF_NET,
-#   12-16-1 tanh MLP, fast code path 'netf'), 2000-node cap per search, 0.3 s clock safety net.
-# Validation (E-031 V1, seeds 221-260): +0.95 [+0.78, +1.13] vs greedy_v3, +0.58 [+0.42, +0.74] vs
-# lab5_smart. Do not edit; new versions get new files.
+# Submission since 2026-11-12 (user decision; docs/experiments.md E-044, E-046).
+# = teams/greedy_lab_v16.py with the `lab16_c2` options as DEFAULTS, so the tournament (which passes no
+# create_team arguments) plays exactly the validated configuration:
+#   greedy_v4 (lab5_smart's enemy-state switches + the width-based attacker planner with the learned
+#   leaf value: plan=danger, plan_v=2, plan_nodes=2000, plan_budget=0.3, plan_leaf=netf) +
+#   the team brain (one shared object: what each agent posts, the team situation, one play latch) with
+#   two plays:
+#     eyes   the attacker's greedy safety checks ignore a ghost that only our defender sees
+#            (> Manhattan 5 and > 10 maze steps from the attacker, not in its own sight for 8 moves);
+#            the planner still models it
+#     relay  when the attacking body dies, the body near the border attacks and the respawned body
+#            defends (exactly one attacker and one defender at all times)
+# Validation (E-044, validation3 seeds 1-80, paired with greedy_v4): pool +0.020 [-0.019, +0.062],
+# last year's 14 teams +0.078 [+0.052, +0.104], head-to-head 56-51-53. Do not edit; new versions get
+# new files. (greedy_v5.py was a rejected candidate, E-038.)
 #
-# lab7 header follows.
+# lab16 header follows.
+# greedy_lab_v16.py
+# -----------------
+# 2026-11-12: greedy_lab_v15.py frozen after screen 1 of E-044; v16 = v15 + the second wave (docs/experiments.md
+# E-044). All default off: with every v16 switch at its default, v16 plays exactly like v15.
+#   swap='0'     handover at a standoff: when the attacker's standoff breaker has chosen another entry, the
+#                defender stands SWAP_GAIN steps nearer to it and no enemy is a Pacman, the two home roles are
+#                swapped: the body near the entry attacks through it, the blocked body defends where it stands
+#   cover='0'    an idle home attacker (unscared ghost with no safe target, on an entry walk or a respawn walk)
+#                goes to the best exit of an invader carrying COVER_LOAD or more that the defender does not
+#                cover, if it gets there first; intercepts within COVER_NEAR; COVER_MAX moves, then a cooldown
+#   eyes_maze    eyes: the maze distance beyond which a ghost outside the attacker's own sight is ignored
+#   push_modes   push: 'ab' = both triggers, 'a' = late and passive opponent only, 'b' = no enemy can bank only
+#   relief_modes relief: 'qs' = quiet home or scared defender, 'q' = quiet home only, 's' = scared only
+# swap and cover read the hidden opponents' is_pacman / num_carrying (flags, rules.md Q3) and are off without it.
+# From the loss diagnosis of greedy_v4 (docs/experiments.md E-045); these two need no brain:
+#   pocket='0'   carrying pocket_load or more, a food inside a dead end is a target (for greedy and for the
+#                planner) only if we are back at that dead end's entrance pocket_margin moves before any enemy
+#                can stand there (seen: exact distance; hidden: pessimistic belief quantile, as open_goal)
+#   cash='0'     in the last cash_moves own moves the attacker goes home with cash_at food and open_goal no
+#                longer extends the trip
+#
+# v15 header follows.
+# greedy_lab_v15.py
+# -----------------
+# 2026-11-11: greedy_lab_v14.py frozen (E-043); v15 = v14 + a TEAM BRAIN (docs/experiments.md E-044): one object
+# shared by our two agents (rules.md Q4: allowed) in which each agent posts what it is doing, a situation
+# classifier built from facts both agents see, and "plays" (joint plans with enter / exit rules) read from one
+# latch, so each agent knows what the other is dealing with and how it will react. All default off: with every
+# v15 switch off the classes of v14 run unchanged (and with greedy_v4's options exactly like greedy_v4).
+#   brain='0'    build BrainAgent + TeamBrain with no play: posts, census counters, no change of any move
+#   relay='0'    handover on death: when the attacking body is eaten and the other body is RELAY_NEARER steps
+#                nearer the border, has no invader within RELAY_BUSY and home is quiet (or it is scared, or the
+#                respawned body is nearer the likeliest invader), the two home roles are swapped: the body at
+#                the border attacks, the respawned one defends. Always one attacker and one defender.
+#   eyes='0'     the attacker's greedy safety checks ignore an enemy ghost that is outside its own sight,
+#                more than EYES_MAZE maze steps away and was not in its own sight during its last EYES_MEMORY
+#                moves (it is seen only through the teammate, T-56); the planner still models it
+#   push='0'     tie-break push: with score <= 0 the home defender attacks too when (a) late and the opponent
+#                has been passive, or (b) no enemy can still bank before the end; back when an enemy becomes a
+#                Pacman (a) or when we lead; both bank as soon as the trip takes the lead
+#   relief='0'   the home defender helps a stuck attacker while home is quiet (or while it is scared): it crosses
+#                at another entry on a leash (food within RELIEF_LEASH of home, bank at RELIEF_BANK); back when
+#                an enemy becomes a Pacman, the attacker is unstuck, or after RELIEF_MAX moves; then a cooldown
+# relay, push and relief read the hidden opponents' is_pacman (flags, rules.md Q3) and are off without it.
+#
+# v14 header follows.
+# greedy_lab_v14.py
+# -----------------
+# 2026-11-11: greedy_lab_v13.py frozen (E-039); v14 = v13 + default-off options aimed at the pitfalls found
+# against last year's contest teams (E-041, E-042; docs/experiments.md E-043). With all of them off, v14 plays
+# exactly like v13 (and with greedy_v4's options exactly like greedy_v4).
+#   plan_stuck='0'   attacker: when greedy has had no safe target for stuck_moves (='8') own moves in a row (no
+#                    race-safe food on the way out, or no safe way home: the breaker's waits/entry walks and
+#                    evade) and the danger planner did not run this move, the width planner decides anyway
+#                    (its ghost model chases only within plan_r and otherwise holds: a passive guard far away
+#                    is not an optimal interceptor). Targets the 0-0 standoffs and the frozen carrier (E-042).
+#   brk_tabu='0'     standoff breaker: never re-pick one of the last 3 entries it chose, nor an entry within 2
+#                    steps of where we stand (it looped between (16,1) and (16,3) for a whole game, E-042)
+#   plan_special='0' danger planner also in the special cases "<= 2 food left" and "this trip reaches the win
+#                    threshold" (greedy's evade let a 28-food carrier die in a pocket, E-042)
+#   open_safe='0'    open_goal: also require a home-border crossing that every enemy reaches later than we do
+#                    (by margin), and grow the margin by 1 per OPEN_LOAD_DIV carried food
+#   scared_raid='0'  the home defender attacks while it is scared, every enemy is a Pacman (their half is empty)
+#                    and the timer still covers the way back (RAID_START to start, RAID_MARGIN to stay)
+#
+# v13 header follows.
+# greedy_lab_v13.py
+# -----------------
+# 2026-11-08: greedy_lab_v12.py frozen (E-039 screen); v13 = v12 with one option widened (E-039 option C, user
+# request: test the parts of a bundled switch separately):
+#   def_scared='0'|'1'|'posture'|'cap'   '1' = all of v12's def_scared (identical to v12); 'posture' = only the
+#                    scared-defender parts (keep >= 2 on the invader's way home, act normally once the timer ends
+#                    first, wait at the exit of the last eaten food while scared); 'cap' = only the capsule guard.
+#
+# v12 header follows.
+# greedy_lab_v12.py
+# -----------------
+# 2026-11-08: greedy_lab_v11.py frozen (E-034); v12 = v11 + default-off options from the external review of
+# greedy_v4 / greedy_v5 (docs/research/review_v4_v5.md) and our own follow-up (E-039). With all of them off,
+# v12 plays exactly like v11 (and with greedy_v4's options exactly like greedy_v4).
+#   assist='0'       the attacker, while it is a non-scared ghost on our side, intercepts a visible invader within
+#                    assist_d (='6') maze steps with the defender's intercept rule (a second defender at the
+#                    border instead of one) [ours; targets "they returned more", 45 % of lost points]
+#   def_scared='0'   defender: while scared, keep >= 2 from the visible invader on its way home, avoid dead ends,
+#                    and act normally once the timer ends before we can meet (distance >= timer + 2); scared
+#                    with no invader in sight: wait at the border cell nearest the last eaten food (its exit);
+#                    not scared: stand on our capsule while a visible invader within 5 is nearer to it than to
+#                    its own side and we get there strictly first [review V4-A, condition corrected]
+#   late_tie='0'     endgame: in the last ENDGAME_MOVES own moves bank as soon as we carry food while the score is
+#                    tied (before: only when behind and the trip takes the lead) [ours; ties = 23 % of lost points]
+#   plan_blocked='0' danger mode: on our side with nothing carried, a ghost in sight and no race-safe food, the
+#                    standoff breaker counts the move as blocked and takes over after standoff_moves (the planner
+#                    otherwise keeps control there and the breaker never runs) [review V4-C]
+#   ov_guard='0'     override mode: keep greedy's move when the planner's best value < plan_min (all lines die
+#                    in the model) [review V5-A]
+#   ov_asym='0'      override mode: margin when greedy's own root value is < 0 (0 = plan_margin) [review V5-B]
+#
+# v11 header follows.
+# greedy_lab_v11.py
+# -----------------
+# 2026-11-08: greedy_lab_v10.py frozen (E-033 parts D/E); v11 = v10 + one default-off option (E-034):
+#   plan_leaf='net60f'  IW leaf = LEAF_NET60: the same 12-16-1 tanh net as LEAF_NET, trained on the same games
+#                       (lab6_off, tuning seeds 1-25) but with the target over 60 instead of 30 own moves
+#                       (food banked - food dropped), so safely carried food that is banked later counts.
+#
+# v10 header follows.
+# greedy_lab_v10.py
+# -----------------
+# 2026-11-08: greedy_lab_v9.py frozen (E-033 part C); v10 = v9 + one default-off option (E-033 part D):
+#   plan_leaf='quad'  IW leaf = quadratic ridge regression on LEAF_NET's 12 features (91 terms, lambda 30,
+#                     held-out R2 0.461 vs the net's 0.464; eval/rl/leaf_quad_v1.py). Motivation: in E-033 the
+#                     lookup-table leaf (R2 0.453) played much worse than the linear leaf (R2 0.209), so the
+#                     smoothness of the leaf seems to matter for a max-backup search; this is a smooth non-DL leaf
+#                     as accurate as the net.
+#
+# v9 header follows.
+# greedy_lab_v9.py
+# ----------------
+# 2026-11-08: greedy_lab_v8.py frozen (E-033 screen); v9 = v8 + two default-off options (reserve arms of the
+# advisor review, docs/research/mcts_design.md; E-033 part C):
+#   mc_check='0'   after the normal decision (greedy, or the IW planner with plan='danger'), the flat paired
+#                  Monte-Carlo evaluation (same scenarios, rollouts, margin and trigger as plan='fmc') re-checks
+#                  the chosen move and replaces it when another move is worth more than mc_margin more
+#                  (targets the IW planner's optimistic max backup at the winning node)
+#   mc_leaf='net'  value at the Monte-Carlo rollout cutoff = LEAF_NET (search + the learned greedy-policy value)
+#
+# v8 header follows.
+# greedy_lab_v8.py
+# ----------------
+# 2026-11-08: v7 + non-deep-learning search options (docs/research/mcts_design.md, draft 2 after the
+# advisor review; E-033). All default off, so `lab8_off` plays exactly like lab7_off, and lab8 with
+# greedy_v4's options plays exactly like greedy_v4.
+#   plan_leaf='table'  IW leaf = mean 30-move outcome of the greedy policy in a 7x7x7x2x2 lookup table
+#                      (carried, nearest ghost, distance home, side, nearest ghost scared), fitted by
+#                      eval/rl/fit_leaves.py on the same data as LEAF_NET (no neural net)
+#   plan_leaf='lin'    IW leaf = least squares on LEAF_NET's 12 features (control: is it the nonlinearity?)
+#   plan='fmc'         flat paired Monte Carlo: every legal root move is simulated against the same fixed
+#                      set of weighted ghost scenarios (top mc_k belief cells per ghost x ghost types chase /
+#                      intercept / camp, best mc_s by weight); deterministic greedy-in-model rollouts of
+#                      mc_h moves; value = weighted mean return. Greedy decides unless the best move beats
+#                      greedy's move by mc_margin. Same trigger as plan='danger'.
+#   plan='mcts'        as fmc, plus open-loop UCT over our next mc_depth moves (mc_iters iterations,
+#                      scenarios round-robin by weight, UCB on min-max normalised returns, c = mc_c); the
+#                      tree's most visited line under each root move is re-evaluated on all scenarios and
+#                      the root move's value is the better of its flat and tree values.
+#   mc_leaf='hand'|'table'  value at the rollout cutoff; mc_bank_end='1' ends a rollout when it banks.
+# No random numbers are drawn anywhere (scenarios are enumerated), so games stay reproducible.
+#
+# v7 header follows.
 # greedy_lab_v7.py
 # ----------------
 # 2026-11-08: greedy_lab_v6.py frozen (E-028/E-029 runs); v7 = v6 + the options below (all default
@@ -118,6 +273,42 @@ ENEMY_RETURN_DEFAULT = 5  # directed/guard: food an enemy carries before it head
 OPEN_MARGIN = 4           # open_goal: spare moves between the earliest enemy arrival and our way home
 OPEN_QUANTILE = 0.1       # open_goal: pessimistic quantile of an enemy's distance under its belief
 RECALL_HOME = 3           # recall: an empty-handed attacker this close to home comes back to defend
+# v14 constants (E-043)
+TABU_ENTRIES = 3          # brk_tabu: the breaker does not re-pick its last this many entries
+TABU_NEAR = 2             # brk_tabu: nor an entry within this many maze steps of where we stand
+OPEN_LOAD_DIV = 4         # open_safe: one extra move of margin per this many carried food
+OPEN_EXITS = 4            # open_safe: crossings checked (the ones nearest to us)
+RAID_START = 12           # scared_raid: own scared moves left needed to start a raid from our side
+RAID_MARGIN = 4           # scared_raid: keep raiding while scared moves left > way home + this
+# v15 constants (E-044)
+RELAY_NEARER = 8          # relay: the other body must be this many steps nearer the border than the respawn
+RELAY_BUSY = 6            # relay: no handover while the other body has a visible invader this close
+RELAY_SCARED = 8          # relay: ... unless that body is scared for at least this many more moves
+EYES_MAZE = 10            # eyes: a ghost outside our own sight counts only within this many maze steps
+EYES_MEMORY = 8           # eyes: ... or if it was in our own sight during our last this many moves
+PUSH_LEFT = 120           # push (a): own moves left at most
+PUSH_QUIET = 80           # push (a): own moves without any enemy Pacman
+PUSH_DRY = 60             # push (a): own moves without a return of ours
+PUSH_FREE = 60            # push (b): the "no enemy can still bank" test runs in the last this many own moves
+PUSH_COOL = 20            # push: own moves before it may start again
+RELIEF_STUCK = 6          # relief: attacker moves in a row without a safe target or progress
+RELIEF_SCARED = 12        # relief: a defender scared for at least this long may leave a home that is not quiet
+RELIEF_QUIET = 60         # relief: an enemy that was a Pacman within this many own moves ...
+RELIEF_FAR = 8            # relief: ... must be at least this far from its border (pessimistic belief quantile)
+RELIEF_MAX = 25           # relief: own moves at most
+RELIEF_COOL = 20          # relief: own moves before it may start again
+RELIEF_UNSTUCK = 3        # relief: attacker moves in a row with a safe target that end it
+RELIEF_LEASH = 6          # relief: the helper eats only food within this many steps of home
+RELIEF_BANK = 2           # relief: and goes home when it carries this much
+HELPER_APART = 6          # push / relief: the helper's entry is at least this far from the attacker's
+# v16 constants (E-044, second wave)
+SWAP_GAIN = 6             # swap: the defender must be this many steps nearer the attacker's new entry
+SWAP_COOL = 6             # swap: own moves before the roles may be swapped at a standoff again
+COVER_LOAD = 2            # cover: the invader carries at least this much
+COVER_APART = 4           # cover: the second exit is at least this far from the one the defender covers
+COVER_MAX = 8             # cover: own moves at most
+COVER_COOL = 12           # cover: own moves before it may start again
+COVER_NEAR = 6            # cover: intercept the invader once it is this close
 
 
 def _flag(value):
@@ -186,6 +377,58 @@ class Config:
         self.plan_models = str(e['plan_models'])
         self.plan_leaf = str(e['plan_leaf'])
         self.plan_margin = float(e['plan_margin'])
+        self.mc_s = int(e['mc_s'])
+        self.mc_k = int(e['mc_k'])
+        self.mc_place = int(e['mc_place'])
+        self.mc_h = int(e['mc_h'])
+        self.mc_margin = float(e['mc_margin'])
+        self.mc_budget = float(e['mc_budget'])
+        self.mc_leaf = str(e['mc_leaf'])
+        self.mc_types = tuple(float(x) for x in str(e['mc_types']).split(':'))
+        self.mc_bank_end = _flag(e['mc_bank_end'])
+        self.mc_iters = int(e['mc_iters'])
+        self.mc_depth = int(e['mc_depth'])
+        self.mc_c = float(e['mc_c'])
+        self.mc_check = _flag(e['mc_check'])
+        self.assist = _flag(e['assist'])
+        self.assist_d = int(e['assist_d'])
+        ds = str(e['def_scared']).strip().lower()
+        if ds in ('1', 'true', 'yes', 'on', 'all'):
+            self.def_scared = frozenset(('posture', 'cap'))
+        elif ds in ('posture', 'cap'):
+            self.def_scared = frozenset((ds,))
+        else:
+            self.def_scared = frozenset()
+        self.late_tie = _flag(e['late_tie'])
+        self.plan_blocked = _flag(e['plan_blocked'])
+        self.ov_guard = _flag(e['ov_guard'])
+        self.ov_asym = float(e['ov_asym'])
+        self.plan_stuck = _flag(e['plan_stuck'])
+        self.stuck_moves = int(e['stuck_moves'])
+        self.brk_tabu = _flag(e['brk_tabu'])
+        self.plan_special = _flag(e['plan_special'])
+        self.open_safe = _flag(e['open_safe'])
+        self.scared_raid = _flag(e['scared_raid']) and self.flags
+        # v15 team brain (E-044); relay / push / relief need the enemies' is_pacman
+        self.relay = _flag(e['relay']) and self.flags
+        self.eyes = _flag(e['eyes'])
+        self.push = _flag(e['push']) and self.flags
+        self.relief = _flag(e['relief']) and self.flags
+        # v16 (second wave)
+        self.swap = _flag(e['swap']) and self.flags
+        self.cover = _flag(e['cover']) and self.flags
+        self.eyes_maze = int(e['eyes_maze'])
+        self.push_modes = str(e['push_modes']).strip().lower()
+        self.relief_modes = str(e['relief_modes']).strip().lower()
+        self.brain = (_flag(e['brain']) or self.relay or self.eyes or self.push or self.relief
+                      or self.swap or self.cover)
+        # v16 (E-045, from the loss diagnosis): these need no brain
+        self.pocket = _flag(e['pocket'])
+        self.pocket_load = int(e['pocket_load'])
+        self.pocket_margin = int(e['pocket_margin'])
+        self.cash = _flag(e['cash'])
+        self.cash_moves = int(e['cash_moves'])
+        self.cash_at = int(e['cash_at'])
         self.focus = str(e['focus']).strip().lower()
         self.focus_w = float(e['focus_w'])
         self.formation = str(e['formation']).strip().lower()
@@ -211,6 +454,23 @@ V6_DEFAULTS = {
     'plan_nodes': '2000', 'plan_kill': '1', 'plan_cap': '0.3', 'hunt_scared': '0', 'hunt_d': '10',
     'dplan': '0', 'dplan_ret': '5', 'dplan_margin': '0.3', 'dplan_h': '20', 'dplan_nodes': '3000',
     'focus': 'none', 'focus_w': '3',
+    # v8 options (see header)
+    'mc_s': '12', 'mc_k': '4', 'mc_place': '4', 'mc_h': '20', 'mc_margin': '0.3', 'mc_budget': '0.15',
+    'mc_leaf': 'hand', 'mc_types': '0.5:0.3:0.2', 'mc_bank_end': '1', 'mc_iters': '150',
+    'mc_depth': '4', 'mc_c': '1.0',
+    # v9 options (see header)
+    'mc_check': '0',
+    # v12 options (see header)
+    'assist': '0', 'assist_d': '6', 'def_scared': '0', 'late_tie': '0', 'plan_blocked': '0',
+    'ov_guard': '0', 'ov_asym': '0',
+    # v14 options (see header)
+    'plan_stuck': '0', 'stuck_moves': '8', 'brk_tabu': '0', 'plan_special': '0', 'open_safe': '0',
+    'scared_raid': '0',
+    # v15 options (see header)
+    'brain': '0', 'relay': '1', 'eyes': '1', 'push': '0', 'relief': '0',
+    # v16 options (see header)
+    'swap': '0', 'cover': '0', 'eyes_maze': str(EYES_MAZE), 'push_modes': 'ab', 'relief_modes': 'qs',
+    'pocket': '0', 'pocket_load': '5', 'pocket_margin': '2', 'cash': '0', 'cash_moves': '100', 'cash_at': '3',
     # focus='linear': learned food-choice weights (maze steps per unit feature)
     'fw_top': '0', 'fw_depth': '0', 'fw_cluster': '0', 'fw_ghost': '0', 'fw_deadend': '0',
     'fw_capsule': '0', 'fw_mate': '0',
@@ -250,6 +510,10 @@ def create_team(first_index, second_index, is_red,
         return [FlexAgent(first_index, cfg, 'attack'), FlexAgent(second_index, cfg, 'defend')]
     if cfg.endgame or cfg.recall:
         home_roles = {first_index: 'attack', second_index: 'defend'}
+        if cfg.brain:  # v15: the same agents plus the shared team brain
+            brain = TeamBrain(cfg, home_roles)
+            return [BrainAgent(first_index, cfg, home_roles, memory, brain),
+                    BrainAgent(second_index, cfg, home_roles, memory, brain)]
         return [RoleAgent(first_index, cfg, home_roles, memory),
                 RoleAgent(second_index, cfg, home_roles, memory)]
     classes = {
@@ -302,6 +566,146 @@ LEAF_NET3 = (
     [1.99054, 0.66172, -1.61458, -1.83377, 1.75924, 1.93503, 1.54345, 1.75573, -1.75513, -1.31771, 1.64663, -1.60561, -1.01439, 2.23548, 2.12309, 1.48601],
     0.13256)
 # LEAF_NET3_END
+# plan_leaf=table / lin, mc_leaf=table (v8): non-deep-learning leaves, eval/rl/fit_leaves.py
+# LEAF_NONDL_BEGIN
+# fitted by eval/rl/fit_leaves.py on ['d1_lab6off']; test R2 table 0.453, linear 0.209
+# LEAF_TABLE flat, index (((kc * 7 + kg) * 7 + kh) * 2 + side) * 2 + scared; bounds (0, 1, 2, 4, 7, 11) (1, 2, 3, 5, 8, 12) (0, 2, 5, 9, 14, 20)
+LEAF_TABLE = (
+    -0.005, -0.035, -0.414, -0.414, -0.005, -0.005, -0.139, -0.414, -0.005, -0.005, -0.448, -0.369, -0.005, -0.005,
+    -0.802, -0.414, -0.005, -0.005, -0.720, -0.414, -0.005, -0.005, -0.414, -0.414, -0.005, -0.005, -0.414, -0.414,
+    0.038, -0.078, -0.541, -0.541, -0.010, 0.020, -0.228, -0.493, 0.020, 0.020, -0.621, -0.541, 0.020, 0.020,
+    -0.829, -0.541, 0.020, 0.020, -1.161, -0.541, 0.020, 0.020, -0.524, -0.541, 0.020, 0.020, -0.541, -0.541,
+    -0.060, -0.542, -0.558, -0.558, -0.039, 0.006, -0.286, -0.389, -0.060, -0.060, -0.596, -0.303, -0.060, -0.060,
+    -0.827, -0.389, -0.060, -0.060, -0.885, -0.523, -0.060, -0.060, -1.143, -0.558, -0.060, -0.060, -0.558, -0.558,
+    -0.073, -0.047, -0.500, -0.500, -0.043, -0.019, -0.430, -0.375, -0.056, -0.021, -0.670, -0.412, -0.059, -0.059,
+    -0.566, -0.406, -0.059, -0.059, -0.752, -0.484, -0.059, -0.059, -0.116, -0.500, -0.059, -0.059, -0.441, -0.500,
+    -0.116, -0.051, 0.205, 0.205, 0.004, 0.013, 0.111, 0.254, 0.006, -0.044, 1.030, 0.218, -0.019, -0.051,
+    -0.570, 0.181, -0.052, -0.052, -0.610, 0.192, -0.052, -0.052, 0.049, 0.205, -0.052, -0.052, 0.205, 0.205,
+    0.013, 0.038, -0.080, -0.080, 0.021, 0.010, 0.098, -0.036, 0.042, 0.010, -0.116, -0.031, -0.031, 0.010,
+    -0.276, 0.027, -0.059, 0.011, -0.878, -0.058, 0.011, 0.011, -0.517, -0.080, 0.011, 0.011, -0.070, -0.080,
+    0.214, 0.114, 0.134, 0.134, 0.630, 0.128, 0.282, 0.250, 0.229, 0.119, 0.225, 0.186, 0.135, 0.065,
+    -0.022, 0.097, 0.123, 0.067, -0.214, 0.205, 0.110, 0.091, -0.373, 0.134, 0.001, 0.100, 0.150, 0.134,
+    0.278, 0.278, 0.208, 0.208, 0.278, 0.278, 0.706, 0.208, 0.278, 0.278, 0.389, 0.208, 0.278, 0.278,
+    0.334, 0.233, 0.278, 0.278, 0.086, 0.208, 0.278, 0.278, -0.017, 0.208, 0.278, 0.278, 0.034, 0.208,
+    0.278, 0.278, -0.091, -0.091, 0.278, 0.278, -0.055, -0.091, 0.278, 0.278, 0.094, -0.091, 0.278, 0.278,
+    -0.466, -0.091, 0.278, 0.278, -0.242, -0.091, 0.278, 0.278, -0.065, -0.091, 0.278, 0.278, -0.085, -0.091,
+    0.278, 0.278, 0.120, 0.120, 0.278, 0.278, 0.737, 0.224, 0.278, 0.278, 0.394, 0.654, 0.278, 0.278,
+    -0.478, 0.995, 0.278, 0.278, 0.008, 0.351, 0.278, 0.278, -0.667, 0.323, 0.278, 0.278, -0.066, 0.106,
+    0.278, 0.278, 0.354, 0.354, 0.278, 0.278, 0.694, 0.462, 0.278, 0.278, 0.594, 0.490, 0.278, 0.278,
+    -0.133, 1.094, 0.278, 0.278, -0.212, 1.375, 0.278, 0.278, -0.467, 0.354, 0.278, 0.278, 0.313, 0.354,
+    0.278, 0.278, 1.565, 1.565, 0.278, 0.278, 1.634, 1.565, 0.278, 0.278, 0.868, 1.529, 0.278, 0.278,
+    2.783, 2.019, 0.278, 0.278, 0.402, 2.455, 0.278, 0.278, 0.358, 1.565, 0.278, 0.278, 1.304, 1.565,
+    0.278, 0.278, 0.096, 0.096, 0.278, 0.278, -1.836, 0.096, 0.278, 0.278, 0.070, 0.152, 0.278, 0.278,
+    -0.195, 1.620, 0.278, 0.278, -0.619, 2.941, 0.278, 0.278, -0.135, 0.087, 0.278, 0.278, 0.093, 0.096,
+    0.278, 0.278, 0.326, 0.326, 0.278, 0.278, 0.361, 0.326, 0.278, 0.278, 0.157, 0.217, 0.278, 0.278,
+    0.398, 0.778, 0.278, 0.278, 0.095, 2.014, 0.278, 0.278, -0.037, 0.288, 0.278, 0.278, -0.005, 0.326,
+    0.390, 0.390, 0.169, 0.169, 0.390, 0.390, 1.246, 0.169, 0.390, 0.390, 0.905, 0.164, 0.390, 0.390,
+    -0.414, 1.141, 0.390, 0.390, -0.220, 0.169, 0.390, 0.390, -0.150, 0.169, 0.390, 0.390, -0.026, 0.169,
+    0.390, 0.390, -0.310, -0.310, 0.390, 0.390, 0.223, -0.310, 0.390, 0.390, -0.152, -0.281, 0.390, 0.390,
+    -1.166, 1.147, 0.390, 0.390, -0.248, -0.290, 0.390, 0.390, -0.806, -0.461, 0.390, 0.390, -0.402, -0.290,
+    0.390, 0.390, 0.524, 0.524, 0.390, 0.390, 1.759, 0.658, 0.390, 0.390, 1.281, 0.349, 0.390, 0.390,
+    -0.223, 2.685, 0.390, 0.390, -0.849, 0.363, 0.390, 0.390, -0.358, 0.416, 0.390, 0.390, -0.680, 0.462,
+    0.390, 0.390, 0.893, 0.893, 0.390, 0.390, 1.381, 0.893, 0.390, 0.390, 1.412, 0.893, 0.390, 0.390,
+    0.367, 2.348, 0.390, 0.390, 0.727, 0.687, 0.390, 0.390, -0.479, 0.703, 0.390, 0.390, 1.481, 0.893,
+    0.390, 0.390, 0.207, 0.207, 0.390, 0.390, 0.135, 0.207, 0.390, 0.390, 0.497, 0.200, 0.390, 0.390,
+    0.357, 0.431, 0.390, 0.390, 0.149, 0.168, 0.390, 0.390, -0.343, -0.118, 0.390, 0.390, 0.188, -0.266,
+    0.390, 0.390, -0.121, -0.121, 0.390, 0.390, 0.116, -0.121, 0.390, 0.390, 0.016, -0.121, 0.390, 0.390,
+    -0.061, 0.109, 0.390, 0.390, -0.410, -0.017, 0.390, 0.390, -0.639, -0.117, 0.390, 0.390, -0.104, -0.278,
+    0.390, 0.390, 0.565, 0.565, 0.390, 0.390, 1.600, 0.565, 0.390, 0.390, 0.673, 0.413, 0.390, 0.390,
+    0.489, 0.635, 0.390, 0.390, 0.245, 1.485, 0.390, 0.390, -0.206, 0.659, 0.390, 0.390, 0.189, 0.611,
+    0.774, 0.774, 0.080, 0.080, 0.774, 0.774, 1.008, 0.080, 0.774, 0.774, 1.031, 0.080, 0.774, 0.774,
+    -0.670, 0.594, 0.774, 0.774, 0.288, 0.075, 0.774, 0.774, -0.124, 0.080, 0.774, 0.774, -0.168, 0.080,
+    0.774, 0.774, 0.214, 0.214, 0.774, 0.774, 0.789, 0.214, 0.774, 0.774, 1.590, 1.948, 0.774, 0.774,
+    -0.059, 1.313, 0.774, 0.774, -0.708, 0.346, 0.774, 0.774, -0.209, 0.194, 0.774, 0.774, -0.154, 0.214,
+    0.774, 0.774, 1.560, 1.560, 0.774, 0.774, 2.487, 1.916, 0.774, 0.774, 2.413, 2.623, 0.774, 0.774,
+    0.755, 3.669, 0.774, 0.774, -0.087, 1.517, 0.774, 0.774, -0.122, 0.945, 0.774, 0.774, -1.561, 0.865,
+    0.774, 0.774, 0.165, 0.165, 0.774, 0.774, 1.578, 0.165, 0.774, 0.774, 0.770, 0.124, 0.774, 0.774,
+    -0.584, 2.077, 0.774, 0.774, -0.444, 1.140, 0.774, 0.774, -0.107, 0.384, 0.774, 0.774, -0.197, 0.165,
+    0.774, 0.774, -0.117, -0.117, 0.774, 0.774, 0.250, -0.016, 0.774, 0.774, 0.546, 0.227, 0.774, 0.774,
+    -0.686, 0.439, 0.774, 0.774, -0.045, 0.446, 0.774, 0.774, -1.383, 0.489, 0.774, 0.774, -0.318, -0.561,
+    0.774, 0.774, 1.201, 1.201, 0.774, 0.774, 1.501, 1.365, 0.774, 0.774, 1.594, 2.027, 0.774, 0.774,
+    0.154, 4.049, 0.774, 0.774, 1.626, 1.650, 0.774, 0.774, -0.544, 1.051, 0.774, 0.774, 0.801, 0.913,
+    0.774, 0.774, 0.776, 0.776, 0.774, 0.774, 1.146, 0.776, 0.774, 0.774, 1.243, 2.666, 0.774, 0.774,
+    0.593, 0.823, 0.774, 0.774, 0.578, 2.301, 0.774, 0.774, 0.085, 0.931, 0.774, 0.774, -0.611, 1.061,
+    2.771, 2.771, -0.035, -0.035, 2.771, 2.771, -0.035, -0.035, 2.771, 2.771, -0.035, -0.035, 2.771, 2.771,
+    -0.858, 0.916, 2.771, 2.771, -0.525, -0.089, 2.771, 2.771, -0.122, 0.832, 2.771, 2.771, -0.268, -0.035,
+    2.771, 2.771, 2.562, 2.562, 2.771, 2.771, 2.714, 2.562, 2.771, 2.771, 2.640, 3.290, 2.771, 2.771,
+    1.367, 3.648, 2.771, 2.771, 0.619, 4.534, 2.771, 2.771, -0.527, 4.555, 2.771, 2.771, 1.320, 3.821,
+    2.771, 2.771, 4.580, 4.580, 2.771, 2.771, 4.879, 4.813, 2.771, 2.771, 4.350, 6.795, 2.771, 2.771,
+    1.810, 6.559, 2.771, 2.771, 1.043, 5.441, 2.771, 2.771, 0.422, 5.430, 2.771, 2.771, 1.422, 3.013,
+    2.771, 2.771, 1.025, 1.025, 2.771, 2.771, 2.047, 1.025, 2.771, 2.771, 1.993, 1.025, 2.771, 2.771,
+    -0.039, 1.209, 2.771, 2.771, -0.757, 3.013, 2.771, 2.771, 0.045, 6.554, 2.771, 2.771, 0.164, 1.235,
+    2.771, 2.771, 1.629, 1.629, 2.771, 2.771, 1.965, 1.629, 2.771, 2.771, 1.253, 1.835, 2.771, 2.771,
+    2.498, 3.102, 2.771, 2.771, 2.860, 1.825, 2.771, 2.771, 0.406, 3.692, 2.771, 2.771, 0.112, 2.161,
+    2.771, 2.771, 2.472, 2.472, 2.771, 2.771, 2.618, 2.472, 2.771, 2.771, 2.692, 2.472, 2.771, 2.771,
+    1.916, 4.003, 2.771, 2.771, 1.301, 3.048, 2.771, 2.771, 2.140, 5.143, 2.771, 2.771, 0.351, 3.528,
+    2.771, 2.771, 2.661, 2.661, 2.771, 2.771, 2.494, 2.661, 2.771, 2.771, 2.488, 2.661, 2.771, 2.771,
+    1.517, 2.494, 2.771, 2.771, 2.784, 2.758, 2.771, 2.771, 2.923, 4.366, 2.771, 2.771, -0.312, 4.848,
+    5.600, 5.600, 1.012, 1.012, 5.600, 5.600, 1.716, 2.685, 5.600, 5.600, 1.237, 1.302, 5.600, 5.600,
+    1.012, 1.631, 5.600, 5.600, -0.576, 1.388, 5.600, 5.600, -0.573, 1.096, 5.600, 5.600, -0.238, 1.012,
+    5.600, 5.600, 2.088, 2.088, 5.600, 5.600, 2.395, 4.201, 5.600, 5.600, 3.043, 3.891, 5.600, 5.600,
+    1.958, 3.605, 5.600, 5.600, 0.095, 4.699, 5.600, 5.600, 0.201, 3.104, 5.600, 5.600, 0.033, 2.342,
+    5.600, 5.600, 8.000, 8.000, 5.600, 5.600, 8.159, 9.063, 5.600, 5.600, 7.629, 9.152, 5.600, 5.600,
+    6.673, 9.058, 5.600, 5.600, 3.782, 8.878, 5.600, 5.600, 0.742, 8.984, 5.600, 5.600, 3.918, 8.050,
+    5.600, 5.600, 5.256, 5.256, 5.600, 5.600, 8.770, 5.256, 5.600, 5.600, 8.037, 7.010, 5.600, 5.600,
+    5.943, 5.324, 5.600, 5.600, 4.526, 5.991, 5.600, 5.600, 1.914, 6.556, 5.600, 5.600, 0.128, 5.649,
+    5.600, 5.600, 3.709, 3.709, 5.600, 5.600, 6.371, 3.709, 5.600, 5.600, 7.003, 2.774, 5.600, 5.600,
+    5.444, 4.325, 5.600, 5.600, -0.334, 3.796, 5.600, 5.600, 2.022, 4.008, 5.600, 5.600, 0.601, 4.099,
+    5.600, 5.600, 5.281, 5.281, 5.600, 5.600, 6.654, 5.451, 5.600, 5.600, 6.633, 8.714, 5.600, 5.600,
+    4.402, 6.123, 5.600, 5.600, 4.086, 4.652, 5.600, 5.600, 3.889, 6.432, 5.600, 5.600, 1.266, 6.986,
+    5.600, 5.600, 1.931, 1.931, 5.600, 5.600, 3.499, 1.931, 5.600, 5.600, 5.405, 1.704, 5.600, 5.600,
+    3.510, 1.490, 5.600, 5.600, 2.976, 2.232, 5.600, 5.600, 0.416, 3.708, 5.600, 5.600, -0.024, 2.141,
+    7.462, 7.462, 4.563, 4.563, 7.462, 7.462, 4.563, 4.868, 7.462, 7.462, 4.563, 5.468, 7.462, 7.462,
+    4.563, 4.684, 7.462, 7.462, 3.700, 4.563, 7.462, 7.462, 3.111, 4.900, 7.462, 7.462, 3.423, 4.563,
+    7.462, 7.462, 11.693, 11.693, 7.462, 7.462, 11.993, 12.276, 7.462, 7.462, 11.693, 12.712, 7.462, 7.462,
+    11.693, 12.745, 7.462, 7.462, 11.693, 12.077, 7.462, 7.462, 11.316, 11.899, 7.462, 7.462, 11.693, 11.693,
+    7.462, 7.462, 14.882, 14.882, 7.462, 7.462, 14.814, 14.626, 7.462, 7.462, 15.439, 14.649, 7.462, 7.462,
+    15.265, 14.852, 7.462, 7.462, 14.882, 15.245, 7.462, 7.462, 13.952, 16.286, 7.462, 7.462, 14.882, 15.132,
+    7.462, 7.462, 11.813, 11.813, 7.462, 7.462, 14.159, 11.883, 7.462, 7.462, 9.241, 11.040, 7.462, 7.462,
+    13.146, 13.334, 7.462, 7.462, 12.109, 13.551, 7.462, 7.462, 10.423, 11.813, 7.462, 7.462, 11.813, 12.012,
+    7.462, 7.462, 9.393, 9.393, 7.462, 7.462, 10.329, 8.806, 7.462, 7.462, 8.878, 10.952, 7.462, 7.462,
+    7.405, 12.394, 7.462, 7.462, 10.454, 10.041, 7.462, 7.462, 7.710, 8.303, 7.462, 7.462, 9.393, 9.393,
+    7.462, 7.462, 11.282, 11.282, 7.462, 7.462, 10.102, 11.282, 7.462, 7.462, 11.235, 11.671, 7.462, 7.462,
+    10.737, 12.836, 7.462, 7.462, 10.569, 13.648, 7.462, 7.462, 11.416, 12.719, 7.462, 7.462, 11.338, 9.962,
+    7.462, 7.462, 3.239, 3.239, 7.462, 7.462, 9.553, 3.239, 7.462, 7.462, 6.717, 4.616, 7.462, 7.462,
+    5.121, 6.337, 7.462, 7.462, 2.042, 11.026, 7.462, 7.462, 1.182, 8.170, 7.462, 7.462, 1.552, 3.620,
+)
+# LEAF_LIN: weights for the 12 net features (train_value.py order) + bias
+LEAF_LIN = (10.25906, -3.10049, -0.97097, 0.43476, 5.86362, 0.76038, 1.71586, 1.42155, 0.97108, -0.27271, 1.07495, 0.57491, -1.98753)
+# LEAF_NONDL_END
+# plan_leaf=quad (v10): quadratic ridge leaf
+# LEAF_QUAD_BEGIN
+# fitted 2026-11-08 by a ridge regression (lambda 30) on d1_lab6off (same data/split as LEAF_NET);
+# held-out R2 0.461. LEAF_QUAD = (linear weights for the 12 net features, {(i, j): weight} for products i <= j, bias)
+LEAF_QUAD = (
+    (7.21970, -1.86964, 0.07408, -1.07673, 4.31779, -0.56778, 0.42000, -0.38871, -2.82406, 1.20702, 0.56589, -5.03436),
+    {(0, 0): 0.92974, (0, 1): -11.83932, (0, 2): -9.15212, (0, 3): 1.56568, (0, 4): 11.55871, (0, 5): 3.16207, (0, 6): -1.55564, (0, 7): -1.33755, (0, 8): -4.16346, (0, 9): 7.21970, (0, 10): 3.29566, (0, 11): -0.10993, (1, 1): 0.00584, (1, 2): 1.11971, (1, 3): 0.27704, (1, 4): 6.53539, (1, 5): -0.33385, (1, 6): 0.43952, (1, 7): -1.94165, (1, 8): -0.42089, (1, 9): -3.93321, (1, 10): 0.49396, (1, 11): 0.08641, (2, 2): -0.61041, (2, 3): 1.72549, (2, 4): -0.16283, (2, 5): -0.01339, (2, 6): -0.09801, (2, 7): -0.43936, (2, 8): -1.14384, (2, 9): 0.52354, (2, 10): -0.35630, (2, 11): 5.06718, (3, 3): 0.49299, (3, 4): 0.25755, (3, 5): -0.13092, (3, 6): -1.72893, (3, 7): 0.48449, (3, 8): 0.63952, (3, 9): -0.24191, (3, 10): 0.87835, (3, 11): -3.12951, (4, 4): -14.44343, (4, 5): 4.49471, (4, 6): -3.00798, (4, 7): 2.77109, (4, 8): 0.75994, (4, 9): 1.21932, (4, 10): 2.24823, (4, 11): 2.29865, (5, 5): -0.43931, (5, 6): 1.30722, (5, 7): -0.39547, (5, 8): 1.80122, (5, 9): -1.78914, (5, 10): 0.18304, (5, 11): -1.33717, (6, 6): -0.60587, (6, 7): -0.96335, (6, 8): -0.08789, (6, 9): -0.41564, (6, 10): 0.60613, (6, 11): 2.11736, (7, 7): 0.91445, (7, 8): 2.50349, (7, 9): -0.63411, (7, 10): 0.36006, (7, 11): -3.36234, (8, 8): 1.27799, (8, 9): 0.08702, (8, 10): 0.45144, (8, 11): 0.24164, (9, 9): 1.20702, (9, 10): -1.66002, (9, 11): 0.41977, (10, 10): -1.25466, (10, 11): 2.20116, (11, 11): -0.11867},
+    0.76663)
+# LEAF_QUAD_END
+# plan_leaf=net60f (v11): 60-move target
+# LEAF_NET60_BEGIN
+# trained by eval/rl/train_value.py on ['d3_h60']; test R2 0.402
+LEAF_NET60 = (
+    [[2.20039, 3.30277, 1.00664, -0.24349, -0.96457, -0.20608, -0.34726, 0.57059, 0.25796, -0.30898, 0.09211, 0.6796], [-0.61655, -2.95879, -1.05685, 0.34808, 4.67701, 0.02644, 0.24044, -0.41661, -0.14993, 1.09009, -0.78719, -1.75866], [0.87246, 2.76869, 0.78759, -0.52128, -3.52174, -0.20395, -0.43397, 0.21899, -0.366, -0.12305, 0.51434, -0.85705], [-2.48749, 2.38396, 0.98881, 0.37465, -0.18017, 0.03802, 0.15646, 1.72917, 2.07381, -0.01516, -1.35696, -0.0031], [0.36308, 0.73793, 1.9196, 0.37698, 3.57119, -0.21297, 2.01971, -0.2043, 0.54957, -1.00646, -0.36845, -3.14287], [0.77953, -2.73965, -2.0253, 0.56459, 1.2187, -0.27768, -0.57969, 0.64344, -0.32484, 1.34961, -0.39841, -2.48516], [2.6548, -1.3919, 1.52372, 0.74265, 1.55003, -0.92144, -2.30552, 1.04832, 0.93366, -0.0663, -2.19778, -1.43542], [0.94925, -3.36742, -1.76864, 0.31984, 1.17378, 0.07646, -0.444, 0.78747, 0.25552, 1.35314, -1.34026, -2.40158], [-0.67442, -0.86044, -1.04773, 0.17804, 0.92253, -0.05526, 0.52024, -0.58725, -1.00434, 0.3067, -1.0187, -0.23413], [-1.11032, 2.26294, 0.1531, -0.36465, -0.65346, 0.379, 1.19527, -0.49827, -0.13673, -0.46358, 1.97496, 0.70998], [1.69491, 2.43246, 0.56747, 0.15368, -1.29745, 0.29164, -0.57235, 0.54824, 0.63216, -0.37568, 0.57069, 0.76593], [-1.14848, -1.75816, -0.42742, -0.28243, 0.32857, -0.30436, -0.40847, 0.14202, 0.0978, 0.47871, 0.03254, 0.05743], [-0.26499, 2.14181, 1.21834, -0.14909, -1.57854, -1.0202, 0.08491, -0.29011, -1.29671, 0.70808, 1.28932, -0.84445], [1.03386, 0.8717, 0.376, -0.11733, -0.79229, 0.08055, -0.5338, 0.11846, 0.80439, -0.04585, 0.32757, 1.11729], [0.72691, 1.42944, 2.54797, -0.60312, 0.76824, -0.28788, 0.62398, 0.786, 0.22623, -0.95987, 0.37093, -1.32062], [2.78755, 3.9876, 1.64808, -0.06758, -2.3673, -0.93326, -0.58297, -0.47065, -0.30266, -0.69304, -0.10604, 1.66176]],
+    [-0.44173, 0.79334, -0.93357, 0.00286, 0.3324, 0.02184, -0.76262, -0.20996, 0.23958, 0.27711, -0.30329, -0.28871, -0.47997, 0.31717, -0.22672, -0.35591],
+    [1.56284, 2.01456, -1.17993, -2.29731, 1.74578, 1.67216, 1.09319, 1.68645, -0.98697, -0.66404, 1.23764, -1.06984, -1.51274, 1.03678, 1.64334, 1.75207],
+    0.18359)
+# LEAF_NET60_END
+
+
+def _bucket_table(bounds, n):
+    out = []
+    for v in range(n):
+        k = 0
+        while k < len(bounds) and v > bounds[k]:
+            k += 1
+        out.append(k)
+    return tuple(out)
+
+
+TAB_CARRY = _bucket_table((0, 1, 2, 4, 7, 11), 13)   # index min(carried, 12)
+TAB_GHOST = _bucket_table((1, 2, 3, 5, 8, 12), 16)   # index min(nearest ghost distance, 15)
+TAB_HOME = _bucket_table((0, 2, 5, 9, 14, 20), 22)   # index min(distance home, 21)
 PLAN_CAPSULE = 0.3
 PLAN_FOOD_SHAPE = 0.02
 PLAN_CARRY_BUCKET = (0, 1, 2, 3, 4, 4, 5, 5, 5, 6, 6, 6, 6)
@@ -413,8 +817,8 @@ class WidthPlanner:
         node_cap = cfg.plan_nodes
         icept = m.icept
         net = {'net': LEAF_NET, 'netf': LEAF_NET, 'net2f': LEAF_NET2,
-               'net3f': LEAF_NET3}.get(cfg.plan_leaf)
-        fast = cfg.plan_leaf in ('netf', 'net2f', 'net3f')
+               'net3f': LEAF_NET3, 'net60f': LEAF_NET60}.get(cfg.plan_leaf)
+        fast = cfg.plan_leaf in ('netf', 'net2f', 'net3f', 'net60f')
         if fast:
             # static part of the first layer per cell (dist_home, side, dead-end depth), once per game
             cache = getattr(m, 'net_static', None)
@@ -436,6 +840,41 @@ class WidthPlanner:
             tanh = math.tanh
         depthv = m.depthv
         cap_cells = [idx[c] for c in capsules]
+        leafk = cfg.plan_leaf
+        if leafk == 'quad':
+            # per cell: constant and dynamic-feature coefficients that absorb the static features
+            # (1 distance home, 9 side, 11 dead-end depth), once per game
+            qc = getattr(m, 'quad_static', None)
+            if qc is None:
+                lw, pw, qb = LEAF_QUAD
+                stat_i = (1, 9, 11)
+                dyn_i = (0, 2, 3, 4, 5, 6, 7, 8, 10)
+                qconst = []
+                qlin = []
+                for k in range(m.n):
+                    sv = {1: min(m.dhome[k], 40) / 40.0, 9: 0.0 if m.home[k] else 1.0, 11: m.depthv[k]}
+                    cst = qb + sum(lw[i] * sv[i] for i in stat_i)
+                    for (i, j), w in pw.items():
+                        if i in sv and j in sv:
+                            cst += w * sv[i] * sv[j]
+                    lin = []
+                    for d in dyn_i:
+                        cd = lw[d]
+                        for st in stat_i:
+                            cd += pw.get((min(d, st), max(d, st)), 0.0) * sv[st]
+                        lin.append(cd)
+                    qconst.append(cst)
+                    qlin.append(tuple(lin))
+                pos = dict((d, t) for t, d in enumerate(dyn_i))
+                qpairs = tuple((pos[i], pos[j], w) for (i, j), w in sorted(pw.items())
+                               if i in pos and j in pos)
+                qc = m.quad_static = (qconst, qlin, qpairs)
+            qconst, qlin, qpairs = qc
+        if leafk == 'table':
+            tab_hs = getattr(m, 'tab_hs', None)
+            if tab_hs is None:
+                tab_hs = m.tab_hs = [TAB_HOME[min(m.dhome[k], 21)] * 4 + (0 if m.home[k] else 2)
+                                     for k in range(m.n)]
 
         s0 = idx[me]
         fbit = {}
@@ -559,6 +998,94 @@ class WidthPlanner:
                                    + a7 * x7 + a8 * x8 + a10 * x10)
             if carry > 0 and dhome[c] > steps_left - depth:
                 return -a * carry
+            return y - a * carry
+
+        def leaf_table(c, carry, gl, sl, depth):
+            if carry > 0 and dhome[c] > steps_left - depth:
+                return -a * carry
+            row = dist[c]
+            g1d, g1s = 99, 0
+            for k, g in enumerate(gl):
+                if g >= 0 and (row[g], sl[k]) < (g1d, g1s):
+                    g1d, g1s = row[g], sl[k]
+            gd = g1d if g1d < 15 else 15
+            kk = ((TAB_CARRY[carry if carry < 12 else 12] * 7 + TAB_GHOST[gd]) * 28 + tab_hs[c]
+                  + (1 if g1s >= gd + 1 else 0))
+            return LEAF_TABLE[kk] - a * carry
+
+        def leaf_lin(c, carry, fm, cm, gl, sl, depth):
+            if carry > 0 and dhome[c] > steps_left - depth:
+                return -a * carry
+            row = dist[c]
+            g1d, g1s, g2d = 99, 0, 99
+            for k, g in enumerate(gl):
+                if g >= 0:
+                    dg = row[g]
+                    if (dg, sl[k]) < (g1d, g1s):
+                        g2d = g1d
+                        g1d, g1s = dg, sl[k]
+                    elif dg < g2d:
+                        g2d = dg
+            nf = 0
+            near = 999
+            in5 = 0
+            for fc in fcells:
+                if fm & fbit[fc]:
+                    nf += 1
+                    d = row[fc]
+                    if d < near:
+                        near = d
+                    if d <= 5:
+                        in5 += 1
+            cd = 999
+            for k, cc in enumerate(cap_cells):
+                if cm & (1 << k) and row[cc] < cd:
+                    cd = row[cc]
+            x = (min(carry, 20) / 20.0, min(dhome[c], 40) / 40.0, min(g1d, 15) / 15.0,
+                 min(g2d, 15) / 15.0, min(g1s, 40) / 40.0, nf / 30.0,
+                 (min(near, 30) / 30.0) if nf else 1.0, in5 / 10.0, (steps_left - depth) / 300.0,
+                 0.0 if home[c] else 1.0, (min(cd, 30) / 30.0) if cd < 999 else 1.0, depthv[c])
+            y = LEAF_LIN[12]
+            for wi, xi in zip(LEAF_LIN, x):
+                y += wi * xi
+            return y - a * carry
+
+        def leaf_quad(c, carry, fm, cm, gl, sl, depth):
+            if carry > 0 and dhome[c] > steps_left - depth:
+                return -a * carry
+            row = dist[c]
+            g1d, g1s, g2d = 99, 0, 99
+            for k, g in enumerate(gl):
+                if g >= 0:
+                    dg = row[g]
+                    if (dg, sl[k]) < (g1d, g1s):
+                        g2d = g1d
+                        g1d, g1s = dg, sl[k]
+                    elif dg < g2d:
+                        g2d = dg
+            nf = 0
+            near = 999
+            in5 = 0
+            for fc in fcells:
+                if fm & fbit[fc]:
+                    nf += 1
+                    d = row[fc]
+                    if d < near:
+                        near = d
+                    if d <= 5:
+                        in5 += 1
+            cd = 999
+            for k, cc in enumerate(cap_cells):
+                if cm & (1 << k) and row[cc] < cd:
+                    cd = row[cc]
+            xd = (min(carry, 20) / 20.0, min(g1d, 15) / 15.0, min(g2d, 15) / 15.0, min(g1s, 40) / 40.0,
+                  nf / 30.0, (min(near, 30) / 30.0) if nf else 1.0, in5 / 10.0, (steps_left - depth) / 300.0,
+                  (min(cd, 30) / 30.0) if cd < 999 else 1.0)
+            y = qconst[c]
+            for wq, xq in zip(qlin[c], xd):
+                y += wq * xq
+            for p, q, wq in qpairs:
+                y += wq * xd[p] * xd[q]
             return y - a * carry
 
         def leaf_value(c, carry, fm, depth):
@@ -687,6 +1214,12 @@ class WidthPlanner:
                     key = j
                 if dead:
                     tv = v
+                elif leafk == 'table':
+                    tv = v + disc * gamma * leaf_table(j, ncarry, gl, sl, depth + 1)
+                elif leafk == 'lin':
+                    tv = v + disc * gamma * leaf_lin(j, ncarry, nfm, ncm, gl, sl, depth + 1)
+                elif leafk == 'quad':
+                    tv = v + disc * gamma * leaf_quad(j, ncarry, nfm, ncm, gl, sl, depth + 1)
                 elif fast:
                     tv = v + disc * gamma * leaf_netf(j, ncarry, nfm, ncm, gl, sl, depth + 1)
                 elif net is not None:
@@ -739,6 +1272,428 @@ class WidthPlanner:
         if best_i < 0:
             return None, info
         return n_root[best_i], info
+
+
+
+class MCPlanner:
+    """v8: flat paired Monte Carlo ('fmc') and open-loop UCT ('mcts') for the attacker.
+
+    Our own state along a line of moves is deterministic (ghosts never block us); all uncertainty is
+    the ghosts', so every root move is simulated against the SAME enumerated, weighted ghost scenarios
+    (common random numbers without any random numbers). A scenario fixes each modelled ghost's start
+    cell, scared time, type (0 chase, 1 intercept: heads for the enemy cell across our nearest home
+    border and chases within 2, 2 camp: chases only within 3) and whether it already knows where we are
+    (visible to us = we are visible to it). An unaware ghost holds its post until we come within plan_r
+    or eat food in the simulation. Turn order: we move, then each ghost moves once (exact for 2 v 2)."""
+
+    def __init__(self, model, cfg):
+        self.m = model
+        self.cfg = cfg
+        self.tab_hs = [TAB_HOME[min(model.dhome[k], 21)] * 4 + (0 if model.home[k] else 2)
+                       for k in range(model.n)]
+        self.gp = [cfg.plan_gamma ** d for d in range(80)]
+        self.net_stat = None
+        if cfg.mc_leaf == 'net':
+            # static part of LEAF_NET's first layer per cell (distance home, side, dead-end depth), as the
+            # IW planner's 'netf' code path
+            w1, b1, _, _ = LEAF_NET
+            self.net_stat = []
+            for k in range(model.n):
+                xd = min(model.dhome[k], 40) / 40.0
+                xp = 0.0 if model.home[k] else 1.0
+                xs = model.depthv[k]
+                self.net_stat.append([bb + wr[1] * xd + wr[9] * xp + wr[11] * xs for wr, bb in zip(w1, b1)])
+            self.net_dyn = [(wr[0], wr[2], wr[3], wr[4], wr[5], wr[6], wr[7], wr[8], wr[10]) for wr in w1]
+
+    def net_value(self, c, carry, fs, cs, gc, gs, left):
+        """LEAF_NET's 30-move value of the state (same 12 features as WidthPlanner's leaf_netf)."""
+        row = self.m.dist[c]
+        g1d, g1s, g2d = 99, 0, 99
+        for k in range(len(gc)):
+            g = gc[k]
+            if g >= 0:
+                dg = row[g]
+                if (dg, gs[k]) < (g1d, g1s):
+                    g2d = g1d
+                    g1d, g1s = dg, gs[k]
+                elif dg < g2d:
+                    g2d = dg
+        nf = len(fs)
+        near = 999
+        in5 = 0
+        for f in fs:
+            d = row[f]
+            if d < near:
+                near = d
+            if d <= 5:
+                in5 += 1
+        cd = 999
+        for cc in cs:
+            if row[cc] < cd:
+                cd = row[cc]
+        x0 = min(carry, 20) / 20.0
+        x2 = min(g1d, 15) / 15.0
+        x3 = min(g2d, 15) / 15.0
+        x4 = min(g1s, 40) / 40.0
+        x5 = nf / 30.0
+        x6 = (min(near, 30) / 30.0) if nf else 1.0
+        x7 = in5 / 10.0
+        x8 = left / 300.0
+        x10 = (min(cd, 30) / 30.0) if cd < 999 else 1.0
+        w2 = LEAF_NET[2]
+        y = LEAF_NET[3]
+        st = self.net_stat[c]
+        tanh = math.tanh
+        dyn = self.net_dyn
+        for k in range(len(w2)):
+            a0, a2, a3, a4, a5, a6, a7, a8, a10 = dyn[k]
+            y += w2[k] * tanh(st[k] + a0 * x0 + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5 + a6 * x6
+                              + a7 * x7 + a8 * x8 + a10 * x10)
+        return y
+
+    def simulate(self, me, carried, food, caps, ghosts, prefix, steps_left):
+        """One deterministic simulation: our moves are `prefix` (cell indices, adjacent or equal),
+        then the greedy-in-model policy, for mc_h moves. ghosts: ((cell, scared, type, aware), ...).
+        Returns (discounted return, died, moves simulated)."""
+        m = self.m
+        cfg = self.cfg
+        dist = m.dist
+        home = m.home
+        dhome = m.dhome
+        nbr = m.nbr
+        gnbr = m.gnbr
+        icept = m.icept
+        a = cfg.plan_a
+        ret = 1.0 - a
+        death = cfg.plan_death
+        killv = cfg.plan_kill
+        capv = cfg.plan_cap
+        gamma = cfg.plan_gamma
+        chase_r = cfg.plan_r
+        ret_at = cfg.return_at
+        thr = cfg.threat_dist
+        bank_end = cfg.mc_bank_end
+        gc = [g[0] for g in ghosts]
+        gs = [g[1] for g in ghosts]
+        gt = [g[2] for g in ghosts]
+        aw = [g[3] for g in ghosts]
+        ng = len(gc)
+        rng_g = range(ng)
+        fs = set(food)
+        cs = set(caps)
+        c = me
+        carry = carried
+        v = 0.0
+        disc = 1.0
+        ate = False
+        tgt = -1
+        npre = len(prefix)
+        horizon = cfg.mc_h if cfg.mc_h < steps_left else steps_left
+        if horizon < npre:
+            horizon = npre if npre <= steps_left else steps_left
+        step = 0
+        while step < horizon:
+            # ---- our move
+            if step < npre:
+                j = prefix[step]
+            else:
+                left = steps_left - step
+                home_mode = carry >= ret_at or (carry > 0 and left <= dhome[c] + TIME_MARGIN)
+                if carry > 0 and not home_mode:
+                    row = dist[c]
+                    for k in rng_g:
+                        g = gc[k]
+                        if g >= 0 and gs[k] <= 0 and row[g] <= thr:
+                            home_mode = True
+                            break
+                if not home_mode:
+                    if tgt < 0 or tgt not in fs or (step & 3) == 0:
+                        tgt = -1
+                        best = INF
+                        row = dist[c]
+                        for f in fs:
+                            d = row[f]
+                            if d < best:
+                                ok = True
+                                for k in rng_g:
+                                    g = gc[k]
+                                    if g >= 0 and gs[k] <= 0 and dist[g][f] <= d:
+                                        ok = False
+                                        break
+                                if ok:
+                                    best = d
+                                    tgt = f
+                    if tgt < 0:
+                        home_mode = True
+                if home_mode and home[c]:
+                    break  # nothing safe to do on their side: the rest of the line is worth 0 here
+                trow = dhome if home_mode else dist[tgt]
+                j = -1
+                bd = INF
+                for _, nj in nbr[c]:
+                    if not home[nj]:
+                        unsafe = False
+                        drow = dist[nj]
+                        for k in rng_g:
+                            g = gc[k]
+                            if g >= 0 and gs[k] <= 0 and drow[g] <= 1:
+                                unsafe = True
+                                break
+                        if unsafe:
+                            continue
+                    d = trow[nj]
+                    if d < bd:
+                        bd = d
+                        j = nj
+                if j < 0:
+                    # evade: maximise the distance to the nearest dangerous ghost, then get closer home
+                    bkey = None
+                    for nj in (c,) + tuple(x for _, x in nbr[c]):
+                        drow = dist[nj]
+                        gd = INF
+                        if not home[nj]:
+                            for k in rng_g:
+                                g = gc[k]
+                                if g >= 0 and gs[k] <= 0 and drow[g] < gd:
+                                    gd = drow[g]
+                        key = (gd, -dhome[nj])
+                        if bkey is None or key > bkey:
+                            bkey = key
+                            j = nj
+            # ---- apply our move
+            r = 0.0
+            dead = False
+            if not home[j]:
+                if j in fs:
+                    fs.discard(j)
+                    carry += 1
+                    r += a
+                    ate = True
+                if j in cs:
+                    cs.discard(j)
+                    r += capv
+                    for k in rng_g:
+                        if gc[k] >= 0:
+                            gs[k] = SCARED_TIME - SCARED_MARGIN
+                for k in rng_g:
+                    if gc[k] == j:
+                        if gs[k] > 0:
+                            gc[k] = -1
+                            r += killv
+                        else:
+                            dead = True
+            elif carry > 0:
+                r += ret * carry
+                carry = 0
+                if bank_end and step >= npre - 1:
+                    # banked: stop here; the cutoff value below prices the empty agent at home
+                    v += disc * r
+                    disc *= gamma
+                    step += 1
+                    c = j
+                    break
+            c = j
+            # ---- ghosts move
+            if not dead:
+                drow = dist[j]
+                for k in rng_g:
+                    g = gc[k]
+                    if g < 0:
+                        continue
+                    if gs[k] > 0:
+                        gs[k] -= 1
+                        bestn = g
+                        bdd = drow[g]
+                        for nn in gnbr[g]:
+                            if drow[nn] > bdd:
+                                bdd = drow[nn]
+                                bestn = nn
+                        gc[k] = bestn
+                    else:
+                        dg = drow[g]
+                        if not aw[k] and (dg <= chase_r or ate):
+                            aw[k] = True
+                        if aw[k]:
+                            t = gt[k]
+                            if t == 0 or dg <= 2:
+                                trow = drow
+                            elif t == 1:
+                                trow = dist[icept[j]]
+                            else:
+                                trow = drow if dg <= 3 else None
+                            if trow is not None:
+                                bestn = g
+                                bdd = trow[g]
+                                for nn in gnbr[g]:
+                                    if trow[nn] < bdd:
+                                        bdd = trow[nn]
+                                        bestn = nn
+                                gc[k] = bestn
+                    if gc[k] == j and not home[j]:
+                        if gs[k] > 0:
+                            gc[k] = -1
+                            r += killv
+                        else:
+                            dead = True
+            if dead:
+                return v + disc * (r - a * carry - death), True, step + 1
+            v += disc * r
+            disc *= gamma
+            step += 1
+        # ---- cutoff value
+        left = steps_left - step
+        if carry > 0 and dhome[c] > left:
+            return v - disc * a * carry, False, step
+        if cfg.mc_leaf == 'net':
+            return v + disc * (self.net_value(c, carry, fs, cs, gc, gs, left) - a * carry), False, step
+        if cfg.mc_leaf == 'table':
+            row = dist[c]
+            g1d, g1s = 99, 0
+            for k in rng_g:
+                g = gc[k]
+                if g >= 0 and (row[g], gs[k]) < (g1d, g1s):
+                    g1d, g1s = row[g], gs[k]
+            gd = g1d if g1d < 15 else 15
+            kk = ((TAB_CARRY[carry if carry < 12 else 12] * 7 + TAB_GHOST[gd]) * 28 + self.tab_hs[c]
+                  + (1 if g1s >= gd + 1 else 0))
+            return v + disc * (LEAF_TABLE[kk] - a * carry), False, step
+        if carry > 0:
+            dh = dhome[c]
+            v += disc * carry * ret * self.gp[dh if dh < 80 else 79]
+        return v, False, step
+
+    def evaluate(self, me, carried, food, caps, scenarios, root, steps_left, t0, budget_s):
+        """Flat paired MC: {action: weighted mean return}, {action: weighted death rate}; None if the
+        clock ran out (the caller then keeps greedy's move)."""
+        vals = {}
+        deaths = {}
+        for act, j in root:
+            tot = 0.0
+            dw = 0.0
+            for w, gh in scenarios:
+                val, died, _ = self.simulate(me, carried, food, caps, gh, (j,), steps_left)
+                tot += w * val
+                if died:
+                    dw += w
+            vals[act] = tot
+            deaths[act] = dw
+            if time.perf_counter() - t0 > budget_s:
+                return None, None
+        return vals, deaths
+
+    def schedule(self, scenarios, slots=24):
+        """Scenario indices in a weighted round-robin order (largest remainder over `slots`)."""
+        quota = [w * slots for w, _ in scenarios]
+        cnt = [int(q) for q in quota]
+        rest = sorted(range(len(quota)), key=lambda k: (-(quota[k] - cnt[k]), k))
+        for k in rest[:max(0, slots - sum(cnt))]:
+            cnt[k] += 1
+        order = []
+        while any(cnt):
+            for k in range(len(cnt)):
+                if cnt[k]:
+                    order.append(k)
+                    cnt[k] -= 1
+        return order or [0]
+
+    def uct(self, me, carried, food, caps, scenarios, root, steps_left, t0, budget_s, first_act):
+        """Open-loop UCT over our next mc_depth moves; returns {root action: most visited line of cells}
+        or None on time-out. Node: [cell, visits, total, children {action: node} or None, untried]."""
+        m = self.m
+        cfg = self.cfg
+        nbr = m.nbr
+        order = self.schedule(scenarios)
+        rootn = [me, 0, 0.0, {}, sorted(root, key=lambda t: (t[0] != first_act, t[0]))]
+        lo, hi = 1e9, -1e9
+        cexp = cfg.mc_c
+        log = math.log
+        sqrt = math.sqrt
+        for it in range(cfg.mc_iters):
+            if (it & 7) == 7 and time.perf_counter() - t0 > budget_s:
+                return None
+            gh = scenarios[order[it % len(order)]][1]
+            node = rootn
+            path = [rootn]
+            prefix = []
+            depth = 0
+            while depth < cfg.mc_depth:
+                if node[4]:
+                    act, cell = node[4].pop(0)
+                    child = [cell, 0, 0.0, {},
+                             [(Directions.STOP, cell)] + sorted(nbr[cell])]
+                    node[3][act] = child
+                    path.append(child)
+                    prefix.append(cell)
+                    break
+                lnp = log(node[1] + 1)
+                best = None
+                bkey = None
+                span = hi - lo
+                for act in sorted(node[3]):
+                    ch = node[3][act]
+                    q = ((ch[2] / ch[1] - lo) / span) if (ch[1] and span > 1e-9) else 0.5
+                    key = q + cexp * sqrt(lnp / (ch[1] + 1e-9))
+                    if bkey is None or key > bkey:
+                        bkey = key
+                        best = ch
+                if best is None:
+                    break
+                node = best
+                path.append(node)
+                prefix.append(node[0])
+                depth += 1
+            val, died, nsim = self.simulate(me, carried, food, caps, gh, prefix, steps_left)
+            if val < lo:
+                lo = val
+            if val > hi:
+                hi = val
+            for k, nd in enumerate(path):
+                if k > nsim:
+                    break
+                nd[1] += 1
+                nd[2] += val
+        lines = {}
+        for act, ch in rootn[3].items():
+            line = [ch[0]]
+            node = ch
+            while node[3]:
+                node = max(sorted(node[3].items()), key=lambda t: t[1][1])[1]
+                if node[1] < 2:
+                    break
+                line.append(node[0])
+            lines[act] = line
+        return lines
+
+    def plan(self, me, carried, food, caps, scenarios, root, steps_left, first_act):
+        """Root values for the legal root moves (fmc, or mcts = max of flat and tree-line values)."""
+        t0 = time.perf_counter()
+        budget = self.cfg.mc_budget
+        vals, deaths = self.evaluate(me, carried, food, caps, scenarios, root, steps_left, t0, budget)
+        info = {'timed_out': vals is None, 'deaths': deaths}
+        if vals is None or self.cfg.plan != 'mcts':
+            info['time'] = time.perf_counter() - t0
+            return vals, info
+        lines = self.uct(me, carried, food, caps, scenarios, root, steps_left, t0, budget, first_act)
+        if lines is None:
+            info['timed_out'] = True
+            info['time'] = time.perf_counter() - t0
+            return vals, info  # the flat values are complete; keep them
+        tree_used = 0
+        for act, line in sorted(lines.items()):
+            if len(line) < 2:
+                continue
+            tot = 0.0
+            for w, gh in scenarios:
+                tot += w * self.simulate(me, carried, food, caps, gh, line, steps_left)[0]
+            if tot > vals[act]:
+                vals[act] = tot
+                tree_used += 1
+            if time.perf_counter() - t0 > budget:
+                info['timed_out'] = True
+                break
+        info['tree_used'] = tree_used
+        info['time'] = time.perf_counter() - t0
+        return vals, info
 
 
 class DefPlanner:
@@ -1376,7 +2331,11 @@ class V1Agent(CaptureAgent):
         get home from it plus OPEN_MARGIN moves. Each enemy's arrival is its exact distance when seen,
         else the pessimistic OPEN_QUANTILE of its belief distance; scared enemies cannot eat us before
         their timer runs out."""
+        margin = self.cfg.open_margin
+        if self.cfg.open_safe:  # v14: a bigger load needs a bigger margin
+            margin += game_state.get_agent_state(self.index).num_carrying // OPEN_LOAD_DIV
         eta = INF
+        arrivals = []  # v14 open_safe: (enemy field, seen cell, belief) to price the crossings below
         for i in self.get_opponents(game_state):
             f = self.fields(game_state, i)
             seen = game_state.get_agent_position(i)
@@ -1384,6 +2343,7 @@ class V1Agent(CaptureAgent):
                 return False
             if seen is not None:
                 d = self.map.d(seen, pos)
+                belief = None
             else:
                 belief = self.belief.get(i)
                 if not belief:
@@ -1392,7 +2352,29 @@ class V1Agent(CaptureAgent):
             if f[2] > 0:
                 d = max(d, f[2] - SCARED_MARGIN)
             eta = min(eta, d)
-        return eta > self.map.dist_home[pos] + self.cfg.open_margin
+            arrivals.append((f, seen, belief))
+        if eta <= self.map.dist_home[pos] + margin:
+            return False
+        if not self.cfg.open_safe or not self.map.home_border:
+            return True
+        # v14 open_safe: some crossing (enemy-side cell across a home-border cell) that every enemy reaches
+        # later than we do by the margin; then no enemy can cut our shortest way to it (triangle
+        # inequality). Checked for the OPEN_EXITS crossings nearest to us.
+        exits = sorted(self.map.home_border, key=lambda b: (self.map.d(pos, self.map.cross[b]), b))
+        for b in exits[:OPEN_EXITS]:
+            c = self.map.cross[b]
+            mine = self.map.d(pos, c)
+            ok = True
+            for f, seen, belief in arrivals:
+                d = self.map.d(seen, c) if seen is not None else self.belief_quantile(belief, c, OPEN_QUANTILE)
+                if f[2] > 0:
+                    d = max(d, f[2] - SCARED_MARGIN)
+                if d <= mine + margin:
+                    ok = False
+                    break
+            if ok:
+                return True
+        return False
 
     def expected_dist(self, belief, cell):
         """Expected maze distance from an enemy with this belief to `cell` (INF if empty)."""
@@ -1516,12 +2498,19 @@ class GreedyAttacker(V1Agent):
         self.blocked = deque(maxlen=STANDOFF_WINDOW)  # C2: recent moves, True = blocked at the border
         self.entry = None        # C2: border entry we are walking to
         self.ghost_seen = None   # C5: timeleft when we last saw a dangerous ghost
+        self.stuck = 0           # v14 plan_stuck: own moves in a row without a safe target
+        self.tried = deque(maxlen=TABU_ENTRIES)  # v14 brk_tabu: entries the breaker chose last
+        self.plan_ran = False    # v14: the danger planner searched during this move
         # lab6
         self.planner = None
         self.plan_info = None
         self.plan_uses = 0
         if self.cfg.plan is not None:
             self.planner = WidthPlanner(WidthModel(self.map), self.cfg)
+        self.mcp = None
+        self.mc_overrides = 0
+        if self.cfg.plan in ('fmc', 'mcts') or (self.cfg.mc_check and self.planner is not None):
+            self.mcp = MCPlanner(self.planner.m, self.cfg)
         self.features = self.map_features(game_state)
         self.focus_mode = self.cfg.focus
         if self.focus_mode == 'auto':
@@ -1727,11 +2716,12 @@ class GreedyAttacker(V1Agent):
         action, _ = self.bfs_action(game_state, targets, safe)
         return action
 
-    def plan_move(self, game_state, pos, carrying, food, moves_left):
+    def plan_move(self, game_state, pos, carrying, food, moves_left, force=False):
         ghosts = self.plan_ghosts(game_state)
-        if self.cfg.plan == 'danger':
+        if self.cfg.plan == 'danger' and not force:
             if not any(s == 0 and self.map.d(g, pos) <= self.cfg.plan_trigger for g, s in ghosts):
                 return None
+        self.plan_ran = True
         caps = list(self.get_capsules(game_state))
         action, info = self.planner.plan_multi(pos, carrying, food, caps, ghosts, moves_left, self.cfg.plan_budget, self.plan_alt_ghosts(game_state))
         self.plan_info = info
@@ -1749,10 +2739,146 @@ class GreedyAttacker(V1Agent):
         """endgame (H-S27): within the last ENDGAME_MOVES own moves."""
         return self.cfg.endgame and game_state.data.timeleft // 4 <= ENDGAME_MOVES
 
+    def late_bank(self, game_state, score, carrying):
+        """endgame (H-S27): behind late, bank as soon as this trip takes the lead; v12 late_tie: also when
+        the score is tied and we carry anything (banking then wins the game)."""
+        if not self.late(game_state):
+            return False
+        if score < 0:
+            return carrying > -score
+        return self.cfg.late_tie and score == 0 and carrying > 0
+
     def attack(self, game_state):
+        if self.cfg.assist:
+            action = self.assist_move(game_state)
+            if action is not None:
+                return action
         if self.cfg.plan in ('override', 'shield') and self.planner is not None:
             return self.attack_override(game_state)
+        if self.cfg.plan in ('fmc', 'mcts') and self.mcp is not None:
+            return self.attack_mc(game_state)
+        if self.cfg.mc_check and self.mcp is not None:
+            return self.mc_choose(game_state, self.attack_core(game_state, True), False)
         return self.attack_core(game_state, True)
+
+    def assist_move(self, game_state):
+        """v12 assist: a non-scared attacker that is a ghost on our side intercepts the nearest visible
+        invader within assist_d maze steps, with the defender's intercept rule (None otherwise)."""
+        if not hasattr(self, 'intercept_cell'):
+            return None
+        me = game_state.get_agent_state(self.index)
+        if me.is_pacman or me.scared_timer > 0:
+            return None
+        pos = game_state.get_agent_position(self.index)
+        inv = [(self.map.d(pos, p), p) for _, p, invader in self.visible_enemies(game_state) if invader]
+        if not inv:
+            return None
+        d, p = min(inv)
+        if d > self.cfg.assist_d:
+            return None
+        target = self.intercept_cell(pos, p)
+        if target == pos:
+            return Directions.STOP
+        action, _ = self.bfs_action(game_state, [target], lambda cell, steps: self.map.is_ours(cell))
+        return action
+
+    def mc_scenarios(self, game_state):
+        """v8: [(weight, ((cell index, scared, type, aware), ...))] for the modelled enemy ghosts:
+        visible ones at their cell (aware), hidden ones (flags + plan_hidden) at their mc_k most likely
+        belief cells on their side; the mc_place most likely joint placements x ghost types, the mc_s
+        heaviest scenarios kept, weights renormalised. Deterministic order."""
+        idx = self.mcp.m.index
+        per = []
+        for i in self.get_opponents(game_state):
+            p = game_state.get_agent_position(i)
+            if p is not None:
+                if self.map.is_ours(p):
+                    continue
+                s = game_state.get_agent_state(i).scared_timer
+                per.append([(idx[p], s - SCARED_MARGIN if s > SCARED_MARGIN else 0, 1.0, True)])
+                continue
+            if not self.cfg.plan_hidden:
+                continue
+            f = self.fields(game_state, i)
+            if f is None or f[0]:
+                continue
+            b = self.belief.get(i)
+            if not b:
+                continue
+            cand = sorted(((pr, x) for x, pr in b.items() if pr > 0 and not self.map.is_ours(x)),
+                          key=lambda t: (-t[0], t[1]))[:self.cfg.mc_k]
+            tot = sum(pr for pr, _ in cand)
+            if tot <= 0:
+                continue
+            sc = f[2] - SCARED_MARGIN if f[2] > SCARED_MARGIN else 0
+            per.append([(idx[x], sc, pr / tot, False) for pr, x in cand])
+        joint = [(1.0, ())]
+        for opts in per:
+            joint = [(w * o[2], cells + (o,)) for w, cells in joint for o in opts]
+        joint.sort(key=lambda t: (-t[0], tuple(o[0] for o in t[1])))
+        joint = joint[:self.cfg.mc_place]
+        types = [(k, tw) for k, tw in enumerate(self.cfg.mc_types) if tw > 0]
+        scen = []
+        for wp, cells in joint:
+            combos = [(wp, ())]
+            for o in cells:
+                combos = [(w * tw, gh + ((o[0], o[1], t, o[3]),)) for w, gh in combos for t, tw in types]
+            scen.extend(combos)
+        scen.sort(key=lambda t: (-t[0], t[1]))
+        scen = scen[:self.cfg.mc_s]
+        tot = sum(w for w, _ in scen)
+        if tot <= 0:
+            return [(1.0, ())]
+        return [(w / tot, gh) for w, gh in scen]
+
+    def attack_mc(self, game_state):
+        """v8 plan='fmc'/'mcts': greedy decides; while a non-scared modelled ghost is within
+        plan_trigger, the Monte-Carlo planner's best move replaces greedy's when it is worth more than
+        mc_margin above greedy's move in the same paired evaluation."""
+        return self.mc_choose(game_state, self.attack_core(game_state, False), True)
+
+    def mc_choose(self, game_state, g, count_use):
+        """v9: the Monte-Carlo comparison of attack_mc against a given base move g (greedy's move for
+        plan='fmc'/'mcts', the normal decision for mc_check)."""
+        pos = game_state.get_agent_position(self.index)
+        me = game_state.get_agent_state(self.index)
+        carrying = me.num_carrying
+        food = self.get_food(game_state).as_list()
+        returned = sum(game_state.get_agent_state(i).num_returned for i in self.get_team(game_state))
+        moves_left = game_state.data.timeleft // 4
+        score = self.get_score(game_state)
+        if (len(food) <= 2 or returned + carrying >= self.food_to_win
+                or self.late_bank(game_state, score, carrying)
+                or moves_left <= self.map.dist_home[pos] + TIME_MARGIN):
+            return g
+        ghosts = self.plan_ghosts(game_state)
+        if not any(s == 0 and self.map.d(c, pos) <= self.cfg.plan_trigger for c, s in ghosts):
+            return g
+        mdl = self.mcp.m
+        idx = mdl.index
+        s0 = idx[pos]
+        legal = game_state.get_legal_actions(self.index)
+        root = [(act, j) for act, j in mdl.nbr[s0] if act in legal]
+        if Directions.STOP in legal:
+            root.append((Directions.STOP, s0))
+        root.sort()
+        if not root:
+            return g
+        scen = self.mc_scenarios(game_state)
+        fcells = [idx[f] for f in food if not self.map.is_ours(f)]
+        ccells = [idx[c] for c in self.get_capsules(game_state)]
+        vals, info = self.mcp.plan(s0, carrying, fcells, ccells, scen, root, moves_left, g)
+        self.plan_info = info
+        if vals is None or g not in vals:
+            return g
+        best = max(sorted(vals), key=lambda act: vals[act])
+        if best != g and vals[best] - vals[g] > self.cfg.mc_margin and best in legal:
+            if count_use:
+                self.plan_uses += 1
+            else:
+                self.mc_overrides += 1
+            return best
+        return g
 
     def attack_override(self, game_state):
         """lab6 plan='override': greedy decides; the planner overrides greedy's move only when its
@@ -1767,7 +2893,7 @@ class GreedyAttacker(V1Agent):
         moves_left = game_state.data.timeleft // 4
         score = self.get_score(game_state)
         if (len(food) <= 2 or returned + carrying >= self.food_to_win
-                or (self.late(game_state) and score < 0 and carrying > -score)
+                or self.late_bank(game_state, score, carrying)
                 or moves_left <= self.map.dist_home[pos] + TIME_MARGIN):
             return g
         ghosts = self.plan_ghosts(game_state)
@@ -1778,10 +2904,15 @@ class GreedyAttacker(V1Agent):
         self.plan_info = info
         if action is None or action == g:
             return g
+        if self.cfg.ov_guard and info['best_value'] < self.cfg.plan_min:
+            return g  # v12: every line dies (or is worthless) in the model: keep greedy's move
         rv = info['root_values']
         if self.cfg.plan == 'shield' and rv.get(g, -1e9) >= -0.5 * self.cfg.plan_death:
             return g  # shield: greedy's move is not predicted to be deadly
-        if rv.get(action, -1e9) - rv.get(g, -1e9) > self.cfg.plan_margin and                 action in game_state.get_legal_actions(self.index):
+        margin = self.cfg.plan_margin
+        if self.cfg.ov_asym > 0 and rv.get(g, -1e9) < 0.0:
+            margin = self.cfg.ov_asym  # v12: greedy's own line loses food: a smaller gain is a real escape
+        if rv.get(action, -1e9) - rv.get(g, -1e9) > margin and                 action in game_state.get_legal_actions(self.index):
             self.plan_uses += 1
             return action
         return g
@@ -1790,7 +2921,7 @@ class GreedyAttacker(V1Agent):
         pos = game_state.get_agent_position(self.index)
         me = game_state.get_agent_state(self.index)
         carrying = me.num_carrying
-        food = self.get_food(game_state).as_list()
+        food = self.attack_food(game_state)
         visible_ghosts = self.dangerous_ghosts(game_state)
         if visible_ghosts:
             self.ghost_seen = game_state.data.timeleft
@@ -1798,13 +2929,14 @@ class GreedyAttacker(V1Agent):
         returned = sum(game_state.get_agent_state(i).num_returned for i in self.get_team(game_state))
         my_moves_left = game_state.data.timeleft // 4
         threatened = any(self.map.d(g, pos) <= self.cfg.threat_dist for g in ghosts)
+        self.plan_ran = False
 
         enough = carrying >= self.return_threshold(game_state, pos)
-        if enough and self.cfg.open_goal and self.goal_open(game_state, pos):
+        if enough and self.cfg.open_goal and not self.cash_on(game_state) and self.goal_open(game_state, pos):
             enough = False  # H-S24: nobody can catch us before we get home, so keep eating
         score = self.get_score(game_state)
-        if self.late(game_state) and score < 0 and carrying > -score:
-            enough = True   # H-S27: behind late, bank as soon as this trip takes the lead
+        if self.late_bank(game_state, score, carrying):
+            enough = True   # H-S27: behind late, bank as soon as this trip takes the lead (v12: or tied)
         go_home = carrying > 0 and (
             enough
             or len(food) <= 2
@@ -1813,22 +2945,53 @@ class GreedyAttacker(V1Agent):
             or threatened)
 
         safe = self.safe_fn(ghosts)
+        if self.cfg.scared_raid and me.scared_timer > 0 and not me.is_pacman:
+            # v14 scared_raid: a scared raider still on our side must not meet a visible invader
+            invaders = [p for _, p, inv in self.visible_enemies(game_state) if inv]
+            if invaders:
+                base = safe
+
+                def safe(cell, steps, _base=base, _inv=invaders):
+                    if self.map.is_ours(cell) and any(self.map.d(p, cell) <= steps + 1 for p in _inv):
+                        return False
+                    return _base(cell, steps)
         plan = self.cfg.plan
+        special = False
         if use_plan and plan in ('full', 'danger', 'food') and self.planner is not None:
-            special = (len(food) <= 2 or returned + carrying >= self.food_to_win
-                       or (self.late(game_state) and score < 0 and carrying > -score)
-                       or my_moves_left <= self.map.dist_home[pos] + TIME_MARGIN)
+            if self.cfg.plan_special:  # v14: the planner also acts in the "food" special cases
+                special = (self.late_bank(game_state, score, carrying)
+                           or my_moves_left <= self.map.dist_home[pos] + TIME_MARGIN)
+            else:
+                special = (len(food) <= 2 or returned + carrying >= self.food_to_win
+                           or self.late_bank(game_state, score, carrying)
+                           or my_moves_left <= self.map.dist_home[pos] + TIME_MARGIN)
             if not special and (plan != 'food' or not go_home) and not (
                     plan == 'food' and self.cfg.breaker and self.entry is not None):
+                if (self.cfg.plan_blocked and self.cfg.breaker and plan == 'danger' and not me.is_pacman
+                        and carrying == 0 and visible_ghosts):
+                    # v12: a standoff on our side: let the breaker count and act as in plain greedy
+                    if self.entry is not None:
+                        action = self.follow_entry(game_state, pos, me)
+                        if action is not None:
+                            return action
+                    if not any(self.food_is_safe(f, pos, ghosts) for f in food):
+                        action = self.break_standoff(game_state, pos, me, ghosts, safe)
+                        if action is not None:
+                            return action
+                        action = self.plan_move(game_state, pos, carrying, food, my_moves_left)
+                        if action is not None:
+                            return action  # the breaker already recorded this move as blocked
                 action = self.plan_move(game_state, pos, carrying, food, my_moves_left)
                 if action is not None:
                     if self.cfg.breaker:
                         self.blocked.append(False)
+                    self.stuck = 0
                     return action
         if not go_home:
             if self.cfg.breaker and self.entry is not None:
                 action = self.follow_entry(game_state, pos, me)
                 if action is not None:
+                    self.stuck += 1  # v14: walking to a breaker entry is not progress yet
                     return action
             if self.cfg.hunt_scared:
                 action = self.hunt_scared_action(game_state, pos, safe)
@@ -1843,12 +3006,90 @@ class GreedyAttacker(V1Agent):
                 if action is not None:
                     if self.cfg.breaker:
                         self.blocked.append(False)
+                    self.stuck = 0
+                    self.tried.clear()
                     return action
+            self.stuck += 1  # v14: no safe food
+            action = self.stuck_plan(game_state, pos, carrying, food, my_moves_left, special)
+            if action is not None:
+                if self.cfg.breaker:
+                    self.blocked.append(False)
+                return action
             if self.cfg.breaker:
                 action = self.break_standoff(game_state, pos, me, ghosts, safe)
                 if action is not None:
                     return action
+            return self.retreat(game_state, ghosts, threatened, safe)
+        if self.cfg.plan_stuck:
+            # v14: retreat() inlined so that the planner can replace evade when no way home is safe
+            home_targets = list(self.map.home_border)
+            if threatened:
+                home_targets += self.get_capsules(game_state)
+            action, _ = self.bfs_action(game_state, home_targets, safe)
+            if action is not None:
+                self.stuck = 0
+                return action
+            self.stuck += 1  # no safe way home
+            action = self.stuck_plan(game_state, pos, carrying, food, my_moves_left, special)
+            if action is not None:
+                return action
+            return self.evade(game_state, ghosts)
         return self.retreat(game_state, ghosts, threatened, safe)
+
+    def attack_food(self, game_state):
+        """v15: the enemy food the attacker works with (BrainAgent narrows it for a leashed helper).
+        v16 pocket: carrying pocket_load or more, a food inside a dead end counts only if we are back at
+        that dead end's entrance pocket_margin moves before any enemy can stand there; the other dead-end
+        food waits until the load is banked."""
+        food = self.get_food(game_state).as_list()
+        if not self.cfg.pocket or game_state.get_agent_state(self.index).num_carrying < self.cfg.pocket_load:
+            return food
+        pos = game_state.get_agent_position(self.index)
+        etas, out = {}, []
+        for f in food:
+            depth = self.map.depth[f]
+            if depth == 0:
+                out.append(f)
+                continue
+            e = self.map.entrance[f]
+            if e not in etas:
+                etas[e] = self.enemy_eta(game_state, e)
+            if self.map.d(pos, f) + depth + self.cfg.pocket_margin < etas[e]:
+                out.append(f)
+        if len(out) < len(food):
+            self.note('pocket_moves')
+        return out
+
+    def note(self, key):
+        """v16: count an event for the local evaluation (BrainAgent keeps the counters; no-op here)."""
+        return None
+
+    def enemy_eta(self, game_state, cell):
+        """Moves until the first enemy can stand on `cell`: its exact distance when seen, else the
+        pessimistic OPEN_QUANTILE of its belief distance (as goal_open); a scared enemy cannot eat us
+        before its timer runs out. Without the enemies' fields only visible enemies count."""
+        eta = INF
+        for i in self.get_opponents(game_state):
+            f = self.fields(game_state, i)
+            seen = game_state.get_agent_position(i)
+            if seen is not None:
+                d = self.map.d(seen, cell)
+            elif f is not None and self.belief.get(i):
+                d = self.belief_quantile(self.belief[i], cell, OPEN_QUANTILE)
+            else:
+                continue
+            if f is not None and f[2] > 0:
+                d = max(d, f[2] - SCARED_MARGIN)
+            eta = min(eta, d)
+        return eta
+
+    def stuck_plan(self, game_state, pos, carrying, food, moves_left, special):
+        """v14 plan_stuck: the width planner decides when greedy has had no safe target for stuck_moves
+        own moves in a row and the danger planner did not search during this move."""
+        if (not self.cfg.plan_stuck or self.planner is None or self.cfg.plan != 'danger' or special
+                or self.plan_ran or self.stuck < self.cfg.stuck_moves):
+            return None
+        return self.plan_move(game_state, pos, carrying, food, moves_left, force=True)
 
     def retreat(self, game_state, ghosts, threatened, safe):
         home_targets = list(self.map.home_border)
@@ -1859,7 +3100,15 @@ class GreedyAttacker(V1Agent):
             return action
         return self.evade(game_state, ghosts)
 
+    def cash_on(self, game_state):
+        """v16 cash: in the last cash_moves own moves the attacker banks small loads."""
+        return self.cfg.cash and game_state.data.timeleft // 4 <= self.cfg.cash_moves
+
     def return_threshold(self, game_state, pos):
+        if self.cash_on(game_state):
+            if game_state.get_agent_state(self.index).num_carrying >= self.cfg.cash_at:
+                self.note('cash_moves')
+            return min(self.cfg.return_at, self.cfg.cash_at)
         if not self.cfg.adaptive:
             return self.cfg.return_at
         carrying = game_state.get_agent_state(self.index).num_carrying
@@ -1892,6 +3141,11 @@ class GreedyAttacker(V1Agent):
             if action is not None:
                 return action
         candidates = [b for b in self.map.home_border if b != pos]
+        if self.cfg.brk_tabu:
+            # v14: not one of the last entries we tried, nor one right next to us (E-042 loop)
+            fresh = [b for b in candidates if b not in self.tried and self.map.d(pos, b) > TABU_NEAR]
+            if fresh:
+                candidates = fresh
         if not candidates:
             return None
 
@@ -1900,6 +3154,8 @@ class GreedyAttacker(V1Agent):
             return ghost_d, -self.map.d(pos, b), b
 
         self.entry = max(candidates, key=away)
+        if self.cfg.brk_tabu:
+            self.tried.append(self.entry)
         self.blocked.clear()
         return self.follow_entry(game_state, pos, me)
 
@@ -1985,6 +3241,15 @@ class PatrolDefender(V1Agent):
         if self.target == pos:
             self.target = None
 
+        if self.cfg.def_scared:
+            action = self.def_scared_move(game_state, pos, invaders, scared)
+            if action is not None:
+                return action
+            if invaders and scared and 'posture' in self.cfg.def_scared:
+                nearest = min(invaders, key=lambda p: self.map.d(pos, p))
+                if self.map.d(pos, nearest) >= game_state.get_agent_state(self.index).scared_timer + 2:
+                    scared = False  # our timer runs out before we can meet: defend as usual
+
         if invaders and scared:
             nearest = min(invaders, key=lambda p: self.map.d(pos, p))
             return self.keep_distance(game_state, nearest)
@@ -2031,6 +3296,55 @@ class PatrolDefender(V1Agent):
             return action
         self.target = None
         return Directions.STOP
+
+    def def_scared_move(self, game_state, pos, invaders, scared):
+        """v12 def_scared (see the header); None = use the normal rules."""
+        border = self.map.home_border
+
+        def exit_of(cell):
+            return min(border, key=lambda b: (self.map.d(cell, b), b))
+
+        parts = self.cfg.def_scared
+        if scared and invaders and border and 'posture' in parts:
+            inv = min(invaders, key=lambda p: (self.map.d(pos, p), p))
+            if self.map.d(pos, inv) >= game_state.get_agent_state(self.index).scared_timer + 2:
+                return None
+            ex = exit_of(inv)
+            best = None
+            for action, cell in self.successors(game_state):
+                if not self.map.is_ours(cell):
+                    continue
+                di = self.map.d(cell, inv)
+                if di < 2:
+                    continue
+                key = (self.map.depth.get(cell, 0) > 0, self.map.d(cell, ex), -di, action)
+                if best is None or key < best[0]:
+                    best = (key, action)
+            return best[1] if best is not None else None
+        if scared and not invaders and self.target is not None and border and 'posture' in parts:
+            ex = exit_of(self.target)
+            if ex == pos:
+                return Directions.STOP
+            action, _ = self.bfs_action(game_state, [ex], lambda cell, steps: self.map.is_ours(cell))
+            return action
+        if not scared and invaders and 'cap' in parts:
+            best = None
+            for cap in self.get_capsules_you_are_defending(game_state):
+                for inv in invaders:
+                    di = self.map.d(inv, cap)
+                    if di > 5 or self.map.d(pos, cap) >= di:
+                        continue
+                    if di >= self.map.dist_enemy_side.get(inv, INF):
+                        continue  # its own side is nearer than the capsule: it goes home, not there
+                    if best is None or (di, cap) < best[0]:
+                        best = ((di, cap), cap)
+            if best is not None:
+                cap = best[1]
+                if cap == pos:
+                    return Directions.STOP
+                action, _ = self.bfs_action(game_state, [cap], lambda cell, steps: self.map.is_ours(cell))
+                return action
+        return None
 
     def guard_target(self, game_state, pos):
         """guard (H-S16, H-S14): where to go for an invader, seen or hidden (its is_pacman), or None.
@@ -2292,6 +3606,8 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
             self.role = role
             self.target, self.entry = None, None
             self.blocked.clear()
+            self.stuck = 0
+            self.tried.clear()
         if role == 'attack':
             return self.attack(game_state)
         if game_state.get_agent_state(self.index).is_pacman:  # called back: get home first
@@ -2340,6 +3656,8 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
                 return 'attack'
         if self.cfg.recall and home == 'attack' and self.recalled(game_state, t):
             return 'defend'
+        if self.cfg.scared_raid and home == 'defend' and self.raid_on(game_state, t):
+            return 'attack'  # v14: scared, and their half is empty: raid instead of hiding
         if self.cfg.formation == 'power' and home == 'defend' and self.power_on(game_state, t):
             return 'attack'  # v7 SM-3 power play
         if self.cfg.formation == 'lead' and home == 'defend' and self.get_score(game_state) <= self.cfg.form_lead:
@@ -2372,6 +3690,24 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
         trip = min(row.get(fd, INF) + self.map.dist_home[fd] for fd in food)
         return min(timers) >= trip + 6
 
+    def raid_on(self, game_state, t):
+        """v14 scared_raid: our agent t is scared, every enemy is a Pacman (exact, flags), and its scared
+        time still covers the way back: from our side it needs RAID_START moves to start; once over there
+        it stays while the moves left exceed its way home + RAID_MARGIN (then it comes back in time to
+        defend when the timer ends). Both of our agents see the same facts, so they agree."""
+        state = game_state.get_agent_state(t)
+        timer = state.scared_timer
+        if timer <= 0:
+            return False
+        for i in self.get_opponents(game_state):
+            f = self.fields(game_state, i)
+            if f is None or not f[0]:
+                return False
+        if not state.is_pacman:
+            return timer >= RAID_START
+        pos = game_state.get_agent_position(t)
+        return pos is not None and timer > self.map.dist_home[pos] + RAID_MARGIN
+
     def recalled(self, game_state, t):
         """recall (H-S26): both enemies are Pacmen, and our agent t is on our side or carries nothing
         within RECALL_HOME of home."""
@@ -2385,3 +3721,652 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
 
     def defenders(self, game_state):
         return [t for t in self.get_team(game_state) if self.role_of(game_state, t) == 'defend']
+
+
+##########################
+# v15 (E-044): team brain #
+##########################
+
+class TeamBrain:
+    """One object shared by our two agents (shared memory between teammates: rules.md Q4, allowed).
+    - posts: after its move each agent publishes what it just did (role, rule, stuck / idle count, entry,
+      target, load). These are the private facts the teammate cannot see in its observation.
+    - tick: at the start of each of our turns the brain reads the facts both agents see the same way (our
+      positions and states, the enemies' is_pacman with flags, score, time), detects our own deaths, keeps a
+      short history (last enemy Pacman, our last return, own-sight memory) and runs the plays.
+    - plays: a play is a joint plan. Its only effect on roles is the latch {agent index: role}, which both
+      agents read through role_of, so they always agree; relay swaps the shared home_roles instead.
+    - count: in-memory counters (never printed or written by the agent; the local sentinel reads them)."""
+
+    KEYS = ('rounds', 'home0', 'home1', 'home2', 'def_scared', 'att_pacman', 'att_loaded', 'att_walk',
+            'att_border', 'att_idle', 'att_evade', 'idle_quiet', 'quiet80', 'late', 'late_tied', 'tied',
+            'ahead', 'behind', 'att_deaths', 'def_deaths',
+            'relay_swaps', 'relay_far', 'relay_busy', 'relay_held',
+            'eyes_moves',
+            'push_enter_a', 'push_enter_b', 'push_moves', 'push_exit_lead', 'push_exit_recall',
+            'push_exit_died', 'push_exit_relay',
+            'relief_enter', 'relief_enter_scared', 'relief_moves', 'relief_exit_recall', 'relief_exit_timer',
+            'relief_exit_unstuck', 'relief_exit_timeout', 'relief_exit_died', 'relief_exit_late',
+            'relief_exit_relay',
+            'swap_swaps', 'swap_far', 'swap_home',
+            'cover_enter', 'cover_moves', 'cover_exit_role', 'cover_exit_gone', 'cover_exit_timeout',
+            'cover_exit_noexit', 'cover_exit_late', 'pocket_moves', 'cash_moves')
+
+    def __init__(self, cfg, home_roles):
+        self.cfg = cfg
+        self.home_roles = home_roles           # the dict both agents hold (create_team)
+        self.base_roles = dict(home_roles)
+        self.count = dict((k, 0) for k in self.KEYS)
+        self.posts = {}
+        self.latch = {}
+        self.play = None
+        self.cool = {}
+        self.last_pos = {}
+        self.pac_last = {}
+        self.ret_last = None
+        self.ret_total = 0
+        self.mine = {}
+        self.start_time = None
+        self.handoff = {}
+        self.cover = None
+
+    def restore_roles(self):
+        for t, role in self.base_roles.items():
+            self.home_roles[t] = role
+
+    def reset(self, agent, game_state):
+        """Per game; both agents call it before the first move (as TeamMemory.reset)."""
+        self.restore_roles()
+        for k in self.count:
+            self.count[k] = 0
+        self.posts = {}
+        self.latch = {}
+        self.play = None
+        self.cool = {}             # play name -> timeleft when it last ended
+        self.last_pos = {}         # our agent index -> its cell at the last tick
+        self.pac_last = {}         # enemy index -> timeleft when it was last a Pacman
+        self.ret_last = None       # timeleft when our returned food last grew
+        self.ret_total = 0
+        self.mine = {}             # (our index, enemy index) -> timeleft when last in that agent's own sight
+        self.start_time = game_state.data.timeleft
+        self.handoff = {}          # v16 swap: our agent index -> the entry it takes over
+        self.cover = None          # v16 cover: {'start': timeleft, 'enemy': index} while the attacker covers
+
+    # --- helpers on common facts ---
+
+    def body(self, role):
+        """Our agent index whose home role is `role`."""
+        for t in sorted(self.home_roles):
+            if self.home_roles[t] == role:
+                return t
+        return None
+
+    def since(self, mark, now):
+        """Own moves since the timeleft mark (the whole game so far if None)."""
+        if mark is None:
+            mark = self.start_time
+        return (mark - now) // 4
+
+    def enemy_border_dist(self, agent, game_state, i):
+        """Pessimistic distance of enemy i to its own border: exact if seen, else the OPEN_QUANTILE of its
+        belief."""
+        m = agent.map
+        p = game_state.get_agent_position(i)
+        if p is not None:
+            return m.dist_enemy_side[p]
+        belief = agent.belief.get(i)
+        if not belief:
+            return 0
+        mass = 0.0
+        for d, pr in sorted((m.dist_enemy_side[c], pr) for c, pr in belief.items()):
+            mass += pr
+            if mass >= OPEN_QUANTILE:
+                return d
+        return INF
+
+    def no_bank(self, agent, game_state, now, fields):
+        """True when no enemy can bank another food before the end: a carrier needs its way home, anyone
+        else a round trip to our nearest food and back, from the best cell of its belief support."""
+        m = agent.map
+        moves = now // 4 + 1
+        back = [(f, m.dist_enemy_side[f]) for f in agent.get_food_you_are_defending(game_state).as_list()]
+        for i in agent.get_opponents(game_state):
+            f = fields.get(i)
+            if f is None:
+                return False
+            p = game_state.get_agent_position(i)
+            cells = [p] if p is not None else list(agent.belief.get(i, ()))
+            if not cells:
+                return False
+            if f[1] > 0:
+                need = min(m.dist_enemy_side[c] for c in cells)
+            elif back:
+                need = min(m.d(c, fd) + b for c in cells for fd, b in back)
+            else:
+                need = INF
+            if need <= moves:
+                return False
+        return True
+
+    def helper_entry(self, agent, game_state, a, d, near_blocker):
+        """The border cell the helping defender d crosses at: next to the ghost that blocks a cut-off
+        carrier (so a guard has two targets), otherwise HELPER_APART from the attacker's entry, where the
+        visible ghosts are farthest, the nearest such cell to d."""
+        m = agent.map
+        border = m.home_border
+        if not border:
+            return None
+        pa = game_state.get_agent_position(a)
+        pd = game_state.get_agent_position(d)
+        ghosts = agent.all_ghosts(game_state)
+        if near_blocker and ghosts:
+            blocker = min(ghosts, key=lambda g: (m.d(g, pa), g))
+            return min(border, key=lambda b: (m.d(m.cross[b], blocker), m.d(pd, b), b))
+        post = self.posts.get(a)
+        ref = post['entry'] if post is not None and post['entry'] is not None else pa
+        apart = [b for b in border if m.d(b, ref) >= HELPER_APART]
+
+        def key(b):
+            gd = min((m.d(g, m.cross[b]) for g in ghosts), default=INF)
+            return min(gd, 8), -m.d(pd, b), b
+        return max(apart or border, key=key)
+
+    # --- the turn ---
+
+    def tick(self, agent, game_state):
+        now = game_state.data.timeleft
+        m = agent.map
+        team = agent.get_team(game_state)
+        died = []
+        for t in team:
+            p = game_state.get_agent_position(t)
+            last = self.last_pos.get(t)
+            # between two ticks a body moves at most once, so a jump to its start cell is a death
+            if last is not None and p == game_state.get_initial_agent_position(t) and m.d(last, p) > 1:
+                died.append(t)
+                self.count['att_deaths' if self.home_roles.get(t) == 'attack' else 'def_deaths'] += 1
+            self.last_pos[t] = p
+        fields = {}
+        n_pac = 0
+        for i in agent.get_opponents(game_state):
+            f = agent.fields(game_state, i)
+            fields[i] = f
+            if f is not None and f[0]:
+                n_pac += 1
+                self.pac_last[i] = now
+        total = sum(game_state.get_agent_state(t).num_returned for t in team)
+        if total > self.ret_total:
+            self.ret_total = total
+            self.ret_last = now
+        me = game_state.get_agent_position(agent.index)
+        for i in agent.get_opponents(game_state):
+            p = game_state.get_agent_position(i)
+            if p is not None and abs(p[0] - me[0]) + abs(p[1] - me[1]) <= SIGHT:
+                self.mine[(agent.index, i)] = now
+        if self.cfg.relay:
+            for t in died:
+                self.relay(agent, game_state, t, n_pac, fields)
+        if self.cfg.swap:
+            self.standoff_swap(agent, game_state, now, n_pac)
+        if self.cfg.push or self.cfg.relief:
+            self.run_plays(agent, game_state, now, n_pac, fields, died)
+        if agent.index == min(team):
+            self.census(agent, game_state, now, n_pac)
+
+    def census(self, agent, game_state, now, n_pac):
+        """Once per round: how long each team situation lasts (the headroom of every play)."""
+        c = self.count
+        m = agent.map
+        a, d = self.body('attack'), self.body('defend')
+        if a is None or d is None:
+            return
+        sa, sd = game_state.get_agent_state(a), game_state.get_agent_state(d)
+        c['rounds'] += 1
+        c['home%d' % min(n_pac, 2)] += 1
+        if sd.scared_timer > 0 and not sd.is_pacman:
+            c['def_scared'] += 1
+        if sa.is_pacman:
+            c['att_pacman'] += 1
+            if sa.num_carrying >= 5:
+                c['att_loaded'] += 1
+        elif m.dist_home[game_state.get_agent_position(a)] >= RELAY_NEARER:
+            c['att_walk'] += 1
+        else:
+            c['att_border'] += 1
+        post = self.posts.get(a)
+        idle = post is not None and post['idle'] >= RELIEF_STUCK
+        if idle:
+            c['att_idle'] += 1
+            if n_pac == 0:
+                c['idle_quiet'] += 1
+        if post is not None and post['rule'] == 'evade':
+            c['att_evade'] += 1
+        if all(self.since(self.pac_last.get(i), now) >= PUSH_QUIET for i in agent.get_opponents(game_state)):
+            c['quiet80'] += 1
+        score = agent.get_score(game_state)
+        c['tied' if score == 0 else ('ahead' if score > 0 else 'behind')] += 1
+        if now // 4 <= ENDGAME_MOVES:
+            c['late'] += 1
+            if score == 0:
+                c['late_tied'] += 1
+
+    # --- relay ---
+
+    def relay(self, agent, game_state, t, n_pac, fields):
+        """Our body t was just eaten. If it was the attacker and the other body is better placed to attack
+        and free to go, swap the two home roles."""
+        if self.home_roles.get(t) != 'attack':
+            return
+        m = agent.map
+        others = [x for x in agent.get_team(game_state) if x != t]
+        if not others:
+            return
+        o = others[0]
+        pt, po = game_state.get_agent_position(t), game_state.get_agent_position(o)
+        if m.dist_home[po] + RELAY_NEARER > m.dist_home[pt]:
+            self.count['relay_far'] += 1
+            return
+        so = game_state.get_agent_state(o)
+        scared = so.scared_timer >= RELAY_SCARED and not so.is_pacman
+        invaders = [p for _, p, inv in agent.visible_enemies(game_state) if inv]
+        if not scared and any(m.d(po, p) <= RELAY_BUSY for p in invaders):
+            self.count['relay_busy'] += 1
+            return
+        free = n_pac == 0 or scared
+        if not free:
+            pacmen = [i for i in sorted(fields) if fields[i] is not None and fields[i][0]]
+            top = max(pacmen, key=lambda i: (fields[i][1], i))
+            cell = game_state.get_agent_position(top)
+            if cell is None:
+                cell = agent.likely_cell(top, pt)
+            free = cell is not None and m.d(pt, cell) < m.d(po, cell)
+        if not free:
+            self.count['relay_held'] += 1
+            return
+        self.home_roles[t], self.home_roles[o] = 'defend', 'attack'
+        self.count['relay_swaps'] += 1
+        if self.play is not None:  # the helper is now the attacker: the play is over
+            self.count['%s_exit_relay' % self.play['name']] += 1
+            self.cool[self.play['name']] = game_state.data.timeleft
+            self.play = None
+            self.latch = {}
+
+    # --- v16 swap: handover at a standoff ---
+
+    def standoff_swap(self, agent, game_state, now, n_pac):
+        """swap: the attacker stands blocked at the border and its breaker has chosen another entry. If
+        the defender is SWAP_GAIN steps nearer to that entry and home is quiet (no enemy is a Pacman), the
+        two home roles are swapped: the body near the entry attacks through it at once, and the blocked
+        body defends from where it stands (instead of walking along the border while the other waits).
+        Always one attacker and one defender."""
+        if self.play is not None or self.latch or agent.late(game_state):
+            return
+        a, d = self.body('attack'), self.body('defend')
+        if a is None or d is None:
+            return
+        post = self.posts.get(a)
+        if post is None or post['entry'] is None or post['time'] - now > 4:
+            return
+        if self.since(self.cool.get('swap'), now) < SWAP_COOL:
+            return
+        sa, sd = game_state.get_agent_state(a), game_state.get_agent_state(d)
+        if sa.is_pacman or sd.is_pacman:
+            return
+        if n_pac > 0:
+            self.count['swap_home'] += 1
+            return
+        m = agent.map
+        entry = post['entry']
+        pa, pd = game_state.get_agent_position(a), game_state.get_agent_position(d)
+        if m.d(pd, entry) + SWAP_GAIN > m.d(pa, entry):
+            self.count['swap_far'] += 1
+            return
+        self.home_roles[a], self.home_roles[d] = 'defend', 'attack'
+        self.handoff = {d: entry}
+        self.cool['swap'] = now
+        self.count['swap_swaps'] += 1
+
+    # --- push and relief ---
+
+    def run_plays(self, agent, game_state, now, n_pac, fields, died):
+        score = agent.get_score(game_state)
+        late = agent.late(game_state)
+        a, d = self.body('attack'), self.body('defend')
+        if a is None or d is None:
+            return
+        play = self.play
+        if play is not None:
+            reason = self.exit_reason(agent, game_state, play, now, n_pac, score, late, died, a)
+            if reason is None:
+                if agent.index == play['helper']:
+                    self.count['%s_moves' % play['name']] += 1
+                return
+            self.count['%s_exit_%s' % (play['name'], reason)] += 1
+            self.cool[play['name']] = now
+            self.play = None
+            self.latch = {}
+            return
+        sd = game_state.get_agent_state(d)
+        if sd.is_pacman or sd.num_carrying > 0 or d in died:
+            return
+        if late and score != 0:
+            return  # the endgame rule decides (ahead: both defend, behind: both attack)
+        pd = game_state.get_agent_position(d)
+        if self.cfg.push and score <= 0 and self.since(self.cool.get('push'), now) >= PUSH_COOL:
+            mode = None
+            if 'b' in self.cfg.push_modes and now // 4 <= PUSH_FREE \
+                    and self.no_bank(agent, game_state, now, fields):
+                mode = 'b'
+            elif ('a' in self.cfg.push_modes and n_pac == 0 and now // 4 <= PUSH_LEFT
+                  and all(self.since(self.pac_last.get(i), now) >= PUSH_QUIET for i in fields)
+                  and self.since(self.ret_last, now) >= PUSH_DRY
+                  and not any(abs(p[0] - pd[0]) + abs(p[1] - pd[1]) <= SIGHT
+                              for _, p, _ in agent.visible_enemies(game_state))):
+                mode = 'a'
+            if mode is not None:
+                self.play = {'name': 'push', 'helper': d, 'start': now, 'mode': mode, 'sent': False, 'free': 0,
+                             'entry': self.helper_entry(agent, game_state, a, d, False)}
+                self.latch = {d: 'attack'}
+                self.count['push_enter_%s' % mode] += 1
+                return
+        if self.cfg.relief and self.since(self.cool.get('relief'), now) >= RELIEF_COOL:
+            post = self.posts.get(a)
+            if post is None or post['idle'] < RELIEF_STUCK or not agent.all_ghosts(game_state):
+                return
+            home = agent.map.dist_home
+            if not any(home[f] <= RELIEF_LEASH for f in agent.get_food(game_state).as_list()):
+                return  # nothing on the leash: the helper would only stand at the border
+            scared = sd.scared_timer >= RELIEF_SCARED and 's' in self.cfg.relief_modes
+            if not scared:
+                if n_pac > 0 or 'q' not in self.cfg.relief_modes:
+                    return
+                for i in fields:
+                    if i in self.pac_last and self.since(self.pac_last[i], now) < RELIEF_QUIET \
+                            and self.enemy_border_dist(agent, game_state, i) < RELIEF_FAR:
+                        return
+            sa = game_state.get_agent_state(a)
+            cut_off = sa.is_pacman and sa.num_carrying > 0
+            self.play = {'name': 'relief', 'helper': d, 'start': now, 'mode': 'scared' if scared else 'quiet',
+                         'sent': False, 'free': 0,
+                         'entry': self.helper_entry(agent, game_state, a, d, cut_off)}
+            self.latch = {d: 'attack'}
+            self.count['relief_enter_scared' if scared else 'relief_enter'] += 1
+
+    def exit_reason(self, agent, game_state, play, now, n_pac, score, late, died, a):
+        helper = play['helper']
+        if helper in died:
+            return 'died'
+        if play['name'] == 'push':
+            if score > 0:
+                return 'lead'
+            if play['mode'] == 'a' and n_pac > 0:
+                return 'recall'
+            return None
+        if late and score != 0:
+            return 'late'
+        sh = game_state.get_agent_state(helper)
+        if play['mode'] == 'scared':
+            if sh.scared_timer <= agent.map.dist_home[game_state.get_agent_position(helper)] + RAID_MARGIN:
+                return 'timer'
+        elif n_pac > 0:
+            return 'recall'
+        if agent.index == a:  # once per round: has the attacker had a safe target again?
+            post = self.posts.get(a)
+            play['free'] = play['free'] + 1 if post is not None and post['idle'] == 0 else 0
+            if play['free'] >= RELIEF_UNSTUCK:
+                return 'unstuck'
+        if (play['start'] - now) // 4 >= RELIEF_MAX:
+            return 'timeout'
+        return None
+
+    def post(self, agent, game_state, action):
+        """After its move an agent publishes what it did. idle = attacker moves in a row with no safe
+        target and no progress (walking to an entry, waiting at the border in front of a ghost, or cut
+        off on their side)."""
+        me = game_state.get_agent_state(agent.index)
+        pos = game_state.get_agent_position(agent.index)
+        prev = self.posts.get(agent.index)
+        gain = me.num_carrying + me.num_returned
+        role = agent.role
+        rule = agent.rule if agent.rule is not None else ('eat' if role == 'attack' else 'hold')
+        waiting = False
+        if role == 'attack' and (prev is None or gain <= prev['gain']):
+            if agent.stuck > 0:
+                waiting = True
+            elif me.is_pacman:
+                waiting = rule == 'evade'
+            else:
+                waiting = agent.map.dist_home[pos] <= 2 and bool(agent.all_ghosts(game_state))
+        idle = (prev['idle'] + 1 if prev is not None else 1) if waiting else 0
+        self.posts[agent.index] = {
+            'time': game_state.data.timeleft, 'role': role, 'rule': rule, 'idle': idle, 'gain': gain,
+            'entry': agent.entry, 'target': agent.target, 'stuck': agent.stuck, 'carry': me.num_carrying,
+            'pos': pos, 'action': action, 'planned': agent.plan_ran}
+
+
+class BrainAgent(RoleAgent):
+    """v15: RoleAgent plus the team brain. Every override delegates to RoleAgent unless a play that is
+    switched on says otherwise; with brain='1' alone no move changes."""
+
+    def __init__(self, index, cfg, home_roles, memory, brain):
+        super().__init__(index, cfg, home_roles, memory)
+        self.brain = brain
+        self.rule = None
+        self.eyes_hit = False
+
+    def register_initial_state(self, game_state):
+        self.brain.restore_roles()  # before RoleAgent reads its home role
+        super().register_initial_state(game_state)
+        self.brain.reset(self, game_state)
+        self.rule = None
+        self.eyes_hit = False
+
+    def perceive(self, game_state):
+        super().perceive(game_state)
+        self.brain.tick(self, game_state)
+
+    def choose_action(self, game_state):
+        self.rule = None
+        self.eyes_hit = False
+        action = super().choose_action(game_state)
+        if self.eyes_hit:
+            self.brain.count['eyes_moves'] += 1
+        self.brain.post(self, game_state, action)
+        return action
+
+    def role_of(self, game_state, t):
+        role = self.brain.latch.get(t)
+        if role is not None:
+            return role
+        return super().role_of(game_state, t)
+
+    def all_ghosts(self, game_state):
+        """Every visible dangerous ghost (the unfiltered list)."""
+        return RoleAgent.dangerous_ghosts(self, game_state)
+
+    def dangerous_ghosts(self, game_state):
+        if not self.cfg.eyes or self.role != 'attack':
+            return super().dangerous_ghosts(game_state)
+        # eyes: a ghost seen only through the teammate, far away, is not this attacker's problem yet
+        me = game_state.get_agent_position(self.index)
+        now = game_state.data.timeleft
+        out = []
+        for i, pos, invader in self.visible_enemies(game_state):
+            if invader or self.enemy_scared(i, game_state):
+                continue
+            if abs(pos[0] - me[0]) + abs(pos[1] - me[1]) > SIGHT and self.map.d(me, pos) > self.cfg.eyes_maze:
+                seen = self.brain.mine.get((self.index, i))
+                if seen is None or (seen - now) // 4 > EYES_MEMORY:
+                    self.eyes_hit = True
+                    continue
+            out.append(pos)
+        return out
+
+    def helping(self, name=None):
+        play = self.brain.play
+        return play is not None and play['helper'] == self.index and (name is None or play['name'] == name)
+
+    def attack(self, game_state):
+        play = self.brain.play
+        if self.helping() and not play['sent']:
+            play['sent'] = True  # once, after the role-change reset: walk to the helper's entry
+            entry = play['entry']
+            if (entry is not None and not game_state.get_agent_state(self.index).is_pacman
+                    and entry != game_state.get_agent_position(self.index)):
+                self.entry = entry
+        entry = self.brain.handoff.pop(self.index, None)
+        if (entry is not None and not game_state.get_agent_state(self.index).is_pacman
+                and entry != game_state.get_agent_position(self.index)):
+            self.entry = entry  # v16 swap: this body takes over the attack through the entry handed to it
+        if self.cfg.cover:
+            action = self.cover_move(game_state)
+            if action is not None:
+                return action
+        return super().attack(game_state)
+
+    def note(self, key):
+        self.brain.count[key] += 1
+
+    def attack_food(self, game_state):
+        food = super().attack_food(game_state)
+        if self.helping('relief'):
+            return [f for f in food if self.map.dist_home[f] <= RELIEF_LEASH]
+        return food
+
+    def return_threshold(self, game_state, pos):
+        base = super().return_threshold(game_state, pos)
+        if self.helping('relief'):
+            return min(base, RELIEF_BANK)
+        return base
+
+    def late_bank(self, game_state, score, carrying):
+        play = self.brain.play
+        if play is not None and play['name'] == 'push':
+            if score < 0:
+                return carrying > -score
+            if score == 0:
+                return carrying > 0
+        return super().late_bank(game_state, score, carrying)
+
+    # --- v16 cover: an idle attacker closes the invader's second exit ---
+
+    def cover_move(self, game_state):
+        """cover: while this home attacker is an unscared ghost with nothing to do (no safe target, an entry
+        walk, or a respawn walk) and an enemy Pacman carries COVER_LOAD or more, it goes to that invader's
+        best exit other than the one our defender covers, if it gets there first; it intercepts once the
+        invader is within COVER_NEAR. At most COVER_MAX moves, then a cooldown. None = attack as usual."""
+        brain = self.brain
+        now = game_state.data.timeleft
+        me = game_state.get_agent_state(self.index)
+        m = self.map
+
+        def stop(reason):
+            if brain.cover is not None:
+                brain.count['cover_exit_%s' % reason] += 1
+                brain.cool['cover'] = now
+                brain.cover = None
+            return None
+
+        if self.home_roles[self.index] != 'attack' or self.helping():
+            return None  # only the home attacker covers (the cover state is its own)
+        if me.is_pacman or me.scared_timer > 0:
+            return stop('role')
+        pos = game_state.get_agent_position(self.index)
+        best = None
+        for i in self.get_opponents(game_state):
+            f = self.fields(game_state, i)
+            if f is None or not f[0] or f[1] < COVER_LOAD:
+                continue
+            cell = game_state.get_agent_position(i)
+            if cell is None:
+                cell = self.likely_cell(i, pos)
+            if cell is not None and (best is None or (f[1], i) > best[0]):
+                best = ((f[1], i), i, cell)
+        if best is None:
+            return stop('gone')
+        _, i, cell = best
+        if brain.cover is None:
+            if brain.since(brain.cool.get('cover'), now) < COVER_COOL:
+                return None
+            post = brain.posts.get(self.index)
+            wasted = m.dist_home[pos] >= RELAY_NEARER or (
+                post is not None and (post['idle'] >= 1 or post['rule'] == 'entry'))
+            if not wasted:
+                return None
+        elif (brain.cover['start'] - now) // 4 >= COVER_MAX:
+            return stop('timeout')
+        border = m.home_border
+        d = brain.body('defend')
+        dpost = brain.posts.get(d)
+        dcell = dpost['target'] if dpost is not None and dpost['target'] is not None else None
+        if dcell is None:
+            dcell = game_state.get_agent_position(d)
+        if not border or dcell is None:
+            return stop('noexit')
+        covered = min(border, key=lambda b: (m.d(dcell, b), b))
+        others = [b for b in border if m.d(b, covered) >= COVER_APART]
+        if not others:
+            return stop('noexit')
+        exit2 = min(others, key=lambda b: (m.d(cell, b), b))
+        if m.d(pos, exit2) > m.d(cell, exit2):
+            return stop('late')
+        if brain.cover is None:
+            brain.cover = {'start': now, 'enemy': i}
+            brain.count['cover_enter'] += 1
+        brain.count['cover_moves'] += 1
+        target = exit2
+        seen = game_state.get_agent_position(i)
+        if seen is not None and m.d(pos, seen) <= COVER_NEAR:
+            target = self.intercept_cell(pos, seen)
+        self.rule = 'cover'
+        if target == pos:
+            return Directions.STOP
+        action, _ = self.bfs_action(game_state, [target], lambda c, s: m.is_ours(c))
+        return action
+
+    # --- rule labels for the post (pass-through: no decision changes) ---
+
+    def follow_entry(self, game_state, pos, me):
+        action = super().follow_entry(game_state, pos, me)
+        if action is not None:
+            self.rule = 'entry'
+        return action
+
+    def break_standoff(self, game_state, pos, me, ghosts, safe):
+        action = super().break_standoff(game_state, pos, me, ghosts, safe)
+        if action is None and self.rule is None and not me.is_pacman and ghosts:
+            self.rule = 'blocked'
+        return action
+
+    def retreat(self, game_state, ghosts, threatened, safe):
+        if self.rule is None or self.rule == 'blocked':
+            self.rule = 'home'
+        return super().retreat(game_state, ghosts, threatened, safe)
+
+    def evade(self, game_state, ghosts):
+        self.rule = 'evade'
+        return super().evade(game_state, ghosts)
+
+    def plan_move(self, game_state, pos, carrying, food, moves_left, force=False):
+        action = super().plan_move(game_state, pos, carrying, food, moves_left, force)
+        if action is not None:
+            self.rule = 'plan'
+        return action
+
+    def keep_distance(self, game_state, invader, wanted=3):
+        self.rule = 'scared'
+        return super().keep_distance(game_state, invader, wanted)
+
+    def intercept_cell(self, pos, invader):
+        self.rule = 'chase'
+        return super().intercept_cell(pos, invader)
+
+    def shadow_post(self, pos):
+        target = super().shadow_post(pos)
+        if target is not None:
+            self.rule = 'shadow'
+        return target
+
+    def next_patrol_point(self, game_state, pos):
+        self.rule = 'patrol'
+        return super().next_patrol_point(game_state, pos)

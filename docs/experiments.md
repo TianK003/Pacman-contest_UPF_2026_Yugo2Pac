@@ -2275,3 +2275,36 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
   - **Reference pool**: unchanged (8 members, without greedy_v6). New candidates should be paired with greedy_v6; whether it joins the pool is the user's decision, as in E-036.
 - **Docs**: `docs/picks/greedy_v6.md` (new), `docs/picks/README.md`, `docs/agents.md` (lineage, arm verdicts), `docs/evaluation.md`, `CLAUDE.md` (current state, incumbent).
 - **Commits**: framework 54cd83c; `my_team.py` changed in the commit that adds this entry.
+
+## E-047 — greedy_v6 (`my_team.py`) vs a friend's agent `andrea_v3`, 500 games (2026-11-13)
+- **Status**: done. Diagnostic only, not a decision input (user rule 2026-11-11: no decision on a single friend team).
+- **Request** (user, 2026-11-13): compare the current `my_team.py` against `friends/andy/andrea_v3.py`, 500 games (250 red, 250 blue), 6 workers.
+- **Opponent**: `friend_andrea_v3` (new league entry), received 2026-11-13. Safety check only [verified]: imports `random`, `time`, `collections`, `contest.*`; no file / process / network calls, no `random.seed`; `eval()` in `create_team` and the `__main__._display` hook are the framework template's boilerplate. Not read for design.
+- **Setup**: `evaluate.py play --candidate greedy_v6 --vs friend_andrea_v3 --seeds tuning --n-seeds 250 --jobs 6 --run friend_andrea_v3_vs_v6`; `my_team.py` byte-identical to `teams/greedy_v6.py` (`cmp`); tuning seeds 1–250 (reused: a diagnostic tunes nothing), both colours, `-c`; 635 s wall.
+- **Result** [verified]:
+
+  | agent | games | W-T-L | PPG [95% CI] | win % [95% CI] | avg margin | crashes | time warnings | max move s | p95 move s |
+  |---|---|---|---|---|---|---|---|---|---|
+  | greedy_v6 | 500 | 339-24-137 | **2.08** [1.96, 2.21] | 68 [64, 72] | +4.1 | 0 | 0 | 0.311 | 0.121 |
+  | friend_andrea_v3 | 500 | 137-24-339 | 0.87 [0.75, 0.99] | 27 [24, 32] | −4.1 | 0 | 0 | 0.039 | 0.003 |
+
+  | greedy_v6 as | games | W-T-L | PPG | avg margin |
+  |---|---|---|---|---|
+  | red | 250 | 170-12-68 | 2.09 | +3.9 |
+  | blue | 250 | 169-12-69 | 2.08 | +4.4 |
+
+  | per seed (both colours) | seeds |
+  |---|---|
+  | won both | 121 |
+  | won one, tied one | 18 |
+  | split (won one, lost one) | 79 |
+  | lost one, tied one | 6 |
+  | lost both | 26 |
+
+  | diagnostics (team per game) | returned | conceded | deaths | kills | food lost | max carried | 28-finishes |
+  |---|---|---|---|---|---|---|---|
+  | greedy_v6 | 17.0 | 12.8 | 1.61 | 1.17 | 1.8 | 10.7 | 13 |
+  | friend_andrea_v3 | 12.8 | 17.0 | 1.17 | 1.61 | 2.2 | 6.7 | 4 |
+
+- **Reading**: no colour effect. 79 split seeds mean that on many maps the game turns on which side of the map we get. Against our other friend opponents, greedy_v4 scored 2.13 vs `friend_diego` (E-045) and 2.62 vs `friend_andy_v2` (E-040), so andrea_v3 is about as strong as diego. Those were different agents on our side, so it is not a paired comparison.
+- **Commits**: framework 54cd83c; `my_team.py` at 938d2c6.

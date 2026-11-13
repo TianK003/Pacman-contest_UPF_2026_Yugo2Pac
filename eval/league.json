@@ -12,6 +12,8 @@
                      "notes": "a friend's agent (OffensiveAgent + DefensiveAgent, shared belief tracker), received 2026-10-23; sparring only, never read for design or copied"},
   "friend_andy_v2": {"path": "friends/andy/andy_v2.py", "ours": false, "frozen": true,
                      "notes": "the same friend's second version, received 2026-11-08; checked for safety only (imports, file/process calls, random.seed), sparring only, never read for design or copied"},
+  "friend_andrea_v3": {"path": "friends/andy/andrea_v3.py", "ours": false, "frozen": true,
+                     "notes": "a friend's agent (FlexAgent x2 + TeamBrain), received 2026-11-13; checked for safety only (imports random/time/collections/contest only; no file/process calls, no random.seed; eval() in create_team and __main__._display hook are framework-template boilerplate), sparring only, never read for design or copied"},
   "friend_aljaz_1": {"path": "friends/aljaz_1-5_windows_x64_python38/aljaz_1.py", "ours": false, "frozen": true,
                      "notes": "a friend's team, version 1 of 5, compiled Cython .pyd (win x64, py3.8), received 2026-10-23; sparring only, binary not inspected beyond a strings scan"},
   "friend_aljaz_2": {"path": "friends/aljaz_1-5_windows_x64_python38/aljaz_2.py", "ours": false, "frozen": true,

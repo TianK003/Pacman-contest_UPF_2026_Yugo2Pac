@@ -33,7 +33,7 @@
   - A crash or timeout sets the score to ±1, which is a loss [verified: `CaptureRules.agent_crash`].
 - **Submission**:
   - The tournament loads `my_team.py` from our repository root [source: PDF §3.3, README; also reported from pacman-eutopia code].
-  - Our repository (public since 2026-11-21, user decision): <https://github.com/TianK003/Pacman-contest_UPF_2026_Yugo2Pac>. Everything pushed to `main` is visible to everyone, including other teams.
+  - Our repository (public since 2026-11-21, user decision): <https://github.com/TianK003/Pacman-contest_UPF_2026>; this URL was submitted to UPF, so the repo must keep this name. Everything pushed to `main` is visible to everyone, including other teams.
   - It calls `create_team(first_index, second_index, is_red)` with **no extra arguments**, so the defaults are what plays.
 - **Time limits are enforced**: the tournament runs with `catch_exceptions=True` (`-c`) [reported by research from pacman-eutopia `contest_manager.py` and a tournament log].
 
@@ -68,8 +68,8 @@ The principle: **the agent may only use what an honest player watching its own o
 
 **Hidden-opponent fields: allowed (Q3, answered 2026-10-22)**
 - Fields of *hidden* opponents that the engine leaves in the observation: `is_pacman`, `num_carrying`, `scared_timer`, `num_returned` [verified: E-000, E-023]. They are read through the public `get_agent_state(i)`, and reveal more than the documented observation model (position hidden; noisy distance only).
-- The professor's answer: "If it is [available], I recommend you to use it and I'll make this info public to the rest of the teams" [source: email, 2026-10-22]. It is available (E-023). Our confirmation back to him, which lets him announce it: *to send*.
-- Implementation rule (kept): read them only through one switch (e.g. `USE_HIDDEN_OPPONENT_FLAGS`), so that turning it off is a one-line change if the ruling changes. New candidates may set it to `True`. `my_team.py` (greedy_v3) does not read them.
+- The professor's answer: "If it is [available], I recommend you to use it and I'll make this info public to the rest of the teams" [source: email, 2026-10-22]. It is available (E-023). Our confirmation was sent (user), and the professor forwarded the information to every team [reported by the user, 2026-11-21], so all teams may use these fields.
+- Implementation rule (kept): read them only through one switch (e.g. `USE_HIDDEN_OPPONENT_FLAGS`), so that turning it off is a one-line change if the ruling changes. New candidates may set it to `True`. `my_team.py` (greedy_v6) reads them (`USE_HIDDEN_OPPONENT_FLAGS = True`).
 
 **Forbidden**
 - **Mutating shared engine objects**: anything reachable from the observation that the engine shares, i.e. walls / layout, `Configuration` objects and `AgentState.start` (T-01).
@@ -89,7 +89,7 @@ The principle: **the agent may only use what an honest player watching its own o
 | Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | **answered 2026-10-22**: installed on demand; tell the professor which ones (see below) |
 | Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | hidden-opponent fields above | **answered 2026-10-22**: recommended, if available (it is, E-023) |
 | Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | **answered 2026-10-22**: yes |
-| Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | **decided by the user 2026-11-21**: the repo is public for the test run, at <https://github.com/TianK003/Pacman-contest_UPF_2026_Yugo2Pac> (not asked to the instructors) |
+| Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | **decided by the user 2026-11-21**: the repo is public for the test run, at <https://github.com/TianK003/Pacman-contest_UPF_2026> (not asked to the instructors) |
 | Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | **answered 2026-10-22**: yes |
 | Q7 | Grading: how much is tournament placement vs other deliverables (report? TEAM.md?)? The PDF says nothing. | priorities | not asked |
 | Q8 | May we use public code from other teams as **local sparring opponents only** (never submitted)? | testing | not asked |
@@ -106,6 +106,6 @@ Four questions were sent by email. Q1 (AI/LLM policy) was drafted on 2026-10-18 
 | # (table above) | Question as sent | Answer (quoted) | What it means for us |
 |---|---|---|---|
 | Q2 | Which Python libraries are installed on the tournament machines (numpy, scipy, torch etc.)? | "We install them on-demand. Let me know which ones you are going to use." | Stdlib only until we name a library to him and he confirms it is installed. Request it before the test run (2026-11-23), so the test run would show an install problem. The lint (`eval/check_rules.py`) keeps rejecting these imports until then. |
-| Q3 | May agents read `is_pacman`, `num_carrying` and `scared_timer` of opponents that are out of sight, through `get_agent_state`? Would accessing this information be considered a rule violation? | "I do not remember now, but is this information available? If it is, I recommend you to use it and I'll make this info public to the rest of the teams (pls, lmk)." | Allowed: it is available (E-023). We still owe him the confirmation so he can tell every team. Keep the single switch. |
+| Q3 | May agents read `is_pacman`, `num_carrying` and `scared_timer` of opponents that are out of sight, through `get_agent_state`? Would accessing this information be considered a rule violation? | "I do not remember now, but is this information available? If it is, I recommend you to use it and I'll make this info public to the rest of the teams (pls, lmk)." | Allowed: it is available (E-023). Confirmation sent; the professor told every team [reported by the user, 2026-11-21]. Keep the single switch. |
 | Q4 | Is shared memory between our own two agents (one shared Python object) allowed? | "Yes, there is no problem with that." | Shared beliefs and plans between our agents are open (H-S01, H-S09; agents.md ideas that waited on Q4). |
 | Q6 | May we ship a data file next to `my_team.py`, for example tuned weights, and load it at startup? | "Yes, you can." | Tuned parameters may live in a separate read-only file, loaded relative to `__file__` (T-21). |

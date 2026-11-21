@@ -33,6 +33,7 @@
   - A crash or timeout sets the score to ±1, which is a loss [verified: `CaptureRules.agent_crash`].
 - **Submission**:
   - The tournament loads `my_team.py` from our repository root [source: PDF §3.3, README; also reported from pacman-eutopia code].
+  - Our repository (public since 2026-11-21, user decision): <https://github.com/TianK003/Pacman-contest_UPF_2026_Yugo2Pac>. Everything pushed to `main` is visible to everyone, including other teams.
   - It calls `create_team(first_index, second_index, is_red)` with **no extra arguments**, so the defaults are what plays.
 - **Time limits are enforced**: the tournament runs with `catch_exceptions=True` (`-c`) [reported by research from pacman-eutopia `contest_manager.py` and a tournament log].
 
@@ -49,7 +50,7 @@
 | R7 | Do not touch `sys.stdout` / `sys.stderr`. Print nothing confidential (logs are published), and keep printing off in tournament mode. | CONTEST.md "Warning"; RMIT/UoM disqualify for touching stdout/stderr |
 | R8 | Do not write files to the current working directory during games. | CONTEST.md |
 | R9 | Code must run on Python 3.8 with the standard library plus what the framework installs (`frozendict`). Any other library must first be requested from the professor, who installs on demand, and confirmed as installed (Q2). | PDF §3.1; Q2 answer 2026-10-22 |
-| R10 | Academic integrity: our own original work. Do not share the repo or copy other teams' code. | `pacman-contest/README.md` |
+| R10 | Academic integrity: our own original work. Do not copy other teams' code. (The README also says not to share the repo; the user made it public on 2026-11-21 for the tournament, Q5. Other people's code, `friends/` and `last_year_winners/`, is gitignored and has never been committed [verified 2026-11-21: `git log --all` on both paths is empty].) | `pacman-contest/README.md` |
 
 ## Fair-play policy (ours, stricter than the written rules)
 
@@ -88,7 +89,7 @@ The principle: **the agent may only use what an honest player watching its own o
 | Q2 | Which Python libraries exist on SNOW (numpy, scipy, torch)? CONTEST.md's library list is RMIT's text; the UPF tournament `requirements.txt` has no numpy [reported]. | whether learned models or vectorised code can run | **answered 2026-10-22**: installed on demand; tell the professor which ones (see below) |
 | Q3 | May we use hidden opponents' `is_pacman`, `num_carrying`, `scared_timer` (readable via `get_agent_state`)? | hidden-opponent fields above | **answered 2026-10-22**: recommended, if available (it is, E-023) |
 | Q4 | Is shared memory between our own two agents (team object / module variable) explicitly allowed? | coordination design | **answered 2026-10-22**: yes |
-| Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | not asked |
+| Q5 | Public or private repo? The README says keep it private; the tournament code comments say it clones "a public repository" [reported]. | submission | **decided by the user 2026-11-21**: the repo is public for the test run, at <https://github.com/TianK003/Pacman-contest_UPF_2026_Yugo2Pac> (not asked to the instructors) |
 | Q6 | May we ship data files (e.g. learned weights) and load them in `register_initial_state`? RMIT/UoM allow it; UPF is silent. | learned methods | **answered 2026-10-22**: yes |
 | Q7 | Grading: how much is tournament placement vs other deliverables (report? TEAM.md?)? The PDF says nothing. | priorities | not asked |
 | Q8 | May we use public code from other teams as **local sparring opponents only** (never submitted)? | testing | not asked |

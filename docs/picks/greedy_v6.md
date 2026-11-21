@@ -1,6 +1,6 @@
 # greedy_v6: current submission (since 2026-11-12, E-046; user decision)
 
-`teams/greedy_v6.py` = `teams/greedy_lab_v16.py` with the `lab16_c2` options as defaults (identity 16/16 recorded games vs `lab16_c2`, E-046). `my_team.py` is a byte-for-byte copy. (`greedy_v5` was a rejected candidate, E-038, and was never the submission.)
+`teams/greedy_v6.py` = `teams/greedy_lab_v16.py` with the `lab16_c2` options as defaults (identity 16/16 recorded games vs `lab16_c2`, E-046). `my_team.py` was a byte-for-byte copy until 2026-11-21; since then it has the same code with a short header and without version / experiment tags in the comments (syntax tree identical to `teams/greedy_v6.py`, E-048). The full history of every option is in the header of `teams/greedy_v6.py`. (`greedy_v5` was a rejected candidate, E-038, and was never the submission.)
 
 **In one line**: greedy_v4 plus a **team brain** shared by both agents, with two plays: the attacker stops waiting for ghosts that only our defender can see (`eyes`), and when the attacking body dies the body already at the border takes over the attack (`relay`).
 

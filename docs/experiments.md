@@ -2308,3 +2308,18 @@ Proposed 2026-10-16 from the E-002 findings and extended 2026-10-17 (E-005). Eac
 
 - **Reading**: no colour effect. 79 split seeds mean that on many maps the game turns on which side of the map we get. Against our other friend opponents, greedy_v4 scored 2.13 vs `friend_diego` (E-045) and 2.62 vs `friend_andy_v2` (E-040), so andrea_v3 is about as strong as diego. Those were different agents on our side, so it is not a paired comparison.
 - **Commits**: framework 54cd83c; `my_team.py` at 938d2c6.
+
+## E-048 — `my_team.py` comment cleanup for the public repo and the test run (2026-11-21)
+- **Status**: done. No behaviour change.
+- **Request** (user, 2026-11-21): the repo is now public at <https://github.com/TianK003/Pacman-contest_UPF_2026_Yugo2Pac> for the test run on 2026-11-23; point to it, update the docs, remove unnecessary comments from `my_team.py`, and list what else has to be submitted.
+- **Change**: `origin` now points to the new URL; its `HEAD` was 28afba3, the same as the local `main` [verified: `git ls-remote`]. In `my_team.py` the 230-line version history header (greedy_v6 → lab16 → … → lab5) was replaced by a 25-line description of what the team does and the fair-play rules it follows. Version and experiment tags were removed from about 70 inline comments (`v14:`, `lab6`, `(E-044)`, `P-22:`, `H-S14:`, `(T-02)` …); the explanations were kept. Docstrings and code are untouched. Done by a script on the comment tokens, starting from `teams/greedy_v6.py` (unchanged, still frozen): 4372 → 4151 lines.
+- **Checks** [verified]:
+
+  | check | result |
+  |---|---|
+  | `ast.dump` of `my_team.py` == `ast.dump` of `teams/greedy_v6.py` | identical (comments never reach the AST, so the moves are the same) |
+  | `eval/check_rules.py my_team.py` | OK |
+  | smoke `capture.py -q -c` vs `baseline_team`: RANDOM13, 29, 41 as red, RANDOM29 as blue | 4 wins (+19, 28-food finish, +17, +19); no exception, no time warning |
+
+- **Note**: `my_team.py` is no longer byte-identical to `teams/greedy_v6.py`; use the AST compare for identity checks.
+- **Commits**: framework 54cd83c; `my_team.py` changed in the commit that adds this entry.

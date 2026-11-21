@@ -1,235 +1,27 @@
-# greedy_v6.py
-# ------------
-# Submission since 2026-11-12 (user decision; docs/experiments.md E-044, E-046).
-# = teams/greedy_lab_v16.py with the `lab16_c2` options as DEFAULTS, so the tournament (which passes no
-# create_team arguments) plays exactly the validated configuration:
-#   greedy_v4 (lab5_smart's enemy-state switches + the width-based attacker planner with the learned
-#   leaf value: plan=danger, plan_v=2, plan_nodes=2000, plan_budget=0.3, plan_leaf=netf) +
-#   the team brain (one shared object: what each agent posts, the team situation, one play latch) with
-#   two plays:
-#     eyes   the attacker's greedy safety checks ignore a ghost that only our defender sees
-#            (> Manhattan 5 and > 10 maze steps from the attacker, not in its own sight for 8 moves);
-#            the planner still models it
-#     relay  when the attacking body dies, the body near the border attacks and the respawned body
-#            defends (exactly one attacker and one defender at all times)
-# Validation (E-044, validation3 seeds 1-80, paired with greedy_v4): pool +0.020 [-0.019, +0.062],
-# last year's 14 teams +0.078 [+0.052, +0.104], head-to-head 56-51-53. Do not edit; new versions get
-# new files. (greedy_v5.py was a rejected candidate, E-038.)
+# my_team.py: our two-agent Capture-the-Flag team (UPF / EUTOPIA Pacman contest, Autonomous Systems
+# 2026-27). The tournament calls create_team without extra arguments, so the defaults below are what plays.
 #
-# lab16 header follows.
-# greedy_lab_v16.py
-# -----------------
-# 2026-11-12: greedy_lab_v15.py frozen after screen 1 of E-044; v16 = v15 + the second wave (docs/experiments.md
-# E-044). All default off: with every v16 switch at its default, v16 plays exactly like v15.
-#   swap='0'     handover at a standoff: when the attacker's standoff breaker has chosen another entry, the
-#                defender stands SWAP_GAIN steps nearer to it and no enemy is a Pacman, the two home roles are
-#                swapped: the body near the entry attacks through it, the blocked body defends where it stands
-#   cover='0'    an idle home attacker (unscared ghost with no safe target, on an entry walk or a respawn walk)
-#                goes to the best exit of an invader carrying COVER_LOAD or more that the defender does not
-#                cover, if it gets there first; intercepts within COVER_NEAR; COVER_MAX moves, then a cooldown
-#   eyes_maze    eyes: the maze distance beyond which a ghost outside the attacker's own sight is ignored
-#   push_modes   push: 'ab' = both triggers, 'a' = late and passive opponent only, 'b' = no enemy can bank only
-#   relief_modes relief: 'qs' = quiet home or scared defender, 'q' = quiet home only, 's' = scared only
-# swap and cover read the hidden opponents' is_pacman / num_carrying (flags, rules.md Q3) and are off without it.
-# From the loss diagnosis of greedy_v4 (docs/experiments.md E-045); these two need no brain:
-#   pocket='0'   carrying pocket_load or more, a food inside a dead end is a target (for greedy and for the
-#                planner) only if we are back at that dead end's entrance pocket_margin moves before any enemy
-#                can stand there (seen: exact distance; hidden: pessimistic belief quantile, as open_goal)
-#   cash='0'     in the last cash_moves own moves the attacker goes home with cash_at food and open_goal no
-#                longer extends the trip
+# Attacker
+#   - Greedy rules: go for food it can still bring home before a visible or tracked ghost catches it,
+#     bank at 8 carried food (earlier under threat), and pick another border entry when a guard blocks it.
+#   - Near enemy ghosts, a width-based planner (IW(1)) searches over our own model of the game and scores
+#     the futures with a small value function learned offline from our own games (the LEAF_* constants).
+#   - "eyes": a far ghost that only the teammate sees does not stop the attacker.
+# Defender
+#   - Tracks hidden enemies with a belief built from the noisy distances, eaten food and what both of
+#     our agents see; waits across from an invader's likely crossing and intercepts it on its way home.
+# Team
+#   - One shared object for both agents: a shared enemy belief and a "team brain" where each agent posts
+#     what it is doing.
+#   - Endgame: ahead, both defend; behind, both attack and bank as soon as a trip takes the lead.
+#   - "relay": when the attacker is eaten, the body near the border attacks and the respawned one defends.
+# The file also contains options from our experiments; the defaults switch them off.
 #
-# v15 header follows.
-# greedy_lab_v15.py
-# -----------------
-# 2026-11-11: greedy_lab_v14.py frozen (E-043); v15 = v14 + a TEAM BRAIN (docs/experiments.md E-044): one object
-# shared by our two agents (rules.md Q4: allowed) in which each agent posts what it is doing, a situation
-# classifier built from facts both agents see, and "plays" (joint plans with enter / exit rules) read from one
-# latch, so each agent knows what the other is dealing with and how it will react. All default off: with every
-# v15 switch off the classes of v14 run unchanged (and with greedy_v4's options exactly like greedy_v4).
-#   brain='0'    build BrainAgent + TeamBrain with no play: posts, census counters, no change of any move
-#   relay='0'    handover on death: when the attacking body is eaten and the other body is RELAY_NEARER steps
-#                nearer the border, has no invader within RELAY_BUSY and home is quiet (or it is scared, or the
-#                respawned body is nearer the likeliest invader), the two home roles are swapped: the body at
-#                the border attacks, the respawned one defends. Always one attacker and one defender.
-#   eyes='0'     the attacker's greedy safety checks ignore an enemy ghost that is outside its own sight,
-#                more than EYES_MAZE maze steps away and was not in its own sight during its last EYES_MEMORY
-#                moves (it is seen only through the teammate, T-56); the planner still models it
-#   push='0'     tie-break push: with score <= 0 the home defender attacks too when (a) late and the opponent
-#                has been passive, or (b) no enemy can still bank before the end; back when an enemy becomes a
-#                Pacman (a) or when we lead; both bank as soon as the trip takes the lead
-#   relief='0'   the home defender helps a stuck attacker while home is quiet (or while it is scared): it crosses
-#                at another entry on a leash (food within RELIEF_LEASH of home, bank at RELIEF_BANK); back when
-#                an enemy becomes a Pacman, the attacker is unstuck, or after RELIEF_MAX moves; then a cooldown
-# relay, push and relief read the hidden opponents' is_pacman (flags, rules.md Q3) and are off without it.
-#
-# v14 header follows.
-# greedy_lab_v14.py
-# -----------------
-# 2026-11-11: greedy_lab_v13.py frozen (E-039); v14 = v13 + default-off options aimed at the pitfalls found
-# against last year's contest teams (E-041, E-042; docs/experiments.md E-043). With all of them off, v14 plays
-# exactly like v13 (and with greedy_v4's options exactly like greedy_v4).
-#   plan_stuck='0'   attacker: when greedy has had no safe target for stuck_moves (='8') own moves in a row (no
-#                    race-safe food on the way out, or no safe way home: the breaker's waits/entry walks and
-#                    evade) and the danger planner did not run this move, the width planner decides anyway
-#                    (its ghost model chases only within plan_r and otherwise holds: a passive guard far away
-#                    is not an optimal interceptor). Targets the 0-0 standoffs and the frozen carrier (E-042).
-#   brk_tabu='0'     standoff breaker: never re-pick one of the last 3 entries it chose, nor an entry within 2
-#                    steps of where we stand (it looped between (16,1) and (16,3) for a whole game, E-042)
-#   plan_special='0' danger planner also in the special cases "<= 2 food left" and "this trip reaches the win
-#                    threshold" (greedy's evade let a 28-food carrier die in a pocket, E-042)
-#   open_safe='0'    open_goal: also require a home-border crossing that every enemy reaches later than we do
-#                    (by margin), and grow the margin by 1 per OPEN_LOAD_DIV carried food
-#   scared_raid='0'  the home defender attacks while it is scared, every enemy is a Pacman (their half is empty)
-#                    and the timer still covers the way back (RAID_START to start, RAID_MARGIN to stay)
-#
-# v13 header follows.
-# greedy_lab_v13.py
-# -----------------
-# 2026-11-08: greedy_lab_v12.py frozen (E-039 screen); v13 = v12 with one option widened (E-039 option C, user
-# request: test the parts of a bundled switch separately):
-#   def_scared='0'|'1'|'posture'|'cap'   '1' = all of v12's def_scared (identical to v12); 'posture' = only the
-#                    scared-defender parts (keep >= 2 on the invader's way home, act normally once the timer ends
-#                    first, wait at the exit of the last eaten food while scared); 'cap' = only the capsule guard.
-#
-# v12 header follows.
-# greedy_lab_v12.py
-# -----------------
-# 2026-11-08: greedy_lab_v11.py frozen (E-034); v12 = v11 + default-off options from the external review of
-# greedy_v4 / greedy_v5 (docs/research/review_v4_v5.md) and our own follow-up (E-039). With all of them off,
-# v12 plays exactly like v11 (and with greedy_v4's options exactly like greedy_v4).
-#   assist='0'       the attacker, while it is a non-scared ghost on our side, intercepts a visible invader within
-#                    assist_d (='6') maze steps with the defender's intercept rule (a second defender at the
-#                    border instead of one) [ours; targets "they returned more", 45 % of lost points]
-#   def_scared='0'   defender: while scared, keep >= 2 from the visible invader on its way home, avoid dead ends,
-#                    and act normally once the timer ends before we can meet (distance >= timer + 2); scared
-#                    with no invader in sight: wait at the border cell nearest the last eaten food (its exit);
-#                    not scared: stand on our capsule while a visible invader within 5 is nearer to it than to
-#                    its own side and we get there strictly first [review V4-A, condition corrected]
-#   late_tie='0'     endgame: in the last ENDGAME_MOVES own moves bank as soon as we carry food while the score is
-#                    tied (before: only when behind and the trip takes the lead) [ours; ties = 23 % of lost points]
-#   plan_blocked='0' danger mode: on our side with nothing carried, a ghost in sight and no race-safe food, the
-#                    standoff breaker counts the move as blocked and takes over after standoff_moves (the planner
-#                    otherwise keeps control there and the breaker never runs) [review V4-C]
-#   ov_guard='0'     override mode: keep greedy's move when the planner's best value < plan_min (all lines die
-#                    in the model) [review V5-A]
-#   ov_asym='0'      override mode: margin when greedy's own root value is < 0 (0 = plan_margin) [review V5-B]
-#
-# v11 header follows.
-# greedy_lab_v11.py
-# -----------------
-# 2026-11-08: greedy_lab_v10.py frozen (E-033 parts D/E); v11 = v10 + one default-off option (E-034):
-#   plan_leaf='net60f'  IW leaf = LEAF_NET60: the same 12-16-1 tanh net as LEAF_NET, trained on the same games
-#                       (lab6_off, tuning seeds 1-25) but with the target over 60 instead of 30 own moves
-#                       (food banked - food dropped), so safely carried food that is banked later counts.
-#
-# v10 header follows.
-# greedy_lab_v10.py
-# -----------------
-# 2026-11-08: greedy_lab_v9.py frozen (E-033 part C); v10 = v9 + one default-off option (E-033 part D):
-#   plan_leaf='quad'  IW leaf = quadratic ridge regression on LEAF_NET's 12 features (91 terms, lambda 30,
-#                     held-out R2 0.461 vs the net's 0.464; eval/rl/leaf_quad_v1.py). Motivation: in E-033 the
-#                     lookup-table leaf (R2 0.453) played much worse than the linear leaf (R2 0.209), so the
-#                     smoothness of the leaf seems to matter for a max-backup search; this is a smooth non-DL leaf
-#                     as accurate as the net.
-#
-# v9 header follows.
-# greedy_lab_v9.py
-# ----------------
-# 2026-11-08: greedy_lab_v8.py frozen (E-033 screen); v9 = v8 + two default-off options (reserve arms of the
-# advisor review, docs/research/mcts_design.md; E-033 part C):
-#   mc_check='0'   after the normal decision (greedy, or the IW planner with plan='danger'), the flat paired
-#                  Monte-Carlo evaluation (same scenarios, rollouts, margin and trigger as plan='fmc') re-checks
-#                  the chosen move and replaces it when another move is worth more than mc_margin more
-#                  (targets the IW planner's optimistic max backup at the winning node)
-#   mc_leaf='net'  value at the Monte-Carlo rollout cutoff = LEAF_NET (search + the learned greedy-policy value)
-#
-# v8 header follows.
-# greedy_lab_v8.py
-# ----------------
-# 2026-11-08: v7 + non-deep-learning search options (docs/research/mcts_design.md, draft 2 after the
-# advisor review; E-033). All default off, so `lab8_off` plays exactly like lab7_off, and lab8 with
-# greedy_v4's options plays exactly like greedy_v4.
-#   plan_leaf='table'  IW leaf = mean 30-move outcome of the greedy policy in a 7x7x7x2x2 lookup table
-#                      (carried, nearest ghost, distance home, side, nearest ghost scared), fitted by
-#                      eval/rl/fit_leaves.py on the same data as LEAF_NET (no neural net)
-#   plan_leaf='lin'    IW leaf = least squares on LEAF_NET's 12 features (control: is it the nonlinearity?)
-#   plan='fmc'         flat paired Monte Carlo: every legal root move is simulated against the same fixed
-#                      set of weighted ghost scenarios (top mc_k belief cells per ghost x ghost types chase /
-#                      intercept / camp, best mc_s by weight); deterministic greedy-in-model rollouts of
-#                      mc_h moves; value = weighted mean return. Greedy decides unless the best move beats
-#                      greedy's move by mc_margin. Same trigger as plan='danger'.
-#   plan='mcts'        as fmc, plus open-loop UCT over our next mc_depth moves (mc_iters iterations,
-#                      scenarios round-robin by weight, UCB on min-max normalised returns, c = mc_c); the
-#                      tree's most visited line under each root move is re-evaluated on all scenarios and
-#                      the root move's value is the better of its flat and tree values.
-#   mc_leaf='hand'|'table'  value at the rollout cutoff; mc_bank_end='1' ends a rollout when it banks.
-# No random numbers are drawn anywhere (scenarios are enumerated), so games stay reproducible.
-#
-# v7 header follows.
-# greedy_lab_v7.py
-# ----------------
-# 2026-11-08: greedy_lab_v6.py frozen (E-028/E-029 runs); v7 = v6 + the options below (all default
-# off, so `lab7_off` must play exactly like lab6_off = lab5_smart). Advisor review, E-030:
-#   plan_nodes='0'   node cap per search (deterministic; the clock budget stays as a safety net)
-#   plan_kill='1', plan_cap='0.3'   planner rewards for eating a scared ghost / a capsule (were constants)
-#   plan_hidden      '1'/'argmax' (v6 behaviour) | '0' off | 'near' (hidden ghost on the belief cell with
-#                    mass >= 0.05 nearest to us: pessimistic) | 'both' (plan with argmax and near, min)
-#   plan='shield'    greedy decides; the planner only vetoes: its best move replaces greedy's when greedy's
-#                    root value < -0.5*plan_death and the best beats it by plan_margin
-#   hunt_scared='0'  greedy rule without planner: chase a visible scared enemy ghost within hunt_d steps
-#                    whose scared time exceeds our distance + 1
-#   formation='power' SM-3: the home defender attacks while no enemy is a Pacman and the enemies stay
-#                    scared long enough for a trip (or one respawned within the last 10 own moves)
-#   dplan='0'        defender planner: IW(1) over (our defender cell, invader cell) atoms against a
-#                    modelled invader (forages to the nearest food; flees home when carrying >= dplan_ret
-#                    or when we are within 3); overrides the rule defender's move by dplan_margin
-#
-# v6 header follows.
-# greedy_lab_v6.py
-# ----------------
-# Experiment file (docs/experiments.md E-027..): teams/greedy_lab_v5.py with lab5_smart's switches
-# (flags, shared, endgame, directed, open_goal) as DEFAULTS, plus new switches, all OFF by default,
-# so that the defaults play exactly like lab5_smart (identity check `lab6_off`).
-# New switches (2026-11-08, overnight session):
-#   plan='0'       width-based planning (IW(1) / novelty-pruned best-first search, docs/research/
-#                  width_planning.md) over our own lightweight model of the attacker's world:
-#                  'full'   = planner decides the attacker's move whenever it finds a plan worth > plan_min
-#                  'danger' = only while a modelled enemy ghost is within plan_trigger maze steps
-#                  'food'   = only instead of the food-target choice (greedy keeps all go-home rules)
-#   plan_search='iw' ('iw' breadth-first IW(1) | 'best' best-first by value, novelty-pruned)
-#   plan_atoms='pos_carry' ('pos' | 'pos_carry' | 'pos_food' | 'pos_carry_g')
-#   plan_h, plan_r, plan_death, plan_a, plan_min, plan_hidden, plan_budget, plan_trigger: see Config
-#   focus='none'   food-region mode for the attacker's target choice (map modes):
-#                  top | bottom (in our own frame: blue's y is flipped, so a map gives both colours the
-#                  same view) | deep | shallow | cluster | far (from the enemy ghosts' belief cells) |
-#                  majority (the half holding more enemy food) | auto (map-feature selector)
-#   focus_w='3'    weight of the focus penalty, in maze steps
-# Self-contained (stdlib + contest framework only). Do not edit after it has been benchmarked;
-# copy to greedy_lab_v7.py instead.
-#
-# lab5 header follows.
-# Experiment file (docs/experiments.md E-025): teams/greedy_v3.py plus enemy-state switches.
-# Research behind each switch: docs/heuristics.md Part D.
-#
-# Switches (create_team kwargs; defaults = greedy_v3's tournament configuration + new ones off):
-#   breaker='1', intercept='1', return_at='8', shadow='1'   greedy_v3 (E-011..E-021)
-#   roles='0', tracker='0', adaptive='0'   screened in E-007/E-010, not adopted
-#   hunt='0'       P-22: the defender chases the most likely cell of a hidden enemy on our side
-#                     (belief mass >= 0.5; with flags: the enemy's is_pacman)
-#   flags='0'      #1 H-S14: read hidden enemies' is_pacman / num_carrying / scared_timer /
-#                     num_returned (rules.md Q3: allowed) for the belief's side constraint, food
-#                     attribution, respawns, the raider and exact scared timers
-#   shared='0'     #3 H-S15: one team belief updated at both agents' turns (rules.md Q4)
-#   endgame='0'    #4 H-S27/P-17c: last ENDGAME_MOVES own moves: ahead -> both defend, behind ->
-#                     both attack and bank as soon as a trip would take the lead
-#   directed='0'   H-S17 (needs flags): goal-directed motion model in the belief
-#   open_goal='0'  H-S24 (needs flags): ignore return_at while no enemy can reach us before home
-#   guard='0'      H-S16 (needs flags): the defender targets hidden invaders by their likely goal
-#   recall='0'     H-S26 (needs flags): with two enemy Pacmen the attacker defends too
-#
-# Rules this file follows (docs/rules.md): public API only, no mutation of observation objects,
-# own RNG instance. Hidden opponents' AgentState fields are read only in V1Agent.fields(), behind
-# USE_HIDDEN_OPPONENT_FLAGS and the `flags` switch (Q3); with both off nothing hidden is read.
+# Fair play: public observation API only, nothing reachable from the observation is modified, our own
+# random.Random instance (the global RNG is never touched), no threads, no files, no printing.
+# Hidden opponents' is_pacman / num_carrying / scared_timer are read (allowed by the course professor),
+# only through V1Agent.fields() and the USE_HIDDEN_OPPONENT_FLAGS switch.
+# Python 3.8, standard library only; the planner has a time budget well under the 1 s move limit.
 
 import heapq
 import math
@@ -241,7 +33,7 @@ from contest.capture_agents import CaptureAgent
 from contest.game import Actions, Directions
 
 INF = 10 ** 6
-RETURN_AT = 5          # greedy_v1's return threshold (Config default); greedy_v2 plays with 8
+RETURN_AT = 5          # default return threshold (Config default); the team plays with 8
 THREAT_DIST = 4        # maze distance at which a visible ghost makes a carrier go home
 SCARED_TIME = 40       # framework constant (capture.py); enemy moves a capsule lasts
 SCARED_MARGIN = 3      # treat enemies as dangerous this many of their moves before the timer ends
@@ -260,10 +52,10 @@ ADAPT_HIGH = 10        # C5: threshold after ADAPT_QUIET own moves without seein
 ADAPT_RECENT = 5
 ADAPT_QUIET = 15
 ADAPT_BANK_DIST = 2    # C5: bank >= 2 carried food when home is this close
-HUNT_MASS = 0.5        # P-22: belief mass on our side above which a hidden enemy counts as an invader
-STAY_WEIGHT = 0.2      # P-22/23: motion model, weight of staying put against 1 per neighbour
+HUNT_MASS = 0.5        # belief mass on our side above which a hidden enemy counts as an invader
+STAY_WEIGHT = 0.2      # motion model, weight of staying put against 1 per neighbour
                        # (no cell is ever dropped for a small probability: an enemy walking straight
-                       # has a tiny random-walk probability, and dropping it lost the truth, E-019)
+                       # has a tiny random-walk probability, and dropping it lost the truth)
 
 # Rules.md Q3 (answered 2026-10-22: allowed, recommended): the one switch for reading hidden
 # opponents' AgentState fields. False turns every use off, whatever the `flags` option says.
@@ -273,14 +65,12 @@ ENEMY_RETURN_DEFAULT = 5  # directed/guard: food an enemy carries before it head
 OPEN_MARGIN = 4           # open_goal: spare moves between the earliest enemy arrival and our way home
 OPEN_QUANTILE = 0.1       # open_goal: pessimistic quantile of an enemy's distance under its belief
 RECALL_HOME = 3           # recall: an empty-handed attacker this close to home comes back to defend
-# v14 constants (E-043)
 TABU_ENTRIES = 3          # brk_tabu: the breaker does not re-pick its last this many entries
 TABU_NEAR = 2             # brk_tabu: nor an entry within this many maze steps of where we stand
 OPEN_LOAD_DIV = 4         # open_safe: one extra move of margin per this many carried food
 OPEN_EXITS = 4            # open_safe: crossings checked (the ones nearest to us)
 RAID_START = 12           # scared_raid: own scared moves left needed to start a raid from our side
 RAID_MARGIN = 4           # scared_raid: keep raiding while scared moves left > way home + this
-# v15 constants (E-044)
 RELAY_NEARER = 8          # relay: the other body must be this many steps nearer the border than the respawn
 RELAY_BUSY = 6            # relay: no handover while the other body has a visible invader this close
 RELAY_SCARED = 8          # relay: ... unless that body is scared for at least this many more moves
@@ -301,7 +91,6 @@ RELIEF_UNSTUCK = 3        # relief: attacker moves in a row with a safe target t
 RELIEF_LEASH = 6          # relief: the helper eats only food within this many steps of home
 RELIEF_BANK = 2           # relief: and goes home when it carries this much
 HELPER_APART = 6          # push / relief: the helper's entry is at least this far from the attacker's
-# v16 constants (E-044, second wave)
 SWAP_GAIN = 6             # swap: the defender must be this many steps nearer the attacker's new entry
 SWAP_COOL = 6             # swap: own moves before the roles may be swapped at a standoff again
 COVER_LOAD = 2            # cover: the invader carries at least this much
@@ -337,7 +126,7 @@ class Config:
         self.open_goal = _flag(open_goal) and self.flags
         self.guard = _flag(guard) and self.flags
         self.recall = _flag(recall) and self.flags
-        # --- lab6 switches (defaults = off) ---
+        # --- further options (defaults = off) ---
         e = dict(V6_DEFAULTS)
         for k, v in extra.items():
             if k not in e:
@@ -409,12 +198,11 @@ class Config:
         self.plan_special = _flag(e['plan_special'])
         self.open_safe = _flag(e['open_safe'])
         self.scared_raid = _flag(e['scared_raid']) and self.flags
-        # v15 team brain (E-044); relay / push / relief need the enemies' is_pacman
+        # team brain: relay / push / relief need the enemies' is_pacman
         self.relay = _flag(e['relay']) and self.flags
         self.eyes = _flag(e['eyes'])
         self.push = _flag(e['push']) and self.flags
         self.relief = _flag(e['relief']) and self.flags
-        # v16 (second wave)
         self.swap = _flag(e['swap']) and self.flags
         self.cover = _flag(e['cover']) and self.flags
         self.eyes_maze = int(e['eyes_maze'])
@@ -422,7 +210,6 @@ class Config:
         self.relief_modes = str(e['relief_modes']).strip().lower()
         self.brain = (_flag(e['brain']) or self.relay or self.eyes or self.push or self.relief
                       or self.swap or self.cover)
-        # v16 (E-045, from the loss diagnosis): these need no brain
         self.pocket = _flag(e['pocket'])
         self.pocket_load = int(e['pocket_load'])
         self.pocket_margin = int(e['pocket_margin'])
@@ -447,28 +234,21 @@ V6_DEFAULTS = {
     # plan_v='2': atoms only for surviving states, Stop generated; plan='override': greedy decides,
     # the planner overrides only if its best root value beats greedy's action by plan_margin
     'plan_v': '2', 'plan_margin': '0.3',
-    # v3 options: 'piw' reward-aware novelty (p-IW); 'm1m2' chase + intercept ghost models, min over
-    # root values; 'net' learned leaf value (LEAF_NET, trained offline on lab6 games)
+    # 'piw' reward-aware novelty (p-IW); 'm1m2' chase + intercept ghost models, min over
+    # root values; 'net' learned leaf value (LEAF_NET, trained offline on our own games)
     'plan_novelty': 'iw', 'plan_models': 'm1', 'plan_leaf': 'netf',
-    # v7 options (see header)
     'plan_nodes': '2000', 'plan_kill': '1', 'plan_cap': '0.3', 'hunt_scared': '0', 'hunt_d': '10',
     'dplan': '0', 'dplan_ret': '5', 'dplan_margin': '0.3', 'dplan_h': '20', 'dplan_nodes': '3000',
     'focus': 'none', 'focus_w': '3',
-    # v8 options (see header)
     'mc_s': '12', 'mc_k': '4', 'mc_place': '4', 'mc_h': '20', 'mc_margin': '0.3', 'mc_budget': '0.15',
     'mc_leaf': 'hand', 'mc_types': '0.5:0.3:0.2', 'mc_bank_end': '1', 'mc_iters': '150',
     'mc_depth': '4', 'mc_c': '1.0',
-    # v9 options (see header)
     'mc_check': '0',
-    # v12 options (see header)
     'assist': '0', 'assist_d': '6', 'def_scared': '0', 'late_tie': '0', 'plan_blocked': '0',
     'ov_guard': '0', 'ov_asym': '0',
-    # v14 options (see header)
     'plan_stuck': '0', 'stuck_moves': '8', 'brk_tabu': '0', 'plan_special': '0', 'open_safe': '0',
     'scared_raid': '0',
-    # v15 options (see header)
     'brain': '0', 'relay': '1', 'eyes': '1', 'push': '0', 'relief': '0',
-    # v16 options (see header)
     'swap': '0', 'cover': '0', 'eyes_maze': str(EYES_MAZE), 'push_modes': 'ab', 'relief_modes': 'qs',
     'pocket': '0', 'pocket_load': '5', 'pocket_margin': '2', 'cash': '0', 'cash_moves': '100', 'cash_at': '3',
     # focus='linear': learned food-choice weights (maze steps per unit feature)
@@ -476,7 +256,7 @@ V6_DEFAULTS = {
     'fw_capsule': '0', 'fw_mate': '0',
     # formation='lead': the home defender attacks too while our score <= form_lead
     'formation': 'none', 'form_lead': '0',
-    # lab5 module constants exposed for tuning (defaults = lab5 values)
+    # module constants exposed for tuning
     'threat_dist': str(THREAT_DIST), 'open_margin': str(OPEN_MARGIN),
     'standoff_moves': str(STANDOFF_MOVES),
 }
@@ -484,7 +264,7 @@ V6_DEFAULTS = {
 
 # Map-mode selector for focus='auto': predicted gain (points per game over focus 'none') of each
 # focus mode as a linear function of map_features(); the mode with the largest positive prediction
-# is played, else 'none'. Empty until trained offline from a mode x map table (E-0xx).
+# is played, else 'none'. Empty until trained offline from a mode x map table.
 FOCUS_MODELS = {}
 
 
@@ -510,7 +290,7 @@ def create_team(first_index, second_index, is_red,
         return [FlexAgent(first_index, cfg, 'attack'), FlexAgent(second_index, cfg, 'defend')]
     if cfg.endgame or cfg.recall:
         home_roles = {first_index: 'attack', second_index: 'defend'}
-        if cfg.brain:  # v15: the same agents plus the shared team brain
+        if cfg.brain:  # the same agents plus the shared team brain
             brain = TeamBrain(cfg, home_roles)
             return [BrainAgent(first_index, cfg, home_roles, memory, brain),
                     BrainAgent(second_index, cfg, home_roles, memory, brain)]
@@ -525,7 +305,7 @@ def create_team(first_index, second_index, is_red,
 
 
 #################################
-# lab6: width-based planner     #
+# width-based planner           #
 #################################
 # IW(1) (Lipovetzky & Geffner 2012) as used with simulators (Lipovetzky, Ramirez & Geffner 2015):
 # breadth-first search that keeps a generated node only if it makes some atom true for the first
@@ -548,7 +328,7 @@ LEAF_NET = (
     [2.1698, 1.74129, -1.44691, -1.51826, 1.7987, 1.46688, 1.52291, 1.564, -1.19931, -1.38286, 2.02773, -1.65537, -1.46316, 2.4537, 2.3987, 0.75911],
     0.05979)
 # LEAF_NET_END
-# plan_leaf=net2f: second iteration, trained on lab6_off + lab7_danger_net games (E-031)
+# plan_leaf=net2f: second iteration, trained on lab6_off + lab7_danger_net games
 # LEAF_NET2_BEGIN
 # trained by eval/rl/train_value.py on ['d1_lab6off', 'd2_net']; test R2 0.588
 LEAF_NET2 = (
@@ -557,7 +337,7 @@ LEAF_NET2 = (
     [2.54592, 0.37538, -2.19298, -2.16058, 2.18291, 2.48129, 1.94853, 1.8785, -3.27593, -1.70335, 2.56314, -1.87033, -1.49309, 3.10287, 2.61079, 1.61715],
     -0.24408)
 # LEAF_NET2_END
-# plan_leaf=net3f: second iteration, trained on lab7_danger_net games only (on-policy, E-031)
+# plan_leaf=net3f: second iteration, trained on lab7_danger_net games only (on-policy)
 # LEAF_NET3_BEGIN
 # trained by eval/rl/train_value.py on ['d2_net']; test R2 0.552
 LEAF_NET3 = (
@@ -673,7 +453,7 @@ LEAF_TABLE = (
 # LEAF_LIN: weights for the 12 net features (train_value.py order) + bias
 LEAF_LIN = (10.25906, -3.10049, -0.97097, 0.43476, 5.86362, 0.76038, 1.71586, 1.42155, 0.97108, -0.27271, 1.07495, 0.57491, -1.98753)
 # LEAF_NONDL_END
-# plan_leaf=quad (v10): quadratic ridge leaf
+# plan_leaf=quad: quadratic ridge leaf
 # LEAF_QUAD_BEGIN
 # fitted 2026-11-08 by a ridge regression (lambda 30) on d1_lab6off (same data/split as LEAF_NET);
 # held-out R2 0.461. LEAF_QUAD = (linear weights for the 12 net features, {(i, j): weight} for products i <= j, bias)
@@ -682,7 +462,7 @@ LEAF_QUAD = (
     {(0, 0): 0.92974, (0, 1): -11.83932, (0, 2): -9.15212, (0, 3): 1.56568, (0, 4): 11.55871, (0, 5): 3.16207, (0, 6): -1.55564, (0, 7): -1.33755, (0, 8): -4.16346, (0, 9): 7.21970, (0, 10): 3.29566, (0, 11): -0.10993, (1, 1): 0.00584, (1, 2): 1.11971, (1, 3): 0.27704, (1, 4): 6.53539, (1, 5): -0.33385, (1, 6): 0.43952, (1, 7): -1.94165, (1, 8): -0.42089, (1, 9): -3.93321, (1, 10): 0.49396, (1, 11): 0.08641, (2, 2): -0.61041, (2, 3): 1.72549, (2, 4): -0.16283, (2, 5): -0.01339, (2, 6): -0.09801, (2, 7): -0.43936, (2, 8): -1.14384, (2, 9): 0.52354, (2, 10): -0.35630, (2, 11): 5.06718, (3, 3): 0.49299, (3, 4): 0.25755, (3, 5): -0.13092, (3, 6): -1.72893, (3, 7): 0.48449, (3, 8): 0.63952, (3, 9): -0.24191, (3, 10): 0.87835, (3, 11): -3.12951, (4, 4): -14.44343, (4, 5): 4.49471, (4, 6): -3.00798, (4, 7): 2.77109, (4, 8): 0.75994, (4, 9): 1.21932, (4, 10): 2.24823, (4, 11): 2.29865, (5, 5): -0.43931, (5, 6): 1.30722, (5, 7): -0.39547, (5, 8): 1.80122, (5, 9): -1.78914, (5, 10): 0.18304, (5, 11): -1.33717, (6, 6): -0.60587, (6, 7): -0.96335, (6, 8): -0.08789, (6, 9): -0.41564, (6, 10): 0.60613, (6, 11): 2.11736, (7, 7): 0.91445, (7, 8): 2.50349, (7, 9): -0.63411, (7, 10): 0.36006, (7, 11): -3.36234, (8, 8): 1.27799, (8, 9): 0.08702, (8, 10): 0.45144, (8, 11): 0.24164, (9, 9): 1.20702, (9, 10): -1.66002, (9, 11): 0.41977, (10, 10): -1.25466, (10, 11): 2.20116, (11, 11): -0.11867},
     0.76663)
 # LEAF_QUAD_END
-# plan_leaf=net60f (v11): 60-move target
+# plan_leaf=net60f: 60-move target
 # LEAF_NET60_BEGIN
 # trained by eval/rl/train_value.py on ['d3_h60']; test R2 0.402
 LEAF_NET60 = (
@@ -1828,7 +1608,7 @@ class MapInfo:
         self.cross = {b: (enemy_x, b[1]) for b in self.home_border}  # enemy cell across each entry
         self.dist_home = {c: min((self.dist[c].get(b, INF) for b in self.home_border), default=INF)
                           for c in self.cells}
-        # an enemy Pacman's way home: distance to the nearest enemy-side border cell (H-S17)
+        # an enemy Pacman's way home: distance to the nearest enemy-side border cell
         self.dist_enemy_side = {c: min((self.dist[c].get(x, INF) for x in self.cross.values()), default=INF)
                                 for c in self.cells}
         self.depth, self.entrance = self._dead_ends()
@@ -1923,7 +1703,7 @@ class TeamMemory:
         mover = (agent.index - 1) % game_state.get_num_agents()
         team_now = dict((t, game_state.get_agent_position(t)) for t in agent.get_team(game_state))
         # one of us that teleported since the last update (it was eaten) no longer keeps the enemy
-        # in sight (T-55); one that moved at most one cell does
+        # in sight; one that moved at most one cell does
         steady = [p for t, p in team_now.items()
                   if p is not None and self.team.get(t) is not None and m.d(self.team[t], p) <= 1]
         fields_now = dict((i, agent.fields(game_state, i)) for i in opponents)
@@ -1992,7 +1772,7 @@ class V1Agent(CaptureAgent):
         super().__init__(index, time_for_computing)
         self.cfg = cfg if cfg is not None else Config()
         self.memory = memory           # shared: the TeamMemory both of our agents update (Q4)
-        self.rng = random.Random(7919 + index)  # own RNG; never seed the global one (T-02)
+        self.rng = random.Random(7919 + index)  # own RNG; never seed the global one
         self.map = None
         self.food_to_win = None
         self.enemy_capsules = set()
@@ -2001,8 +1781,8 @@ class V1Agent(CaptureAgent):
         self.last_seen = {}            # enemy index -> (pos, timeleft)
         self.just_respawned = set()    # enemies detected as eaten during the current update
         self.possible = {}             # C3: enemy index -> set of cells it may occupy
-        self.belief = {}               # P-22/23: enemy index -> {cell: probability}
-        self.raider = None             # P-23: enemy index last evident on our side
+        self.belief = {}               # enemy index -> {cell: probability}
+        self.raider = None             # enemy index last evident on our side
         self.bank_sizes = {}           # flags: enemy index -> food amounts it was seen banking
         self._food_goals = (None, None, None)  # (timeleft, distance to our nearest food, that food)
 
@@ -2028,7 +1808,7 @@ class V1Agent(CaptureAgent):
             self.memory.reset(self, game_state)
             self.belief = self.memory.belief
 
-    # --- enemy fields (rules.md Q3) ---
+    # --- hidden-opponent fields ---
 
     def fields(self, game_state, i):
         """(is_pacman, num_carrying, scared_timer, num_returned) of enemy i, hidden or not, or None
@@ -2084,8 +1864,8 @@ class V1Agent(CaptureAgent):
         prev_time = prev.data.timeleft if prev is not None else None
         team_prev = [prev.get_agent_position(t) for t in self.get_team(prev)] if prev is not None else []
         if (self.cfg.hunt or self.cfg.shadow) and prev is not None:
-            # P-22/23: one of us that was eaten since (it teleported home) no longer keeps the enemy
-            # in sight, so only teammates that moved at most one cell count (E-019: without this,
+            # one of us that was eaten since (it teleported home) no longer keeps the enemy
+            # in sight, so only teammates that moved at most one cell count (without this,
             # a ghost that ate our attacker was taken for eaten itself)
             team_now = [game_state.get_agent_position(t) for t in self.get_team(game_state)]
             team_prev = [t if t and c and self.map.d(t, c) <= 1 else None
@@ -2211,7 +1991,7 @@ class V1Agent(CaptureAgent):
                     break
                 candidates = owners
                 if self.cfg.flags and f in food_eaten:
-                    # H-S14: each enemy moved once and ate at most one dot; the eater's carrying rose
+                    # each enemy moved once and ate at most one dot; the eater's carrying rose
                     eaters = set(i for i in owners if fields_now[i] is not None and self.fields(prev, i)
                                  is not None and fields_now[i][1] > self.fields(prev, i)[1])
                     if eaters:
@@ -2332,10 +2112,10 @@ class V1Agent(CaptureAgent):
         else the pessimistic OPEN_QUANTILE of its belief distance; scared enemies cannot eat us before
         their timer runs out."""
         margin = self.cfg.open_margin
-        if self.cfg.open_safe:  # v14: a bigger load needs a bigger margin
+        if self.cfg.open_safe:  # a bigger load needs a bigger margin
             margin += game_state.get_agent_state(self.index).num_carrying // OPEN_LOAD_DIV
         eta = INF
-        arrivals = []  # v14 open_safe: (enemy field, seen cell, belief) to price the crossings below
+        arrivals = []  # open_safe: (enemy field, seen cell, belief) to price the crossings below
         for i in self.get_opponents(game_state):
             f = self.fields(game_state, i)
             seen = game_state.get_agent_position(i)
@@ -2357,7 +2137,7 @@ class V1Agent(CaptureAgent):
             return False
         if not self.cfg.open_safe or not self.map.home_border:
             return True
-        # v14 open_safe: some crossing (enemy-side cell across a home-border cell) that every enemy reaches
+        # open_safe: some crossing (enemy-side cell across a home-border cell) that every enemy reaches
         # later than we do by the margin; then no enemy can cut our shortest way to it (triangle
         # inequality). Checked for the OPEN_EXITS crossings nearest to us.
         exits = sorted(self.map.home_border, key=lambda b: (self.map.d(pos, self.map.cross[b]), b))
@@ -2395,7 +2175,7 @@ class V1Agent(CaptureAgent):
 
     def enemy_scared(self, i, game_state):
         f = self.fields(game_state, i)
-        if f is not None:  # H-S14: the exact timer, in the enemy's own moves
+        if f is not None:  # the exact timer, in the enemy's own moves
             return f[2] > SCARED_MARGIN
         if self.scared_since is None or i in self.unscared:
             return False
@@ -2498,10 +2278,9 @@ class GreedyAttacker(V1Agent):
         self.blocked = deque(maxlen=STANDOFF_WINDOW)  # C2: recent moves, True = blocked at the border
         self.entry = None        # C2: border entry we are walking to
         self.ghost_seen = None   # C5: timeleft when we last saw a dangerous ghost
-        self.stuck = 0           # v14 plan_stuck: own moves in a row without a safe target
-        self.tried = deque(maxlen=TABU_ENTRIES)  # v14 brk_tabu: entries the breaker chose last
-        self.plan_ran = False    # v14: the danger planner searched during this move
-        # lab6
+        self.stuck = 0           # plan_stuck: own moves in a row without a safe target
+        self.tried = deque(maxlen=TABU_ENTRIES)  # brk_tabu: entries the breaker chose last
+        self.plan_ran = False    # the danger planner searched during this move
         self.planner = None
         self.plan_info = None
         self.plan_uses = 0
@@ -2521,7 +2300,7 @@ class GreedyAttacker(V1Agent):
         self.perceive(game_state)
         return self.attack(game_state)
 
-    # --- lab6: map features (our own frame: blue's y is flipped, x measured from our border) ---
+    # --- map features (our own frame: blue's y is flipped, x measured from our border) ---
 
     def frame_y(self, y):
         h = self.map.height - 1
@@ -2557,7 +2336,7 @@ class GreedyAttacker(V1Agent):
         }
         return feats
 
-    # --- lab6: focus modes for the food-target choice ---
+    # --- focus modes for the food-target choice ---
 
     def focus_penalty(self, game_state, f, food):
         mode = self.focus_mode
@@ -2658,7 +2437,7 @@ class GreedyAttacker(V1Agent):
         found.sort()
         return first[found[0][2]]
 
-    # --- lab6: planner glue ---
+    # --- planner glue ---
 
     def plan_ghosts(self, game_state, placement=None):
         """[(cell, scared moves left)] for enemy ghosts (agents on their own side): visible ones at
@@ -2905,13 +2684,13 @@ class GreedyAttacker(V1Agent):
         if action is None or action == g:
             return g
         if self.cfg.ov_guard and info['best_value'] < self.cfg.plan_min:
-            return g  # v12: every line dies (or is worthless) in the model: keep greedy's move
+            return g  # every line dies (or is worthless) in the model: keep greedy's move
         rv = info['root_values']
         if self.cfg.plan == 'shield' and rv.get(g, -1e9) >= -0.5 * self.cfg.plan_death:
             return g  # shield: greedy's move is not predicted to be deadly
         margin = self.cfg.plan_margin
         if self.cfg.ov_asym > 0 and rv.get(g, -1e9) < 0.0:
-            margin = self.cfg.ov_asym  # v12: greedy's own line loses food: a smaller gain is a real escape
+            margin = self.cfg.ov_asym  # greedy's own line loses food: a smaller gain is a real escape
         if rv.get(action, -1e9) - rv.get(g, -1e9) > margin and                 action in game_state.get_legal_actions(self.index):
             self.plan_uses += 1
             return action
@@ -2933,10 +2712,10 @@ class GreedyAttacker(V1Agent):
 
         enough = carrying >= self.return_threshold(game_state, pos)
         if enough and self.cfg.open_goal and not self.cash_on(game_state) and self.goal_open(game_state, pos):
-            enough = False  # H-S24: nobody can catch us before we get home, so keep eating
+            enough = False  # nobody can catch us before we get home, so keep eating
         score = self.get_score(game_state)
         if self.late_bank(game_state, score, carrying):
-            enough = True   # H-S27: behind late, bank as soon as this trip takes the lead (v12: or tied)
+            enough = True   # behind late, bank as soon as this trip takes the lead (or tied)
         go_home = carrying > 0 and (
             enough
             or len(food) <= 2
@@ -2946,7 +2725,7 @@ class GreedyAttacker(V1Agent):
 
         safe = self.safe_fn(ghosts)
         if self.cfg.scared_raid and me.scared_timer > 0 and not me.is_pacman:
-            # v14 scared_raid: a scared raider still on our side must not meet a visible invader
+            # scared_raid: a scared raider still on our side must not meet a visible invader
             invaders = [p for _, p, inv in self.visible_enemies(game_state) if inv]
             if invaders:
                 base = safe
@@ -2958,7 +2737,7 @@ class GreedyAttacker(V1Agent):
         plan = self.cfg.plan
         special = False
         if use_plan and plan in ('full', 'danger', 'food') and self.planner is not None:
-            if self.cfg.plan_special:  # v14: the planner also acts in the "food" special cases
+            if self.cfg.plan_special:  # the planner also acts in the "food" special cases
                 special = (self.late_bank(game_state, score, carrying)
                            or my_moves_left <= self.map.dist_home[pos] + TIME_MARGIN)
             else:
@@ -2969,7 +2748,7 @@ class GreedyAttacker(V1Agent):
                     plan == 'food' and self.cfg.breaker and self.entry is not None):
                 if (self.cfg.plan_blocked and self.cfg.breaker and plan == 'danger' and not me.is_pacman
                         and carrying == 0 and visible_ghosts):
-                    # v12: a standoff on our side: let the breaker count and act as in plain greedy
+                    # a standoff on our side: let the breaker count and act as in plain greedy
                     if self.entry is not None:
                         action = self.follow_entry(game_state, pos, me)
                         if action is not None:
@@ -2991,7 +2770,7 @@ class GreedyAttacker(V1Agent):
             if self.cfg.breaker and self.entry is not None:
                 action = self.follow_entry(game_state, pos, me)
                 if action is not None:
-                    self.stuck += 1  # v14: walking to a breaker entry is not progress yet
+                    self.stuck += 1  # walking to a breaker entry is not progress yet
                     return action
             if self.cfg.hunt_scared:
                 action = self.hunt_scared_action(game_state, pos, safe)
@@ -3009,7 +2788,7 @@ class GreedyAttacker(V1Agent):
                     self.stuck = 0
                     self.tried.clear()
                     return action
-            self.stuck += 1  # v14: no safe food
+            self.stuck += 1  # no safe food
             action = self.stuck_plan(game_state, pos, carrying, food, my_moves_left, special)
             if action is not None:
                 if self.cfg.breaker:
@@ -3021,7 +2800,7 @@ class GreedyAttacker(V1Agent):
                     return action
             return self.retreat(game_state, ghosts, threatened, safe)
         if self.cfg.plan_stuck:
-            # v14: retreat() inlined so that the planner can replace evade when no way home is safe
+            # retreat() inlined so that the planner can replace evade when no way home is safe
             home_targets = list(self.map.home_border)
             if threatened:
                 home_targets += self.get_capsules(game_state)
@@ -3142,7 +2921,7 @@ class GreedyAttacker(V1Agent):
                 return action
         candidates = [b for b in self.map.home_border if b != pos]
         if self.cfg.brk_tabu:
-            # v14: not one of the last entries we tried, nor one right next to us (E-042 loop)
+            # not one of the last entries we tried, nor one right next to us
             fresh = [b for b in candidates if b not in self.tried and self.map.d(pos, b) > TABU_NEAR]
             if fresh:
                 candidates = fresh
@@ -3212,7 +2991,7 @@ class PatrolDefender(V1Agent):
         self.patrol = []
         self.patrol_i = 0
         self.patrol_food_count = None
-        self.raider = None   # P-23: enemy index last evident on our side
+        self.raider = None   # enemy index last evident on our side
 
     def choose_action(self, game_state):
         self.perceive(game_state)
@@ -3257,7 +3036,7 @@ class PatrolDefender(V1Agent):
         if self.cfg.guard and not scared:
             target = self.guard_target(game_state, pos)
             if target is not None:
-                self.target = None  # the belief already holds the food events (as P-22)
+                self.target = None  # the belief already holds the food events
                 if target == pos:
                     return Directions.STOP
                 action, _ = self.bfs_action(game_state, [target], lambda cell, steps: self.map.is_ours(cell))
@@ -3265,7 +3044,7 @@ class PatrolDefender(V1Agent):
                     return action
 
         if self.cfg.hunt and not invaders:
-            # P-22: the belief already holds the food events, so it replaces the eaten-food target
+            # the belief already holds the food events, so it replaces the eaten-food target
             self.target = None
             suspect = self.suspected_invader(pos, game_state)
             if suspect is not None and not scared:
@@ -3281,7 +3060,7 @@ class PatrolDefender(V1Agent):
                 if target == pos:
                     return Directions.STOP
             target = nearest
-        elif invaders:  # without the intercept: the nearest invader (seen or, P-22, suspected)
+        elif invaders:  # without the intercept: the nearest invader (seen or suspected)
             target = min(invaders, key=lambda p: self.map.d(pos, p))
         elif self.target is not None:
             target = self.target
@@ -3657,11 +3436,11 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
         if self.cfg.recall and home == 'attack' and self.recalled(game_state, t):
             return 'defend'
         if self.cfg.scared_raid and home == 'defend' and self.raid_on(game_state, t):
-            return 'attack'  # v14: scared, and their half is empty: raid instead of hiding
+            return 'attack'  # scared, and their half is empty: raid instead of hiding
         if self.cfg.formation == 'power' and home == 'defend' and self.power_on(game_state, t):
-            return 'attack'  # v7 SM-3 power play
+            return 'attack'  # power play
         if self.cfg.formation == 'lead' and home == 'defend' and self.get_score(game_state) <= self.cfg.form_lead:
-            return 'attack'  # lab6 formation: double attack until we lead by more than form_lead
+            return 'attack'  # formation: double attack until we lead by more than form_lead
         return home
 
     def power_on(self, game_state, t):
@@ -3724,7 +3503,7 @@ class RoleAgent(GreedyAttacker, PatrolDefender):
 
 
 ##########################
-# v15 (E-044): team brain #
+# team brain             #
 ##########################
 
 class TeamBrain:
@@ -3789,8 +3568,8 @@ class TeamBrain:
         self.ret_total = 0
         self.mine = {}             # (our index, enemy index) -> timeleft when last in that agent's own sight
         self.start_time = game_state.data.timeleft
-        self.handoff = {}          # v16 swap: our agent index -> the entry it takes over
-        self.cover = None          # v16 cover: {'start': timeleft, 'enemy': index} while the attacker covers
+        self.handoff = {}          # swap: our agent index -> the entry it takes over
+        self.cover = None          # cover: {'start': timeleft, 'enemy': index} while the attacker covers
 
     # --- helpers on common facts ---
 
@@ -3991,7 +3770,7 @@ class TeamBrain:
             self.play = None
             self.latch = {}
 
-    # --- v16 swap: handover at a standoff ---
+    # --- swap: handover at a standoff ---
 
     def standoff_swap(self, agent, game_state, now, n_pac):
         """swap: the attacker stands blocked at the border and its breaker has chosen another entry. If
@@ -4217,7 +3996,7 @@ class BrainAgent(RoleAgent):
         entry = self.brain.handoff.pop(self.index, None)
         if (entry is not None and not game_state.get_agent_state(self.index).is_pacman
                 and entry != game_state.get_agent_position(self.index)):
-            self.entry = entry  # v16 swap: this body takes over the attack through the entry handed to it
+            self.entry = entry  # swap: this body takes over the attack through the entry handed to it
         if self.cfg.cover:
             action = self.cover_move(game_state)
             if action is not None:
@@ -4248,7 +4027,7 @@ class BrainAgent(RoleAgent):
                 return carrying > 0
         return super().late_bank(game_state, score, carrying)
 
-    # --- v16 cover: an idle attacker closes the invader's second exit ---
+    # --- cover: an idle attacker closes the invader's second exit ---
 
     def cover_move(self, game_state):
         """cover: while this home attacker is an unscared ghost with nothing to do (no safe target, an entry
